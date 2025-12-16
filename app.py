@@ -778,7 +778,7 @@ class LocalNotasHandler:
 class LocalLibrosHandler:
     def __init__(self):
         self.GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes?q="
-        self.OPENAI_API_KEY = "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"
+        self.OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
         self.openai_client = None
         self.openai_enabled = False
         self._inicializar_openai()
@@ -1048,7 +1048,7 @@ class LocalFrasesHandler:
         self.JOURNAL_FILE = os.path.join(self.DATA_FOLDER, "journal_gratitud.json")
         os.makedirs(self.DATA_FOLDER, exist_ok=True)
         
-        self.OPENAI_API_KEY = "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"
+        self.OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
         self.openai_client = None
         self.openai_enabled = False
         self._inicializar_openai()
