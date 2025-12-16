@@ -3101,7 +3101,6 @@ def render_spotify_persistente():
     """
     
     components.html(spotify_html, height=180, scrolling=False)
-```
 # =====================================================
 # 5. INICIALIZACIÓN DE HANDLERS (OPTIMIZADO CON CACHÉ)
 # =====================================================
