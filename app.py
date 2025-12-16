@@ -3068,7 +3068,8 @@ def get_handlers():
     bib = RobustBibliaHandler()
     
     # Usar la misma API key que libros y frases
-    OPENAI_API_KEY = "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"
+    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+
     
     # Inicializar handlers de Lo Oculto
     tarot = TarotHandler(OPENAI_API_KEY)
