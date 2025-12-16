@@ -3154,7 +3154,7 @@ if not st.session_state.login:
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
 
 else:
-    # === SPOTIFY FLOTANTE ABAJO CON IMAGEN ===
+    # === SPOTIFY FLOTANTE CON IMAGEN ===
     st.markdown("""
         <style>
             .spotify-bottom-fixed {
@@ -3169,7 +3169,6 @@ else:
                 background: rgba(2, 6, 23, 0.95) !important;
                 padding: 5px !important;
                 pointer-events: auto !important;
-                backdrop-filter: blur(10px) !important;
             }
             
             .spotify-bottom-fixed iframe {
@@ -3177,7 +3176,7 @@ else:
             }
             
             .spotify-bottom-fixed:hover {
-                transform: translateX(-50%) translateY(-8px) !important;
+                transform: translateX(-50%) translateY(-5px) !important;
                 box-shadow: 0 12px 40px rgba(147, 51, 234, 0.8) !important;
             }
             
@@ -3192,9 +3191,9 @@ else:
         <div class="spotify-bottom-fixed">
             <iframe 
                 style="border-radius:12px" 
-                src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4sWSpwq3LiO?utm_source=generator&theme=0" 
+                src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWQRwui0ExPn?utm_source=generator&theme=0" 
                 width="100%" 
-                height="380" 
+                height="352" 
                 frameBorder="0" 
                 allowfullscreen="" 
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
