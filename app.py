@@ -3193,7 +3193,7 @@ else:
                 style="border-radius:12px" 
                 src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcNb6Ba0LuVc?utm_source=generator&theme=0" 
                 width="100%" 
-                height="352" 
+                height="132" 
                 frameBorder="0" 
                 allowfullscreen="" 
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
@@ -5158,4 +5158,5 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
