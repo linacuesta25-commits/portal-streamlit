@@ -3198,8 +3198,6 @@ else:
         </div>
     """, unsafe_allow_html=True)
     
-    def mostrar_breadcrumbs():
-    
     # Función para mostrar breadcrumbs
     def mostrar_breadcrumbs():
         view = st.session_state.current_view
