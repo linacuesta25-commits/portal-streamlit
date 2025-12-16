@@ -3193,7 +3193,7 @@ else:
                 style="border-radius:12px" 
                 src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcNb6Ba0LuVc?utm_source=generator&theme=0" 
                 width="100%" 
-                height="122" 
+                height="152" 
                 frameBorder="0" 
                 allowfullscreen="" 
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
