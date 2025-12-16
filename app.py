@@ -3049,13 +3049,13 @@ def crear_backup_datos():
 # FUNCIÓN SPOTIFY PERSISTENTE (VERSIÓN SIMPLE)
 # =====================================================
 def render_spotify_persistente():
-    """Renderiza Spotify de forma persistente - Versión simple sin botón"""
+    """Renderiza Spotify flotante en la parte inferior"""
     
     spotify_html = """
     <style>
         #spotify-fixed {
             position: fixed !important;
-            top: 70px !important;                    /* 👈 CAMBIO: Era "bottom: 50px" */
+            bottom: 50px !important;              /* 👈 ARRIBA del footer */
             left: 50% !important;
             transform: translateX(-50%) !important;
             z-index: 999999 !important;
@@ -3067,6 +3067,12 @@ def render_spotify_persistente():
             pointer-events: auto !important;
         }
         
+        #spotify-fixed iframe {
+            width: 100% !important;
+            height: 152px !important;
+            border-radius: 12px !important;
+        }
+        
         #spotify-fixed:hover {
             transform: translateX(-50%) translateY(-5px) !important;
             box-shadow: 0 6px 30px rgba(147, 51, 234, 0.7) !important;
@@ -3075,7 +3081,7 @@ def render_spotify_persistente():
         @media (max-width: 768px) {
             #spotify-fixed {
                 width: 250px !important;
-                top: 70px !important;              /* 👈 CAMBIO: Era "bottom: 30px" */
+                bottom: 50px !important;
             }
         }
     </style>
@@ -3085,7 +3091,7 @@ def render_spotify_persistente():
             style="border-radius:12px" 
             src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4sWSpwq3LiO?utm_source=generator&theme=0" 
             width="100%" 
-            height="80" 
+            height="152" 
             frameBorder="0" 
             allowfullscreen="" 
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
@@ -3094,9 +3100,29 @@ def render_spotify_persistente():
     </div>
     """
     
-    # Usar height=100 en lugar de 0 para asegurar visibilidad
-    components.html(spotify_html, height=100, scrolling=False)
-# =====================================================
+    components.html(spotify_html, height=180, scrolling=False)
+```
+
+---
+
+## 🎨 CÓMO SE VERÁ:
+```
+┌─────────────────────────────────┐
+│                                 │
+│                                 │
+│     Contenido del portal        │
+│          (scroll)               │
+│                                 │
+│                                 │
+├─────────────────────────────────┤
+│  ┌───────────────────────────┐ │
+│  │ 🎵 SPOTIFY PLAYER         │ │ ← Aquí flotando
+│  │ [Controls completos]      │ │
+│  └───────────────────────────┘ │
+├─────────────────────────────────┤
+│ 🌙 Que la luz de tu intuición  │ ← Footer
+│    te guíe en este viaje...    │
+└─────────────────────────────────┘# =====================================================
 # 5. INICIALIZACIÓN DE HANDLERS (OPTIMIZADO CON CACHÉ)
 # =====================================================
 @st.cache_resource
