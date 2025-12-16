@@ -3055,7 +3055,7 @@ def render_spotify_persistente():
     <style>
         #spotify-fixed {
             position: fixed !important;
-            bottom: 50px !important;
+            top: 70px !important;                    /* 👈 CAMBIO: Era "bottom: 50px" */
             left: 50% !important;
             transform: translateX(-50%) !important;
             z-index: 999999 !important;
@@ -3075,7 +3075,7 @@ def render_spotify_persistente():
         @media (max-width: 768px) {
             #spotify-fixed {
                 width: 250px !important;
-                bottom: 30px !important;
+                top: 70px !important;              /* 👈 CAMBIO: Era "bottom: 30px" */
             }
         }
     </style>
