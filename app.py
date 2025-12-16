@@ -169,6 +169,29 @@ def generar_fondo_estelar_cached():
 st.markdown(get_main_css(), unsafe_allow_html=True)
 st.markdown(generar_fondo_estelar_cached(), unsafe_allow_html=True)
 
+# =====================================================
+# SPOTIFY (WIDGET PERSISTENTE)
+# =====================================================
+def render_spotify_widget():
+    spotify_html = """
+    <div class="spotify-container">
+        <iframe
+            style="border-radius:12px"
+            src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4sWSpwq3LiO?theme=0"
+            width="100%"
+            height="80"
+            frameborder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture">
+        </iframe>
+    </div>
+    """
+    st.markdown(spotify_html, unsafe_allow_html=True)
+
+# Render Spotify SOLO una vez
+if "spotify_loaded" not in st.session_state:
+    render_spotify_widget()
+    st.session_state.spotify_loaded = True
+
 # Lógica ANTI-PARPADEO simplificada: solo primera carga
 if not st.session_state.get("first_load_done", False):
     st.markdown("""
