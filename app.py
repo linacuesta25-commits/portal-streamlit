@@ -3154,7 +3154,7 @@ if not st.session_state.login:
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
 
 else:
-    # === SPOTIFY FLOTANTE CON IMAGEN ===
+    # === SPOTIFY FLOTANTE CON TU PLAYLIST ===
     st.markdown("""
         <style>
             .spotify-bottom-fixed {
@@ -3191,9 +3191,9 @@ else:
         <div class="spotify-bottom-fixed">
             <iframe 
                 style="border-radius:12px" 
-                src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWQRwui0ExPn?utm_source=generator&theme=0" 
+                src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcNb6Ba0LuVc?utm_source=generator&theme=0" 
                 width="100%" 
-                height="152" 
+                height="352" 
                 frameBorder="0" 
                 allowfullscreen="" 
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
@@ -5158,5 +5158,4 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
-
 
