@@ -3046,133 +3046,56 @@ def crear_backup_datos():
     except Exception as e:
         return None, str(e), False
 # =====================================================
-# FUNCIÓN SPOTIFY PERSISTENTE CON CONTROLES
+# FUNCIÓN SPOTIFY PERSISTENTE (VERSIÓN SIMPLE)
 # =====================================================
 def render_spotify_persistente():
-    """Renderiza Spotify de forma persistente con botón de minimizar"""
+    """Renderiza Spotify de forma persistente - Versión simple sin botón"""
     
     spotify_html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            .spotify-container {
-                position: fixed;
-                bottom: 50px;
-                left: 50%;
-                transform: translateX(-50%);
-                z-index: 9999;
-                width: 300px;
-                box-shadow: 0 4px 20px rgba(147, 51, 234, 0.5);
-                border-radius: 12px;
-                background: rgba(2, 6, 23, 0.98);
-                padding: 8px;
-                transition: all 0.3s ease;
-            }
-            
-            .spotify-container.minimized {
-                width: 60px;
-                height: 60px;
-                bottom: 20px;
-                right: 20px;
-                left: auto;
-                transform: none;
-                border-radius: 50%;
-                overflow: hidden;
-            }
-            
-            .spotify-container.minimized iframe {
-                display: none;
-            }
-            
-            .spotify-container:hover {
-                transform: translateX(-50%) translateY(-5px);
-                box-shadow: 0 6px 30px rgba(147, 51, 234, 0.7);
-            }
-            
-            .spotify-container.minimized:hover {
-                transform: scale(1.1);
-            }
-            
-            .toggle-btn {
-                position: absolute;
-                top: -10px;
-                right: -10px;
-                width: 30px;
-                height: 30px;
-                background: linear-gradient(135deg, #ffdd92 0%, #d4af37 100%);
-                border: none;
-                border-radius: 50%;
-                cursor: pointer;
-                font-size: 16px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-                z-index: 10000;
-                transition: transform 0.2s;
-            }
-            
-            .toggle-btn:hover {
-                transform: scale(1.15);
-            }
-            
-            .spotify-icon {
-                display: none;
-                font-size: 30px;
-                text-align: center;
-                line-height: 60px;
-            }
-            
-            .minimized .spotify-icon {
-                display: block;
-            }
-            
-            @media (max-width: 768px) {
-                .spotify-container {
-                    width: 250px;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="spotify-container" id="spotifyContainer">
-            <button class="toggle-btn" onclick="toggleSpotify()">−</button>
-            <div class="spotify-icon">🎵</div>
-            <iframe 
-                id="spotifyFrame"
-                style="border-radius:12px" 
-                src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4sWSpwq3LiO?utm_source=generator&theme=0" 
-                width="100%" 
-                height="80" 
-                frameBorder="0" 
-                allowfullscreen="" 
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                loading="lazy">
-            </iframe>
-        </div>
+    <style>
+        #spotify-fixed {
+            position: fixed !important;
+            bottom: 50px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            z-index: 999999 !important;
+            width: 300px !important;
+            box-shadow: 0 4px 20px rgba(147, 51, 234, 0.5) !important;
+            border-radius: 12px !important;
+            background: rgba(2, 6, 23, 0.98) !important;
+            padding: 5px !important;
+            pointer-events: auto !important;
+        }
         
-        <script>
-            function toggleSpotify() {
-                const container = document.getElementById('spotifyContainer');
-                const btn = container.querySelector('.toggle-btn');
-                
-                if (container.classList.contains('minimized')) {
-                    // Expandir
-                    container.classList.remove('minimized');
-                    btn.textContent = '−';
-                } else {
-                    // Minimizar
-                    container.classList.add('minimized');
-                    btn.textContent = '+';
-                }
+        #spotify-fixed:hover {
+            transform: translateX(-50%) translateY(-5px) !important;
+            box-shadow: 0 6px 30px rgba(147, 51, 234, 0.7) !important;
+        }
+        
+        @media (max-width: 768px) {
+            #spotify-fixed {
+                width: 250px !important;
+                bottom: 30px !important;
             }
-        </script>
-    </body>
-    </html>
+        }
+    </style>
+    
+    <div id="spotify-fixed">
+        <iframe 
+            style="border-radius:12px" 
+            src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4sWSpwq3LiO?utm_source=generator&theme=0" 
+            width="100%" 
+            height="80" 
+            frameBorder="0" 
+            allowfullscreen="" 
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+            loading="lazy">
+        </iframe>
+    </div>
     """
     
-    components.html(spotify_html, height=0, scrolling=False)
+    # Usar height=100 en lugar de 0 para asegurar visibilidad
+    components.html(spotify_html, height=100, scrolling=False)
 # =====================================================
 # 5. INICIALIZACIÓN DE HANDLERS (OPTIMIZADO CON CACHÉ)
 # =====================================================
@@ -5183,6 +5106,6 @@ else:
     # =====================================================
     # SPOTIFY: Renderizado al final cuando usuario está loggeado
     # =====================================================
-# Footer
+      
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
 
