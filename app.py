@@ -3154,7 +3154,7 @@ if not st.session_state.login:
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
 
 else:
-    # === SPOTIFY FLOTANTE ABAJO ===
+    # === SPOTIFY FLOTANTE ABAJO CON IMAGEN ===
     st.markdown("""
         <style>
             .spotify-bottom-fixed {
@@ -3164,21 +3164,26 @@ else:
                 transform: translateX(-50%) !important;
                 z-index: 999999 !important;
                 width: 300px !important;
-                box-shadow: 0 4px 20px rgba(147, 51, 234, 0.5) !important;
+                box-shadow: 0 8px 32px rgba(147, 51, 234, 0.6) !important;
                 border-radius: 12px !important;
-                background: rgba(2, 6, 23, 0.98) !important;
+                background: rgba(2, 6, 23, 0.95) !important;
                 padding: 5px !important;
                 pointer-events: auto !important;
+                backdrop-filter: blur(10px) !important;
+            }
+            
+            .spotify-bottom-fixed iframe {
+                border-radius: 12px !important;
             }
             
             .spotify-bottom-fixed:hover {
-                transform: translateX(-50%) translateY(-5px) !important;
-                box-shadow: 0 6px 30px rgba(147, 51, 234, 0.7) !important;
+                transform: translateX(-50%) translateY(-8px) !important;
+                box-shadow: 0 12px 40px rgba(147, 51, 234, 0.8) !important;
             }
             
             @media (max-width: 768px) {
                 .spotify-bottom-fixed {
-                    width: 250px !important;
+                    width: 280px !important;
                     bottom: 60px !important;
                 }
             }
@@ -3189,7 +3194,7 @@ else:
                 style="border-radius:12px" 
                 src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4sWSpwq3LiO?utm_source=generator&theme=0" 
                 width="100%" 
-                height="152" 
+                height="380" 
                 frameBorder="0" 
                 allowfullscreen="" 
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
