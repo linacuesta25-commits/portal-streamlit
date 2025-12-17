@@ -1476,7 +1476,6 @@ class RobustBibliaHandler:
             f"{capitulo.get('chapter')}:{versiculo.get('verse')}**\n\n"
             f"_{versiculo.get('text', '')}_"
         )
-
     def buscar_versiculo_completo(self, ref):
         if ":" not in ref:
             return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
@@ -1491,16 +1490,50 @@ class RobustBibliaHandler:
 
         for libro in self.books:
             if libro.get("name", "").lower() == libro_input.lower():
-                for capitulo in libro.get("chapters", []):
-                    if capitulo.get("chapter") == cap:
-                        for versiculo in capitulo.get("verses", []):
-                            if versiculo.get("verse") == ver:
-                                return (
-                                    f"📖 **{libro.get('name')} {cap}:{ver}**\n\n"
-                                    f"_{versiculo.get('text', '')}_"
-                                )
+                chapters = libro.get("chapters", [])
 
-        return "❌ No se encontró el versículo solicitado."
+                if cap < 1 or cap > len(chapters):
+                    return f"❌ {libro.get('name')} no tiene capítulo {cap}"
+
+                capitulo = chapters[cap - 1]
+
+                if ver < 1 or ver > len(capitulo):
+                    return f"❌ {libro.get('name')} {cap} no tiene versículo {ver}"
+
+                texto = capitulo[ver - 1]
+
+                return (
+                    f"📖 **{libro.get('name')} {cap}:{ver}**\n\n"
+                    f"_{texto}_"
+                )
+
+        return "❌ No se encontró el libro solicitado."
+
+    def versiculo_del_dia(self):
+        import random
+
+        if not self.books:
+            return "⚠️ No hay libros disponibles"
+
+        libro = random.choice(self.books)
+        chapters = libro.get("chapters", [])
+
+        if not chapters:
+            return "⚠️ Libro sin capítulos"
+
+        cap_idx = random.randint(0, len(chapters) - 1)
+        capitulo = chapters[cap_idx]
+
+        if not capitulo:
+            return "⚠️ Capítulo sin versículos"
+
+        ver_idx = random.randint(0, len(capitulo) - 1)
+        texto = capitulo[ver_idx]
+
+        return (
+            f"📖 **{libro.get('name')} {cap_idx + 1}:{ver_idx + 1}**\n\n"
+            f"_{texto}_"
+        )
 
 # =====================================================
 # HANDLER TAROT CON IA
@@ -5151,6 +5184,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
