@@ -1433,188 +1433,16 @@ class GestorPersonalidades:
 
 class RobustBibliaHandler:
     VERSICULOS_DB = {
-        "juan 3:16": "Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito, para que todo aquel que en él cree, no se pierda, mas tenga vida eterna.",
+        "juan 3:16": "Porque de tal manera amó Dios al mundo...",
         "salmos 23:1": "Jehová es mi pastor; nada me faltará.",
-        "filipenses 4:13": "Todo lo puedo en Cristo que me fortalece.",
-        "proverbios 3:5-6": "Confía en Jehová con todo tu corazón, y no te apoyes en tu propia prudencia. Reconócelo en todos tus caminos, y él enderezará tus veredas.",
-        "isaías 40:31": "Pero los que esperan en Jehová tendrán nuevas fuerzas; levantarán alas como las águilas; correrán, y no se cansarán; caminarán, y no se fatigarán.",
-        "mateo 11:28": "Venid a mí todos los que estáis trabajados y cargados, y yo os haré descansar.",
-        "romanos 8:28": "Y sabemos que a los que aman a Dios, todas las cosas les ayudan a bien.",
-        "josué 1:9": "Mira que te mando que te esfuerces y seas valiente; no temas ni desmayes, porque Jehová tu Dios estará contigo en dondequiera que vayas.",
-        "salmos 46:1": "Dios es nuestro amparo y fortaleza, nuestro pronto auxilio en las tribulaciones.",
-        "juan 14:27": "La paz os dejo, mi paz os doy; yo no os la doy como el mundo la da. No se turbe vuestro corazón, ni tenga miedo."
+        "filipenses 4:13": "Todo lo puedo en Cristo que me fortalece."
     }
-    VERSICULOS_POOL_DIARIO = list(VERSICULOS_DB.keys())
+    VERSICULOS_POOL_DIARIO = list(VERSICULOS_DB.values())
     
     def __init__(self):
         self.DATA_FOLDER = "data"
         self.FAVORITOS_FILE = os.path.join(self.DATA_FOLDER, "versiculos_favoritos.json")
         os.makedirs(self.DATA_FOLDER, exist_ok=True)
-        
-        # Inicializar OpenAI
-        self.OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-        self.openai_client = None
-        self.openai_enabled = False
-        self._inicializar_openai()
-        
-        # URL de la API de Biblia
-        self.BIBLE_API_URL = "https://bible-api.com/"
-    
-    def _inicializar_openai(self):
-        try:
-            from openai import OpenAI
-            self.openai_client = OpenAI(api_key=self.OPENAI_API_KEY)
-            self.openai_enabled = True
-        except:
-            self.openai_enabled = False
-    
-    def _normalizar_referencia(self, ref):
-        """Normaliza la referencia para la API (Ej: 'juan 3:16' -> 'juan+3:16')"""
-        # Limpiar espacios extras
-        ref_clean = ref.strip().lower()
-        
-        # Reemplazar espacios con +
-        ref_normalized = ref_clean.replace(" ", "+")
-        
-        return ref_normalized
-    
-    def _buscar_en_api(self, referencia):
-        """Busca un versículo en la API de Biblia"""
-        try:
-            import requests
-            
-            ref_normalized = self._normalizar_referencia(referencia)
-            
-            # Construir URL (traducción Reina Valera en español)
-            url = f"{self.BIBLE_API_URL}{ref_normalized}?translation=rvr"
-            
-            # Hacer request
-            response = requests.get(url, timeout=5)
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                # Extraer texto del versículo
-                texto = data.get('text', '').strip()
-                referencia_completa = data.get('reference', referencia)
-                
-                if texto:
-                    return {
-                        'success': True,
-                        'referencia': referencia_completa,
-                        'texto': texto
-                    }
-            
-            return {'success': False, 'error': 'No se encontró el versículo'}
-            
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
-    
-    def _enriquecer_versiculo(self, referencia, texto):
-        """Enriquece cualquier versículo con reflexión, aplicación y oración usando IA"""
-        if not self.openai_enabled:
-            return f"""**📖 {referencia}**
-
-"{texto}"
-
----
-
-💡 La IA no está disponible para enriquecer este versículo, pero medita en estas palabras sagradas.
-"""
-        
-        prompt = f"""Eres una guía espiritual cristiana profunda y compasiva. 
-
-Versículo: {referencia}
-Texto: "{texto}"
-
-Genera un devocional enriquecido con:
-
-1. REFLEXION (100-150 palabras):
-   - Contexto bíblico e histórico
-   - Significado profundo
-   - Por qué es relevante hoy
-   
-2. APLICACION (80-100 palabras):
-   - Cómo aplicarlo hoy
-   - Preguntas reflexivas (1-2)
-   - Conexión con la vida diaria
-   
-3. ORACION (50-70 palabras):
-   - Personal y sincera
-   - Relacionada directamente con el versículo
-   - Que invite a la acción
-
-Formato:
-REFLEXION: [texto]
-APLICACION: [texto]
-ORACION: [texto]
-
-Tono: Cálido, profundo, esperanzador, sin ser religioso en exceso.
-"""
-        
-        try:
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Eres una guía espiritual cristiana que crea devocionales profundos, prácticos y transformadores."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=600,
-                temperature=0.8
-            )
-            
-            contenido = response.choices[0].message.content.strip()
-            
-            # Parsear respuesta
-            partes = {}
-            if "REFLEXION:" in contenido:
-                partes['reflexion'] = contenido.split("REFLEXION:")[1].split("APLICACION:")[0].strip()
-            if "APLICACION:" in contenido:
-                partes['aplicacion'] = contenido.split("APLICACION:")[1].split("ORACION:")[0].strip()
-            if "ORACION:" in contenido:
-                partes['oracion'] = contenido.split("ORACION:")[1].strip()
-            
-            resultado = f"""**🌅 VERSÍCULO**
-
-📖 **{referencia}**
-
----
-
-**"{texto}"**
-
----
-
-**💡 REFLEXIÓN:**
-
-{partes.get('reflexion', 'Medita en este versículo y permite que Dios hable a tu corazón.')}
-
----
-
-**🎯 APLICACIÓN HOY:**
-
-{partes.get('aplicacion', '¿Cómo puedes vivir este versículo hoy? Reflexiona en oración.')}
-
----
-
-**✨ ORACIÓN:**
-
-_{partes.get('oracion', 'Señor, ayúdame a vivir tu palabra hoy. Amén.')}_
-"""
-            return resultado
-            
-        except Exception as e:
-            return f"""**📖 {referencia}**
-
-"{texto}"
-
----
-
-💡 **REFLEXIÓN:** Medita en este versículo. Dios tiene un mensaje especial para ti en estas palabras.
-
-**🎯 APLICACIÓN:** ¿Cómo puedes aplicar esta verdad en tu vida hoy?
-
-**✨ ORACIÓN:** _Señor, abre mi corazón a tu palabra. Amén._
-"""
     
     def _cargar_favoritos(self):
         if not os.path.exists(self.FAVORITOS_FILE):
@@ -1628,153 +1456,29 @@ _{partes.get('oracion', 'Señor, ayúdame a vivir tu palabra hoy. Amén.')}_
     def _guardar_favoritos(self, favoritos):
         with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f:
             json.dump(favoritos, f, indent=2, ensure_ascii=False)
-    
+
     def versiculo_del_dia(self):
         hoy = datetime.date.today().isoformat()
         if st.session_state.get("biblia_vdia_date") == hoy and st.session_state.get("biblia_vdia_stored"):
             return st.session_state["biblia_vdia_stored"]
-        
-        # Seleccionar versículo aleatorio
-        random.seed(hoy)
-        referencia = random.choice(self.VERSICULOS_POOL_DIARIO)
-        random.seed()
-        
-        texto = self.VERSICULOS_DB[referencia]
-        
-        # Enriquecer con IA
-        resultado = self._enriquecer_versiculo(referencia, texto)
-        
+        nuevo_v = f"📖 {random.choice(self.VERSICULOS_POOL_DIARIO)}"
         st.session_state["biblia_vdia_date"] = hoy
-        st.session_state["biblia_vdia_stored"] = resultado
-        return resultado
-    
+        st.session_state["biblia_vdia_stored"] = nuevo_v
+        return nuevo_v
     def buscar_versiculo_completo(self, ref):
-        """Busca cualquier versículo usando la API de Biblia"""
         try:
-            # Primero intentar con API
-            resultado_api = self._buscar_en_api(ref)
-            
-            if resultado_api['success']:
-                # Encontrado en API - enriquecer con IA
-                return self._enriquecer_versiculo(
-                    resultado_api['referencia'],
-                    resultado_api['texto']
-                )
-            else:
-                # Si falla API, buscar en base local
-                ref_clean = ref.lower().strip()
-                if ref_clean in self.VERSICULOS_DB:
-                    texto = self.VERSICULOS_DB[ref_clean]
-                    return self._enriquecer_versiculo(ref_clean, texto)
-                
-                # Si no está en ningún lado
-                return f"""❌ **No se encontró el versículo**
-
-La referencia **"{ref}"** no se pudo encontrar.
-
-💡 **Tips para buscar:**
-- Usa el formato: "Juan 3:16"
-- Prueba con: "Salmos 23:1", "Proverbios 3:5-6"
-- Verifica que el libro, capítulo y versículo existan
-
-**Versículos populares que puedes buscar:**
-- Juan 3:16
-- Salmos 23
-- Filipenses 4:13
-- Proverbios 3:5-6
-- Isaías 40:31
-"""
-                
-        except Exception as e:
-            return f"❌ Error al buscar el versículo: {str(e)}"
-    
-    def generar_devocional_personalizado(self, situacion):
-        """Genera un devocional personalizado con IA para una situación específica"""
-        if not self.openai_enabled:
-            return "La IA no está disponible para generar devocionales personalizados."
-        
-        prompt = f"""La persona está atravesando esta situación:
-
-"{situacion}"
-
-Genera un devocional cristiano personalizado que incluya:
-
-1. Un versículo bíblico apropiado (con referencia real y texto completo)
-2. Reflexión profunda (100 palabras)
-3. Aplicación práctica (80 palabras)
-4. Oración personalizada (60 palabras)
-
-Formato:
-VERSICULO: [referencia completa] - [texto del versículo]
-REFLEXION: [texto]
-APLICACION: [texto]
-ORACION: [texto]
-
-Sé compasivo, esperanzador y profundo.
-"""
-        
-        try:
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Eres una guía espiritual cristiana compasiva que ofrece consuelo y dirección bíblica."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=600,
-                temperature=0.8
-            )
-            
-            contenido = response.choices[0].message.content.strip()
-            
-            # Parsear
-            partes = {}
-            if "VERSICULO:" in contenido:
-                partes['versiculo'] = contenido.split("VERSICULO:")[1].split("REFLEXION:")[0].strip()
-            if "REFLEXION:" in contenido:
-                partes['reflexion'] = contenido.split("REFLEXION:")[1].split("APLICACION:")[0].strip()
-            if "APLICACION:" in contenido:
-                partes['aplicacion'] = contenido.split("APLICACION:")[1].split("ORACION:")[0].strip()
-            if "ORACION:" in contenido:
-                partes['oracion'] = contenido.split("ORACION:")[1].strip()
-            
-            resultado = f"""**🙏 DEVOCIONAL PERSONALIZADO**
-
----
-
-**📖 VERSÍCULO:**
-
-{partes.get('versiculo', 'Confía en Dios en todo tiempo.')}
-
----
-
-**💡 REFLEXIÓN:**
-
-{partes.get('reflexion', 'Dios está contigo en esta situación.')}
-
----
-
-**🎯 APLICACIÓN:**
-
-{partes.get('aplicacion', 'Confía y da un paso a la vez.')}
-
----
-
-**✨ ORACIÓN:**
-
-_{partes.get('oracion', 'Señor, guíame en este momento. Amén.')}_
-"""
-            return resultado
-            
-        except:
-            return "❌ Error al generar el devocional personalizado."
-    
-    def ver_journal_biblico(self):
-        return "📖 Journal bíblico en desarrollo. Próximamente podrás registrar tus reflexiones diarias."
+            ref_clean = ref.lower().strip()
+            if ref_clean in self.VERSICULOS_DB: return self.VERSICULOS_DB[ref_clean]
+            return f"🕊️ (Generado): Confía en la palabra para '{ref}'."
+        except: return "La luz brilla en la oscuridad."
+    def generar_devocional_personalizado(self, s): return f"Ante '{s}', ten fe."
+    def ver_journal_biblico(self): return "Diario vacío."
     
     def agregar_favorito(self, referencia, texto):
         """Agrega un versículo a favoritos"""
         favoritos = self._cargar_favoritos()
         
+        # Verificar si ya existe
         existe = any(f['referencia'].lower() == referencia.lower() for f in favoritos)
         if existe:
             return False, "Este versículo ya está en favoritos"
@@ -1803,6 +1507,7 @@ _{partes.get('oracion', 'Señor, guíame en este momento. Amén.')}_
         favoritos = [f for f in favoritos if f['id'] != favorito_id]
         self._guardar_favoritos(favoritos)
         return True
+
 
 # =====================================================
 # HANDLER TAROT CON IA
