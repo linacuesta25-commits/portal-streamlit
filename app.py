@@ -1456,6 +1456,9 @@ class RobustBibliaHandler:
         self.openai_client = None
         self.openai_enabled = False
         self._inicializar_openai()
+        
+        # URL de la API de Biblia
+        self.BIBLE_API_URL = "https://bible-api.com/"
     
     def _inicializar_openai(self):
         try:
@@ -1464,6 +1467,48 @@ class RobustBibliaHandler:
             self.openai_enabled = True
         except:
             self.openai_enabled = False
+    
+    def _normalizar_referencia(self, ref):
+        """Normaliza la referencia para la API (Ej: 'juan 3:16' -> 'juan+3:16')"""
+        # Limpiar espacios extras
+        ref_clean = ref.strip().lower()
+        
+        # Reemplazar espacios con +
+        ref_normalized = ref_clean.replace(" ", "+")
+        
+        return ref_normalized
+    
+    def _buscar_en_api(self, referencia):
+        """Busca un versículo en la API de Biblia"""
+        try:
+            import requests
+            
+            ref_normalized = self._normalizar_referencia(referencia)
+            
+            # Construir URL (traducción Reina Valera en español)
+            url = f"{self.BIBLE_API_URL}{ref_normalized}?translation=rvr"
+            
+            # Hacer request
+            response = requests.get(url, timeout=5)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Extraer texto del versículo
+                texto = data.get('text', '').strip()
+                referencia_completa = data.get('reference', referencia)
+                
+                if texto:
+                    return {
+                        'success': True,
+                        'referencia': referencia_completa,
+                        'texto': texto
+                    }
+            
+            return {'success': False, 'error': 'No se encontró el versículo'}
+            
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
     
     def _enriquecer_versiculo(self, referencia, texto):
         """Enriquece cualquier versículo con reflexión, aplicación y oración usando IA"""
@@ -1484,17 +1529,17 @@ Texto: "{texto}"
 
 Genera un devocional enriquecido con:
 
-1. REFLEXIÓN (100-150 palabras):
+1. REFLEXION (100-150 palabras):
    - Contexto bíblico e histórico
    - Significado profundo
    - Por qué es relevante hoy
    
-2. APLICACIÓN PRÁCTICA (80-100 palabras):
+2. APLICACION (80-100 palabras):
    - Cómo aplicarlo hoy
    - Preguntas reflexivas (1-2)
    - Conexión con la vida diaria
    
-3. ORACIÓN (50-70 palabras):
+3. ORACION (50-70 palabras):
    - Personal y sincera
    - Relacionada directamente con el versículo
    - Que invite a la acción
@@ -1604,15 +1649,44 @@ _{partes.get('oracion', 'Señor, ayúdame a vivir tu palabra hoy. Amén.')}_
         return resultado
     
     def buscar_versiculo_completo(self, ref):
+        """Busca cualquier versículo usando la API de Biblia"""
         try:
-            ref_clean = ref.lower().strip()
-            if ref_clean in self.VERSICULOS_DB:
-                texto = self.VERSICULOS_DB[ref_clean]
-                # Enriquecer con IA
-                return self._enriquecer_versiculo(ref_clean, texto)
-            return f"🕊️ No encontré ese versículo en la base de datos. Intenta con: {', '.join(list(self.VERSICULOS_DB.keys())[:3])}"
-        except:
-            return "❌ Error al buscar el versículo."
+            # Primero intentar con API
+            resultado_api = self._buscar_en_api(ref)
+            
+            if resultado_api['success']:
+                # Encontrado en API - enriquecer con IA
+                return self._enriquecer_versiculo(
+                    resultado_api['referencia'],
+                    resultado_api['texto']
+                )
+            else:
+                # Si falla API, buscar en base local
+                ref_clean = ref.lower().strip()
+                if ref_clean in self.VERSICULOS_DB:
+                    texto = self.VERSICULOS_DB[ref_clean]
+                    return self._enriquecer_versiculo(ref_clean, texto)
+                
+                # Si no está en ningún lado
+                return f"""❌ **No se encontró el versículo**
+
+La referencia **"{ref}"** no se pudo encontrar.
+
+💡 **Tips para buscar:**
+- Usa el formato: "Juan 3:16"
+- Prueba con: "Salmos 23:1", "Proverbios 3:5-6"
+- Verifica que el libro, capítulo y versículo existan
+
+**Versículos populares que puedes buscar:**
+- Juan 3:16
+- Salmos 23
+- Filipenses 4:13
+- Proverbios 3:5-6
+- Isaías 40:31
+"""
+                
+        except Exception as e:
+            return f"❌ Error al buscar el versículo: {str(e)}"
     
     def generar_devocional_personalizado(self, situacion):
         """Genera un devocional personalizado con IA para una situación específica"""
@@ -1625,13 +1699,13 @@ _{partes.get('oracion', 'Señor, ayúdame a vivir tu palabra hoy. Amén.')}_
 
 Genera un devocional cristiano personalizado que incluya:
 
-1. Un versículo bíblico apropiado (con referencia)
+1. Un versículo bíblico apropiado (con referencia real y texto completo)
 2. Reflexión profunda (100 palabras)
 3. Aplicación práctica (80 palabras)
 4. Oración personalizada (60 palabras)
 
 Formato:
-VERSICULO: [referencia] - [texto]
+VERSICULO: [referencia completa] - [texto del versículo]
 REFLEXION: [texto]
 APLICACION: [texto]
 ORACION: [texto]
