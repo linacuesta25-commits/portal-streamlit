@@ -1438,43 +1438,45 @@ class RobustBibliaHandler:
         self.BIBLIA_FILE = "data/es_rvr.json"
 
         with open(self.BIBLIA_FILE, "r", encoding="utf-8") as f:
-            self.libros = json.load(f)
+            data = json.load(f)
 
-        if not isinstance(self.libros, list):
-            self.libros = []
+        # Soporta distintas estructuras del JSON
+        if isinstance(data, dict) and "books" in data:
+            self.books = data["books"]
+        elif isinstance(data, list):
+            self.books = data
+        else:
+            self.books = []
 
-    def buscar_versiculo_completo(self, ref):
-        if ":" not in ref:
-            return "⚠️ Usa el formato Libro capítulo:versículo (ej. Génesis 1:1)"
-
-        try:
-            libro_input, resto = ref.rsplit(" ", 1)
-            cap, ver = resto.split(":")
-            cap = int(cap)
-            ver = int(ver)
-        except:
-            return "⚠️ Formato inválido."
-
-        libro = self.libros[0]  # tu JSON no separa libros por nombre
-
-        try:
-            texto = libro["chapters"][cap - 1][ver - 1]
-            return f"📖 **Capítulo {cap}:{ver}**\n\n_{texto}_"
-        except:
-            return "❌ No se encontró el versículo solicitado."
+        if not self.books:
+            st.error("⚠️ No se cargaron libros bíblicos.")
 
     def versiculo_del_dia(self):
-        libro = self.libros[0]
-        cap_idx = random.randint(0, len(libro["chapters"]) - 1)
-        cap = libro["chapters"][cap_idx]
-        ver_idx = random.randint(0, len(cap) - 1)
+        import random
 
-        texto = cap[ver_idx]
+        if not self.books:
+            return "⚠️ No hay libros disponibles"
+
+        libro = random.choice(self.books)
+        capitulos = libro.get("chapters", [])
+
+        if not capitulos:
+            return "⚠️ Libro sin capítulos"
+
+        capitulo = random.choice(capitulos)
+        versiculos = capitulo.get("verses", [])
+
+        if not versiculos:
+            return "⚠️ Capítulo sin versículos"
+
+        versiculo = random.choice(versiculos)
 
         return (
-            f"📖 **Capítulo {cap_idx + 1}:{ver_idx + 1}**\n\n"
-            f"_{texto}_"
+            f"📖 **{libro.get('name')} "
+            f"{capitulo.get('chapter')}:{versiculo.get('verse')}**\n\n"
+            f"_{versiculo.get('text', '')}_"
         )
+
 
 # =====================================================
 # HANDLER TAROT CON IA
@@ -5125,6 +5127,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
