@@ -1468,20 +1468,37 @@ class RobustBibliaHandler:
         st.session_state["biblia_vdia_stored"] = texto
         return texto
 
-    def buscar_versiculo_completo(self, ref):
+      def buscar_versiculo_completo(self, ref):
         try:
             ref = ref.lower().strip()
 
-            if " " not in ref or ":" not in ref:
+            if ":" not in ref:
                 return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
 
-            libro_ref, resto = ref.split(" ", 1)
-            cap, ver = resto.split(":")
+            partes = ref.split()
+            libro_ref = " ".join(partes[:-1])
+            cap, ver = partes[-1].split(":")
             cap = int(cap)
             ver = int(ver)
 
+            # Normalizar nombres comunes en español → claves del JSON
+            mapa_libros = {
+                "daniel": "daniel",
+                "salmos": "psalms",
+                "salmo": "psalms",
+                "juan": "john",
+                "mateo": "matthew",
+                "marcos": "mark",
+                "lucas": "luke",
+                "genesis": "genesis",
+                "éxodo": "exodus",
+                "exodo": "exodus"
+            }
+
+            libro_ref = mapa_libros.get(libro_ref, libro_ref)
+
             for libro in self.biblia["books"]:
-                if libro["name"].lower() == libro_ref:
+                if libro["name"] == libro_ref:
                     for capitulo in libro["chapters"]:
                         if capitulo["chapter"] == cap:
                             for versiculo in capitulo["verses"]:
@@ -5145,6 +5162,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
