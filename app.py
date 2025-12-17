@@ -1436,105 +1436,136 @@ import json, os, datetime, random, streamlit as st
 class RobustBibliaHandler:
     def __init__(self):
         self.BIBLIA_FILE = "data/es_rvr.json"
-
-        with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
-            data = json.load(f)
-
-        # Soporta distintas estructuras del JSON
-        if isinstance(data, dict) and "books" in data:
-            self.books = data["books"]
-        elif isinstance(data, list):
-            self.books = data
-        else:
-            self.books = []
-
-        if not self.books:
-            st.error("⚠️ No se cargaron libros bíblicos.")
-
-    def versiculo_del_dia(self):
-        import random
-
-        if not self.books:
-            return "⚠️ No hay libros disponibles"
-
-        libro = random.choice(self.books)
-        capitulos = libro.get("chapters", [])
-
-        if not capitulos:
-            return "⚠️ Libro sin capítulos"
-
-        capitulo = random.choice(capitulos)
-        versiculos = capitulo.get("verses", [])
-
-        if not versiculos:
-            return "⚠️ Capítulo sin versículos"
-
-        versiculo = random.choice(versiculos)
-
-        return (
-            f"📖 **{libro.get('name')} "
-            f"{capitulo.get('chapter')}:{versiculo.get('verse')}**\n\n"
-            f"_{versiculo.get('text', '')}_"
-        )
-    def buscar_versiculo_completo(self, ref):
-        if ":" not in ref:
-            return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
+        self.books = []
 
         try:
-            libro_input, resto = ref.rsplit(" ", 1)
-            cap, ver = resto.split(":")
-            cap = int(cap)
-            ver = int(ver)
-        except:
-            return "⚠️ Formato inválido."
+            with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
+                data = json.load(f)
 
-        for libro in self.books:
-            if libro.get("name", "").lower() == libro_input.lower():
-                chapters = libro.get("chapters", [])
+            # Estandarización de carga
+            if isinstance(data, dict) and "books" in data:
+                self.books = data["books"]
+            elif isinstance(data, list):
+                self.books = data
+            
+            if not self.books:
+                st.error("⚠️ El archivo JSON se leyó, pero no contiene libros.")
+                
+        except FileNotFoundError:
+            st.error(f"❌ No se encontró el archivo: {self.BIBLIA_FILE}")
+        except json.JSONDecodeError:
+            st.error("❌ El archivo JSON está corrupto o mal formateado.")
 
-                if cap < 1 or cap > len(chapters):
-                    return f"❌ {libro.get('name')} no tiene capítulo {cap}"
-
-                capitulo = chapters[cap - 1]
-
-                if ver < 1 or ver > len(capitulo):
-                    return f"❌ {libro.get('name')} {cap} no tiene versículo {ver}"
-
-                texto = capitulo[ver - 1]
-
-                return (
-                    f"📖 **{libro.get('name')} {cap}:{ver}**\n\n"
-                    f"_{texto}_"
-                )
-
-        return "❌ No se encontró el libro solicitado."
+    def _get_verse_text(self, capitulo, verse_idx_0_based):
+        """Método auxiliar para extraer texto sin importar si es lista o dict"""
+        try:
+            # Caso A: El capítulo es una lista de strings (Estándar RVR)
+            if isinstance(capitulo, list):
+                if 0 <= verse_idx_0_based < len(capitulo):
+                    return capitulo[verse_idx_0_based]
+            
+            # Caso B: El capítulo es un dict con llave 'verses' (Otra estructura)
+            elif isinstance(capitulo, dict):
+                verses = capitulo.get("verses", [])
+                if 0 <= verse_idx_0_based < len(verses):
+                    v = verses[verse_idx_0_based]
+                    # A veces el verso es un objeto {"text": "..."} o un string directo
+                    return v.get("text", "") if isinstance(v, dict) else v
+                    
+        except Exception:
+            return None
+        return None
 
     def versiculo_del_dia(self):
-        import random
-
         if not self.books:
-            return "⚠️ No hay libros disponibles"
+            return "⚠️ No hay libros disponibles."
 
+        # 1. Seleccionar Libro
         libro = random.choice(self.books)
         chapters = libro.get("chapters", [])
-
+        
         if not chapters:
-            return "⚠️ Libro sin capítulos"
+            return f"⚠️ El libro {libro.get('name')} no tiene capítulos."
 
+        # 2. Seleccionar Capítulo
         cap_idx = random.randint(0, len(chapters) - 1)
         capitulo = chapters[cap_idx]
 
-        if not capitulo:
-            return "⚠️ Capítulo sin versículos"
+        # 3. Determinar cantidad de versículos en ese capítulo
+        num_versiculos = 0
+        if isinstance(capitulo, list):
+            num_versiculos = len(capitulo)
+        elif isinstance(capitulo, dict):
+            num_versiculos = len(capitulo.get("verses", []))
 
-        ver_idx = random.randint(0, len(capitulo) - 1)
-        texto = capitulo[ver_idx]
+        if num_versiculos == 0:
+            return "⚠️ Capítulo sin contenido."
+
+        # 4. Seleccionar Versículo
+        ver_idx = random.randint(0, num_versiculos - 1)
+        
+        # 5. Obtener el texto de forma segura
+        texto = self._get_verse_text(capitulo, ver_idx)
+
+        if not texto:
+            return "⚠️ Error al leer el versículo."
 
         return (
             f"📖 **{libro.get('name')} {cap_idx + 1}:{ver_idx + 1}**\n\n"
             f"_{texto}_"
         )
 
+    def buscar_versiculo_completo(self, ref):
+        # Limpieza básica
+        ref = ref.strip()
+        if ":" not in ref:
+            return "⚠️ Formato incorrecto. Usa: Libro capítulo:versículo (ej. Daniel 2:23)"
+
+        try:
+            # Parseo inteligente (separa por el último espacio para nombres compuestos como '1 Juan')
+            libro_input, resto = ref.rsplit(" ", 1)
+            cap_str, ver_str = resto.split(":")
+            cap_num = int(cap_str)
+            ver_num = int(ver_str)
+        except ValueError:
+            return "⚠️ Los capítulos y versículos deben ser números."
+
+        # Búsqueda del libro
+        libro_encontrado = None
+        for l in self.books:
+            if l.get("name", "").lower() == libro_input.lower():
+                libro_encontrado = l
+                break
+        
+        if not libro_encontrado:
+            return f"❌ No encontré el libro: '{libro_input}'"
+
+        chapters = libro_encontrado.get("chapters", [])
+        
+        # Validación de Capítulo
+        # (cap_num es 1-based, len es cantidad total)
+        if cap_num < 1 or cap_num > len(chapters):
+            return f"❌ {libro_input} solo tiene {len(chapters)} capítulos."
+
+        # Obtener capítulo (índice es cap_num - 1)
+        capitulo = chapters[cap_num - 1]
+
+        # Validación de Versículo usando el helper para contar
+        cantidad_versos = len(capitulo) if isinstance(capitulo, list) else len(capitulo.get("verses", []))
+        
+        if ver_num < 1 or ver_num > cantidad_versos:
+            return f"❌ {libro_input} {cap_num} llega hasta el versículo {cantidad_versos}."
+
+        # Obtener texto (índice es ver_num - 1)
+        texto = self._get_verse_text(capitulo, ver_num - 1)
+
+        if texto:
+            return (
+                f"📖 **{libro_encontrado.get('name')} {cap_num}:{ver_num}**\n\n"
+                f"_{texto}_"
+            )
+        else:
+            return "❌ Error interno recuperando el texto."
 # =====================================================
 # HANDLER TAROT CON IA
 # =====================================================
@@ -5184,6 +5215,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
