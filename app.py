@@ -3136,18 +3136,19 @@ def render_spotify_persistente():
     </style>
     
 def mostrar_spotify(url):
-    # Auto-corrige el enlace para que sea "embed"
-    if "spotify.com" in url and "embed" not in url:
-        # Lógica simple para convertir link de share a link de embed
-        # Ejemplo: open.spotify.com/playlist/ID -> open.spotify.com/embed/playlist/ID
-        url = url.replace("spotify.com/", "spotify.com/embed/")
+    # Auto-corrige el enlace para que sea "embed" si es necesario
+    # (Asegúrate de que tu lógica de reemplazo sea correcta para tu caso específico)
+    if "open.spotify.com" in url and "embed" not in url:
+         url = url.replace("/track/", "/embed/track/")
+         url = url.replace("/album/", "/embed/album/")
+         url = url.replace("/playlist/", "/embed/playlist/")
     
+    # Renderizar el iframe directamente
     st.markdown(f"""
         <iframe style="border-radius:12px" src="{url}" width="100%" height="352" 
         frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
         loading="lazy"></iframe>
     """, unsafe_allow_html=True)
-    components.html(spotify_html, height=180, scrolling=False)
 # =====================================================
 # 5. INICIALIZACIÓN DE HANDLERS (OPTIMIZADO CON CACHÉ)
 # =====================================================
@@ -5205,6 +5206,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
