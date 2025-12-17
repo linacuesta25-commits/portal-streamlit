@@ -1460,9 +1460,10 @@ def cargar_base_datos_biblia():
         response = requests.get(URL_BIBLIA_JSON)
         response.raise_for_status() 
         
-        # Corrección UTF-8-SIG (BOM)
+        # --- AQUÍ ESTÁ LA CORRECCIÓN CLAVE PARA EL BOM ---
         datos = json.loads(response.content.decode("utf-8-sig"))
         
+        # Guardamos el archivo limpio
         with open(BIBLIA_FULL_FILE, "w", encoding="utf-8") as f:
             json.dump(datos, f, ensure_ascii=False)
         return datos
@@ -1578,7 +1579,7 @@ class RobustBibliaHandler:
     def ver_journal_biblico(self):
         return "Diario en construcción."
 
-    # --- CORRECCIÓN DE SINTAXIS EN ESTAS FUNCIONES ---
+    # --- CORRECCIÓN DE SINTAXIS: Bloques expandidos ---
     def _cargar_favoritos(self):
         if not os.path.exists(self.FAVORITOS_FILE):
             return []
@@ -5263,6 +5264,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
