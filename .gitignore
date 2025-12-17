@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Datos de usuario (ignorar)
+data/finanzas.json
+data/notas.json
+data/libros_guardados.json
+data/frases_favoritas.json
+data/journal_gratitud.json
+data/proyectos_ideas.json
+data/vacantes.json
+data/versiculos_favoritos.json
+data/book_club.json
+data/historial_tiradas.json
+
+# ⭐ PERO NO IGNORAR LA BIBLIA
+!data/biblia_completa.json
