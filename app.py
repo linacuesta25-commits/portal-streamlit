@@ -1433,16 +1433,143 @@ class GestorPersonalidades:
 
 class RobustBibliaHandler:
     VERSICULOS_DB = {
-        "juan 3:16": "Porque de tal manera amó Dios al mundo...",
+        "juan 3:16": "Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito, para que todo aquel que en él cree, no se pierda, mas tenga vida eterna.",
         "salmos 23:1": "Jehová es mi pastor; nada me faltará.",
-        "filipenses 4:13": "Todo lo puedo en Cristo que me fortalece."
+        "filipenses 4:13": "Todo lo puedo en Cristo que me fortalece.",
+        "proverbios 3:5-6": "Confía en Jehová con todo tu corazón, y no te apoyes en tu propia prudencia. Reconócelo en todos tus caminos, y él enderezará tus veredas.",
+        "isaías 40:31": "Pero los que esperan en Jehová tendrán nuevas fuerzas; levantarán alas como las águilas; correrán, y no se cansarán; caminarán, y no se fatigarán.",
+        "mateo 11:28": "Venid a mí todos los que estáis trabajados y cargados, y yo os haré descansar.",
+        "romanos 8:28": "Y sabemos que a los que aman a Dios, todas las cosas les ayudan a bien.",
+        "josué 1:9": "Mira que te mando que te esfuerces y seas valiente; no temas ni desmayes, porque Jehová tu Dios estará contigo en dondequiera que vayas.",
+        "salmos 46:1": "Dios es nuestro amparo y fortaleza, nuestro pronto auxilio en las tribulaciones.",
+        "juan 14:27": "La paz os dejo, mi paz os doy; yo no os la doy como el mundo la da. No se turbe vuestro corazón, ni tenga miedo."
     }
-    VERSICULOS_POOL_DIARIO = list(VERSICULOS_DB.values())
+    VERSICULOS_POOL_DIARIO = list(VERSICULOS_DB.keys())
     
     def __init__(self):
         self.DATA_FOLDER = "data"
         self.FAVORITOS_FILE = os.path.join(self.DATA_FOLDER, "versiculos_favoritos.json")
         os.makedirs(self.DATA_FOLDER, exist_ok=True)
+        
+        # Inicializar OpenAI
+        self.OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+        self.openai_client = None
+        self.openai_enabled = False
+        self._inicializar_openai()
+    
+    def _inicializar_openai(self):
+        try:
+            from openai import OpenAI
+            self.openai_client = OpenAI(api_key=self.OPENAI_API_KEY)
+            self.openai_enabled = True
+        except:
+            self.openai_enabled = False
+    
+    def _enriquecer_versiculo(self, referencia, texto):
+        """Enriquece cualquier versículo con reflexión, aplicación y oración usando IA"""
+        if not self.openai_enabled:
+            return f"""**📖 {referencia}**
+
+"{texto}"
+
+---
+
+💡 La IA no está disponible para enriquecer este versículo, pero medita en estas palabras sagradas.
+"""
+        
+        prompt = f"""Eres una guía espiritual cristiana profunda y compasiva. 
+
+Versículo: {referencia}
+Texto: "{texto}"
+
+Genera un devocional enriquecido con:
+
+1. REFLEXIÓN (100-150 palabras):
+   - Contexto bíblico e histórico
+   - Significado profundo
+   - Por qué es relevante hoy
+   
+2. APLICACIÓN PRÁCTICA (80-100 palabras):
+   - Cómo aplicarlo hoy
+   - Preguntas reflexivas (1-2)
+   - Conexión con la vida diaria
+   
+3. ORACIÓN (50-70 palabras):
+   - Personal y sincera
+   - Relacionada directamente con el versículo
+   - Que invite a la acción
+
+Formato:
+REFLEXION: [texto]
+APLICACION: [texto]
+ORACION: [texto]
+
+Tono: Cálido, profundo, esperanzador, sin ser religioso en exceso.
+"""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una guía espiritual cristiana que crea devocionales profundos, prácticos y transformadores."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=600,
+                temperature=0.8
+            )
+            
+            contenido = response.choices[0].message.content.strip()
+            
+            # Parsear respuesta
+            partes = {}
+            if "REFLEXION:" in contenido:
+                partes['reflexion'] = contenido.split("REFLEXION:")[1].split("APLICACION:")[0].strip()
+            if "APLICACION:" in contenido:
+                partes['aplicacion'] = contenido.split("APLICACION:")[1].split("ORACION:")[0].strip()
+            if "ORACION:" in contenido:
+                partes['oracion'] = contenido.split("ORACION:")[1].strip()
+            
+            resultado = f"""**🌅 VERSÍCULO**
+
+📖 **{referencia}**
+
+---
+
+**"{texto}"**
+
+---
+
+**💡 REFLEXIÓN:**
+
+{partes.get('reflexion', 'Medita en este versículo y permite que Dios hable a tu corazón.')}
+
+---
+
+**🎯 APLICACIÓN HOY:**
+
+{partes.get('aplicacion', '¿Cómo puedes vivir este versículo hoy? Reflexiona en oración.')}
+
+---
+
+**✨ ORACIÓN:**
+
+_{partes.get('oracion', 'Señor, ayúdame a vivir tu palabra hoy. Amén.')}_
+"""
+            return resultado
+            
+        except Exception as e:
+            return f"""**📖 {referencia}**
+
+"{texto}"
+
+---
+
+💡 **REFLEXIÓN:** Medita en este versículo. Dios tiene un mensaje especial para ti en estas palabras.
+
+**🎯 APLICACIÓN:** ¿Cómo puedes aplicar esta verdad en tu vida hoy?
+
+**✨ ORACIÓN:** _Señor, abre mi corazón a tu palabra. Amén._
+"""
     
     def _cargar_favoritos(self):
         if not os.path.exists(self.FAVORITOS_FILE):
@@ -1462,88 +1589,15 @@ class RobustBibliaHandler:
         if st.session_state.get("biblia_vdia_date") == hoy and st.session_state.get("biblia_vdia_stored"):
             return st.session_state["biblia_vdia_stored"]
         
-        versiculos_enriquecidos = [
-            {
-                "referencia": "Salmos 23:1",
-                "texto": "Jehová es mi pastor; nada me faltará.",
-                "reflexion": "Este versículo nos recuerda que Dios provee todo lo que necesitamos. No habla de deseos, sino de necesidades. Cuando David dice 'nada me faltará', está declarando confianza absoluta en la provisión divina, incluso en momentos de escasez.",
-                "aplicacion": "¿Qué área de tu vida necesita que confíes más en la provisión divina? Hoy, cada vez que sientas ansiedad por el futuro, recuerda estas palabras: 'Nada me faltará'. Respira profundo y declara confianza.",
-                "oracion": "Señor, ayúdame a confiar en que Tú eres mi pastor y que nada me faltará. Libérame de la ansiedad por el mañana. Que mi corazón descanse en tu cuidado. Amén."
-            },
-            {
-                "referencia": "Filipenses 4:13",
-                "texto": "Todo lo puedo en Cristo que me fortalece.",
-                "reflexion": "Pablo escribió esto desde una prisión, no desde un palacio. Su fortaleza no venía de circunstancias cómodas, sino de una conexión profunda con Cristo. Este versículo no es sobre hacer todo lo que queremos, sino sobre tener fuerza divina para lo que Dios nos llama a hacer.",
-                "aplicacion": "¿Qué desafío enfrentas hoy que parece imposible? No estás sola. La fortaleza no viene de ti, viene a través de ti cuando te conectas con lo divino. Da el primer paso, aunque no veas el camino completo.",
-                "oracion": "Cristo, necesito tu fortaleza hoy. Reconozco que por mí misma no puedo, pero contigo todo es posible. Dame valentía para enfrentar lo que viene. Amén."
-            },
-            {
-                "referencia": "Proverbios 3:5-6",
-                "texto": "Confía en Jehová con todo tu corazón, y no te apoyes en tu propia prudencia. Reconócelo en todos tus caminos, y él enderezará tus veredas.",
-                "reflexion": "Este pasaje nos invita a soltar el control. 'No te apoyes en tu propia prudencia' no significa no usar la razón, sino no depender SOLO de ella. A veces, el camino correcto no tiene sentido lógico al principio, pero tiene sentido espiritual.",
-                "aplicacion": "¿En qué área estás intentando controlarlo todo? Hoy, practica soltar. Reconoce que hay un plan mayor que tu entendimiento. Confía en el proceso, incluso cuando no veas el panorama completo.",
-                "oracion": "Señor, suelto mi necesidad de entenderlo todo. Confío en que tus caminos son más altos que los míos. Guía mis pasos hoy, aunque no vea el destino. Amén."
-            },
-            {
-                "referencia": "Isaías 40:31",
-                "texto": "Pero los que esperan en Jehová tendrán nuevas fuerzas; levantarán alas como las águilas; correrán, y no se cansarán; caminarán, y no se fatigarán.",
-                "reflexion": "Esperar en Dios no es pasividad, es expectativa activa. Las águilas no aletean constantemente; usan las corrientes térmicas para elevarse. Así funciona la fe: aprendes a moverte con la gracia divina, no contra ella.",
-                "aplicacion": "¿Estás agotada de tanto esfuerzo? Tal vez es momento de cambiar el 'modo'. No más forzar. Hoy, busca las 'corrientes térmicas' - esos momentos de gracia que te elevan sin esfuerzo excesivo.",
-                "oracion": "Padre, estoy cansada de luchar sola. Enséñame a esperar en ti, a moverme con tu gracia y no contra ella. Renueva mis fuerzas hoy. Amén."
-            },
-            {
-                "referencia": "Juan 14:27",
-                "texto": "La paz os dejo, mi paz os doy; yo no os la doy como el mundo la da. No se turbe vuestro corazón, ni tenga miedo.",
-                "reflexion": "La paz del mundo es condicional: 'Tendré paz cuando consiga X'. La paz de Cristo es incondicional: es un estado del ser, no un resultado de circunstancias. Jesús ofreció esta paz horas antes de ser crucificado - eso es paz real.",
-                "aplicacion": "¿De qué depende tu paz ahora mismo? ¿De que algo salga bien? ¿De que alguien cambie? La paz divina existe ANTES de que las cosas se resuelvan. Puedes elegirla ahora, no después.",
-                "oracion": "Jesús, necesito tu paz que sobrepasa todo entendimiento. No la paz del mundo, sino tu paz incondicional. Que mi corazón deje de turbarse. Amén."
-            },
-            {
-                "referencia": "Romanos 8:28",
-                "texto": "Y sabemos que a los que aman a Dios, todas las cosas les ayudan a bien.",
-                "reflexion": "Este versículo no dice que todas las cosas SON buenas, sino que ayudan a bien. Dios tiene la habilidad de tomar incluso nuestros errores, dolor y caos, y tejer algo hermoso con ellos. Tu historia no ha terminado.",
-                "aplicacion": "¿Qué situación difícil estás viviendo ahora? Aunque no lo veas, hay un hilo de redención tejiéndose. No tienes que entenderlo hoy, solo confiar que existe un propósito mayor.",
-                "oracion": "Dios, confío en que estás trabajando en mi situación, aunque no vea cómo. Ayúdame a creer que algo bueno viene de esto. Amén."
-            },
-            {
-                "referencia": "Josué 1:9",
-                "texto": "Mira que te mando que te esfuerces y seas valiente; no temas ni desmayes, porque Jehová tu Dios estará contigo en dondequiera que vayas.",
-                "reflexion": "La valentía no es ausencia de miedo, es acción a pesar del miedo. Dios no nos pide que no sintamos miedo, nos pide que no dejemos que el miedo nos detenga. Hay una diferencia enorme.",
-                "aplicacion": "¿Qué te está deteniendo por miedo? Dios no te pide que lo hagas sola, te promete ir contigo. Identifica un paso pequeño que puedes dar hoy, aunque tengas miedo.",
-                "oracion": "Señor, dame valentía para enfrentar lo que me asusta. Recuérdame que no voy sola, que tú estás conmigo en cada paso. Amén."
-            }
-        ]
-        
+        # Seleccionar versículo aleatorio
         random.seed(hoy)
-        versiculo = random.choice(versiculos_enriquecidos)
+        referencia = random.choice(self.VERSICULOS_POOL_DIARIO)
         random.seed()
         
-        resultado = f"""**🌅 VERSÍCULO DEL DÍA**
-
-📖 **{versiculo['referencia']}**
-
----
-
-**"{versiculo['texto']}"**
-
----
-
-**💡 REFLEXIÓN:**
-
-{versiculo['reflexion']}
-
----
-
-**🎯 APLICACIÓN HOY:**
-
-{versiculo['aplicacion']}
-
----
-
-**✨ ORACIÓN:**
-
-_{versiculo['oracion']}_
-"""
+        texto = self.VERSICULOS_DB[referencia]
+        
+        # Enriquecer con IA
+        resultado = self._enriquecer_versiculo(referencia, texto)
         
         st.session_state["biblia_vdia_date"] = hoy
         st.session_state["biblia_vdia_stored"] = resultado
@@ -1552,19 +1606,101 @@ _{versiculo['oracion']}_
     def buscar_versiculo_completo(self, ref):
         try:
             ref_clean = ref.lower().strip()
-            if ref_clean in self.VERSICULOS_DB: return self.VERSICULOS_DB[ref_clean]
-            return f"🕊️ (Generado): Confía en la palabra para '{ref}'."
-        except: return "La luz brilla en la oscuridad."
+            if ref_clean in self.VERSICULOS_DB:
+                texto = self.VERSICULOS_DB[ref_clean]
+                # Enriquecer con IA
+                return self._enriquecer_versiculo(ref_clean, texto)
+            return f"🕊️ No encontré ese versículo en la base de datos. Intenta con: {', '.join(list(self.VERSICULOS_DB.keys())[:3])}"
+        except:
+            return "❌ Error al buscar el versículo."
     
-    def generar_devocional_personalizado(self, s): return f"Ante '{s}', ten fe."
+    def generar_devocional_personalizado(self, situacion):
+        """Genera un devocional personalizado con IA para una situación específica"""
+        if not self.openai_enabled:
+            return "La IA no está disponible para generar devocionales personalizados."
+        
+        prompt = f"""La persona está atravesando esta situación:
+
+"{situacion}"
+
+Genera un devocional cristiano personalizado que incluya:
+
+1. Un versículo bíblico apropiado (con referencia)
+2. Reflexión profunda (100 palabras)
+3. Aplicación práctica (80 palabras)
+4. Oración personalizada (60 palabras)
+
+Formato:
+VERSICULO: [referencia] - [texto]
+REFLEXION: [texto]
+APLICACION: [texto]
+ORACION: [texto]
+
+Sé compasivo, esperanzador y profundo.
+"""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una guía espiritual cristiana compasiva que ofrece consuelo y dirección bíblica."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=600,
+                temperature=0.8
+            )
+            
+            contenido = response.choices[0].message.content.strip()
+            
+            # Parsear
+            partes = {}
+            if "VERSICULO:" in contenido:
+                partes['versiculo'] = contenido.split("VERSICULO:")[1].split("REFLEXION:")[0].strip()
+            if "REFLEXION:" in contenido:
+                partes['reflexion'] = contenido.split("REFLEXION:")[1].split("APLICACION:")[0].strip()
+            if "APLICACION:" in contenido:
+                partes['aplicacion'] = contenido.split("APLICACION:")[1].split("ORACION:")[0].strip()
+            if "ORACION:" in contenido:
+                partes['oracion'] = contenido.split("ORACION:")[1].strip()
+            
+            resultado = f"""**🙏 DEVOCIONAL PERSONALIZADO**
+
+---
+
+**📖 VERSÍCULO:**
+
+{partes.get('versiculo', 'Confía en Dios en todo tiempo.')}
+
+---
+
+**💡 REFLEXIÓN:**
+
+{partes.get('reflexion', 'Dios está contigo en esta situación.')}
+
+---
+
+**🎯 APLICACIÓN:**
+
+{partes.get('aplicacion', 'Confía y da un paso a la vez.')}
+
+---
+
+**✨ ORACIÓN:**
+
+_{partes.get('oracion', 'Señor, guíame en este momento. Amén.')}_
+"""
+            return resultado
+            
+        except:
+            return "❌ Error al generar el devocional personalizado."
     
-    def ver_journal_biblico(self): return "Diario vacío."
+    def ver_journal_biblico(self):
+        return "📖 Journal bíblico en desarrollo. Próximamente podrás registrar tus reflexiones diarias."
     
     def agregar_favorito(self, referencia, texto):
         """Agrega un versículo a favoritos"""
         favoritos = self._cargar_favoritos()
         
-        # Verificar si ya existe
         existe = any(f['referencia'].lower() == referencia.lower() for f in favoritos)
         if existe:
             return False, "Este versículo ya está en favoritos"
