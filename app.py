@@ -3134,32 +3134,37 @@ def render_spotify_persistente():
             }
         }
     </style>
-    
 def mostrar_spotify(url):
-    import streamlit as st
-
     if not url:
         st.warning("⚠️ No se proporcionó una URL de Spotify.")
         return
 
-    # Convertir URL normal a embed si es necesario
-    if "open.spotify.com" in url and "embed" not in url:
+    # CORRECCIÓN DE LÓGICA:
+    # Verificamos simplemente si dice "spotify.com".
+    # Esto funciona para enlaces normales (open.spotify.com) y los de google.
+    if "spotify.com" in url and "embed" not in url:
         url = url.replace("/track/", "/embed/track/")
         url = url.replace("/album/", "/embed/album/")
         url = url.replace("/playlist/", "/embed/playlist/")
+        
+        # Opcional: Si el link viene sucio con cosas de google, a veces hay que limpiarlo,
+        # pero usualmente el replace de arriba es suficiente para que el iframe funcione.
 
+    # Definimos el HTML del iframe
     html = f"""
     <iframe
         style="border-radius:12px"
         src="{url}"
         width="100%"
         height="152"
-        frameborder="0"
+        frameBorder="0"
+        allowfullscreen=""
         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
         loading="lazy">
     </iframe>
     """
 
+    # Renderizamos
     st.markdown(html, unsafe_allow_html=True)
 
 # =====================================================
@@ -5219,6 +5224,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
