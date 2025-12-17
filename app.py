@@ -1430,188 +1430,183 @@ class GestorPersonalidades:
         if nombre in self.PERSONALIDADES:
             return self.PERSONALIDADES[nombre]
         return "Personalidad no encontrada."
-
-class RobustBibliaHandler:
-    # URL estable de la Biblia Reina Valera 1960 en JSON (Fuente pública GitHub)
+# -----------------------------------------------------------------------------
+# FUNCIONES DE CARGA FUERA DE LA CLASE (Optimización Streamlit)
+# -----------------------------------------------------------------------------
+@st.cache_resource
+def cargar_base_datos_biblia():
+    """
+    Descarga y cachea la Biblia RVR1960 completa.
+    Esto evita recargas y asegura que los datos existan.
+    """
+    DATA_FOLDER = "data"
+    BIBLIA_FULL_FILE = os.path.join(DATA_FOLDER, "biblia_completa.json")
     URL_BIBLIA_JSON = "https://raw.githubusercontent.com/thiagobodruk/bible/master/json/es_rvr.json"
     
+    os.makedirs(DATA_FOLDER, exist_ok=True)
+    
+    # 1. Si el archivo ya existe y tiene contenido, lo cargamos
+    if os.path.exists(BIBLIA_FULL_FILE):
+        try:
+            if os.path.getsize(BIBLIA_FULL_FILE) > 1000: # Verificar que no esté vacío
+                with open(BIBLIA_FULL_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Error leyendo archivo local: {e}. Intentando descargar de nuevo...")
+
+    # 2. Si no existe o falló, descargamos
+    try:
+        response = requests.get(URL_BIBLIA_JSON)
+        response.raise_for_status() # Lanza error si la URL falla
+        datos = response.json()
+        
+        # Guardamos localmente para la próxima
+        with open(BIBLIA_FULL_FILE, "w", encoding="utf-8") as f:
+            json.dump(datos, f, ensure_ascii=False)
+        return datos
+    except Exception as e:
+        st.error(f"⚠️ Error de conexión: No se pudo descargar la Biblia completa. ({e})")
+        return None
+
+# -----------------------------------------------------------------------------
+# CLASE PRINCIPAL
+# -----------------------------------------------------------------------------
+class RobustBibliaHandler:
     def __init__(self):
         self.DATA_FOLDER = "data"
         self.FAVORITOS_FILE = os.path.join(self.DATA_FOLDER, "versiculos_favoritos.json")
-        self.BIBLIA_FULL_FILE = os.path.join(self.DATA_FOLDER, "biblia_completa.json")
         os.makedirs(self.DATA_FOLDER, exist_ok=True)
         
-        # 1. Inicializar contenido curado (rápido y con tags emocionales)
-        self._inicializar_contenido_curado()
+        # Cargar datos usando la función optimizada
+        self.biblia_completa_datos = cargar_base_datos_biblia()
         
-        # 2. Intentar cargar la Biblia completa (31,000+ versículos)
-        self.biblia_completa_datos = self._cargar_o_descargar_biblia()
+        # Inicializar contenido curado (rápido)
+        self._inicializar_contenido_curado()
 
     def _inicializar_contenido_curado(self):
-        """Contenido de alta calidad para versículo del día y búsquedas rápidas"""
         self.VERSICULOS_POOL_DIARIO = [
              {"v": "Lamentaciones 3:22-23", "t": "Por la misericordia de Jehová no hemos sido consumidos...", "r": "Cada amanecer es un lienzo en blanco pintado por la gracia de Dios."},
              {"v": "Salmos 23:1", "t": "Jehová es mi pastor; nada me faltará.", "r": "No es que no tendrás necesidades, es que tendrás quien las supla."},
-             {"v": "Filipenses 4:13", "t": "Todo lo puedo en Cristo que me fortalece.", "r": "Tu fuerza no viene de tu capacidad, sino de tu conexión con Él."},
-             {"v": "Josué 1:9", "t": "Mira que te mando que te esfuerces y seas valiente...", "r": "La valentía no es la ausencia de miedo, es avanzar confiando en que Dios va contigo."}
+             {"v": "Filipenses 4:13", "t": "Todo lo puedo en Cristo que me fortalece.", "r": "Tu fuerza no viene de tu capacidad, sino de tu conexión con Él."}
         ]
-        # Dataset semántico para emociones
         self.BIBLIA_SEMANTICA = [
             {"ref": "Isaías 41:10", "texto": "No temas, porque yo estoy contigo...", "tags": ["miedo", "ansiedad", "soledad"]},
-            {"ref": "Jeremías 29:11", "texto": "Porque yo sé los pensamientos que tengo acerca de vosotros...", "tags": ["futuro", "esperanza", "planes"]},
-            {"ref": "Mateo 11:28", "texto": "Venid a mí todos los que estáis trabajados...", "tags": ["cansancio", "estres", "descanso"]}
+            {"ref": "Jeremías 29:11", "texto": "Porque yo sé los pensamientos que tengo acerca de vosotros...", "tags": ["futuro", "esperanza", "planes"]}
         ]
 
-    def _cargar_o_descargar_biblia(self):
-        """
-        Lógica Senior: Verifica si tenemos la Biblia completa localmente.
-        Si no, la descarga silenciosamente de GitHub.
-        """
-        if os.path.exists(self.BIBLIA_FULL_FILE):
-            try:
-                with open(self.BIBLIA_FULL_FILE, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except:
-                return None # Archivo corrupto, fallback a modo simple
-        
-        # Si no existe, intentamos descargar
-        try:
-            with st.spinner("🚀 Configurando base de datos bíblica completa (solo la primera vez)..."):
-                response = requests.get(self.URL_BIBLIA_JSON)
-                if response.status_code == 200:
-                    datos = response.json()
-                    with open(self.BIBLIA_FULL_FILE, "w", encoding="utf-8") as f:
-                        json.dump(datos, f, ensure_ascii=False)
-                    return datos
-        except Exception as e:
-            # Si falla (sin internet), no rompemos la app, solo devolvemos None
-            print(f"Aviso: No se pudo descargar la Biblia completa: {e}")
-            return None
-        return None
+    def _normalizar(self, texto):
+        """Elimina tildes y pone en minúsculas para comparaciones robustas"""
+        texto = texto.lower().strip()
+        return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
 
     def _buscar_en_biblia_completa(self, query):
         """Busca en el dataset masivo de 31k versículos"""
         if not self.biblia_completa_datos:
-            return None
+            return "⚠️ La base de datos está cargando o no hay conexión. Intenta en unos segundos."
 
-        query = query.lower().strip()
-        resultados = []
+        query_norm = self._normalizar(query)
         
-        # Lógica para detectar referencia (ej: "juan 3:16")
-        # Estructura del JSON esperado: lista de libros -> capitulos -> versiculos
+        # --- ESTRATEGIA 1: Búsqueda por Referencia (ej: "Daniel 2:23") ---
+        # Regex mejorado: Acepta "1 Juan", "Juan", "Salmos", etc.
         match_ref = re.match(r"(\d?\s?[a-zA-Záéíóúñ]+)\s+(\d+):(\d+)", query)
         
         if match_ref:
-            # Búsqueda EXACTA por referencia
-            libro_buscado = match_ref.group(1).lower()
-            cap_buscado = int(match_ref.group(2)) - 1 # Array index 0
-            ver_buscado = int(match_ref.group(3)) - 1
+            libro_input = self._normalizar(match_ref.group(1))
+            cap_input = int(match_ref.group(2))
+            ver_input = int(match_ref.group(3))
             
             for libro in self.biblia_completa_datos:
-                # Normalizamos nombres (quitamos tildes para comparar mejor si fuera necesario)
-                if libro_buscado in libro['name'].lower() or (libro.get('abbrev') and libro_buscado == libro['abbrev']):
+                nombre_libro = self._normalizar(libro['name'])
+                
+                # Coincidencia exacta o parcial del nombre del libro
+                if libro_input == nombre_libro or libro_input in nombre_libro:
                     try:
-                        texto = libro['chapters'][cap_buscado][ver_buscado]
-                        return f"📖 **{libro['name']} {cap_buscado+1}:{ver_buscado+1}**\n\n{texto}"
-                    except IndexError:
-                        return "Ese capítulo o versículo no existe en este libro."
-        
-        # Búsqueda por PALABRA CLAVE (Full Text Search)
-        # Limitamos a 5 resultados para no saturar
+                        # Ajuste de índices: JSON suele ser base-0, Biblia es base-1
+                        # Verificamos si los datos del JSON están en base 0 o 1.
+                        # En este dataset específico 'chapters' es una lista de listas.
+                        if cap_input > len(libro['chapters']) or cap_input < 1:
+                            return f"El libro de {libro['name']} solo tiene {len(libro['chapters'])} capítulos."
+                        
+                        capitulo_data = libro['chapters'][cap_input - 1]
+                        
+                        if ver_input > len(capitulo_data) or ver_input < 1:
+                            return f"{libro['name']} {cap_input} solo tiene {len(capitulo_data)} versículos."
+                            
+                        texto = capitulo_data[ver_input - 1]
+                        return f"📖 **{libro['name']} {cap_input}:{ver_input}**\n\n{texto}"
+                    except Exception as e:
+                        return f"Error leyendo {query}: {str(e)}"
+
+        # --- ESTRATEGIA 2: Búsqueda por Texto (Full Text) ---
+        resultados_txt = ""
         contador = 0
-        txt_res = ""
         
         for libro in self.biblia_completa_datos:
             for i_cap, capitulo in enumerate(libro['chapters']):
                 for i_ver, versiculo in enumerate(capitulo):
-                    if query in versiculo.lower():
-                        txt_res += f"✨ **{libro['name']} {i_cap+1}:{i_ver+1}**\n_{versiculo}_\n\n"
+                    # Normalizamos el versículo también para buscar sin tildes si es necesario
+                    if query_norm in self._normalizar(versiculo):
+                        resultados_txt += f"✨ **{libro['name']} {i_cap+1}:{i_ver+1}**\n_{versiculo}_\n\n"
                         contador += 1
-                        if contador >= 5:
-                            return f"🔎 **Resultados para '{query}' (Biblia Completa):**\n\n{txt_res}\n*(Se muestran los primeros 5 resultados)*"
+                        if contador >= 4: # Límite para no saturar
+                             return f"🔎 **Resultados para '{query}':**\n\n{resultados_txt}\n*(Hay más resultados, sé más específico)*"
         
-        if txt_res:
-            return f"🔎 **Resultados para '{query}':**\n\n{txt_res}"
+        if resultados_txt:
+            return f"🔎 **Resultados encontrados:**\n\n{resultados_txt}"
             
         return None
 
     # -------------------------------------------------------------------------
-    # FUNCIONES PÚBLICAS (Interfaz)
+    # INTERFAZ PÚBLICA
     # -------------------------------------------------------------------------
-    
     def versiculo_del_dia(self):
         hoy = datetime.date.today().isoformat()
         if st.session_state.get("biblia_vdia_date") == hoy and st.session_state.get("biblia_vdia_stored"):
             return st.session_state["biblia_vdia_stored"]
-            
         item = random.choice(self.VERSICULOS_POOL_DIARIO)
-        contenido = (
-            f"🌟 **Versículo de Hoy:**\n\n"
-            f"_{item['t']}_\n"
-            f"**— {item['v']}**\n\n"
-            f"💡 *Reflexión:* {item['r']}"
-        )
+        contenido = f"🌟 **Versículo de Hoy:**\n\n_{item['t']}_\n**— {item['v']}**\n\n💡 *Reflexión:* {item['r']}"
         st.session_state["biblia_vdia_date"] = hoy
         st.session_state["biblia_vdia_stored"] = contenido
         return contenido
 
     def buscar_versiculo_completo(self, ref):
-        """Buscador Inteligente Híbrido"""
-        if not ref:
-            return "🕊️ Escribe un tema o cita bíblica."
-
-        # 1. Intentar búsqueda semántica curada (Mejor para emociones)
-        ref_lower = ref.lower()
+        if not ref: return "🕊️ Escribe una referencia (ej: Daniel 2:23) o un tema."
+        
+        # 1. Búsqueda profunda en la base de datos
+        resultado = self._buscar_en_biblia_completa(ref)
+        if resultado:
+            return resultado
+            
+        # 2. Búsqueda en tags emocionales (si falla lo anterior)
+        ref_norm = self._normalizar(ref)
         for item in self.BIBLIA_SEMANTICA:
-            if ref_lower in item['tags'] or ref_lower in item['texto'].lower():
-                return f"💖 **Sugerencia Espiritual:**\n\n✨ **{item['ref']}**\n_{item['texto']}_"
+            if any(ref_norm in self._normalizar(t) for t in item['tags']):
+                 return f"💖 **Para tu corazón:**\n\n✨ **{item['ref']}**\n_{item['texto']}_"
 
-        # 2. Intentar búsqueda en la Biblia Completa (Dataset descargado)
-        resultado_full = self._buscar_en_biblia_completa(ref)
-        if resultado_full:
-            return resultado_full
+        return f"No encontré '{ref}' textualmente. Intenta verificar el capítulo y versículo, o busca por tema."
 
-        # 3. Fallback espiritual
-        return (f"No encontré '{ref}' textualmente, pero recuerda: "
-                f"**'Clama a mí, y yo te responderé' (Jeremías 33:3)**. "
-                f"Intenta buscar palabras como 'fe', 'amor' o el libro exacto.")
-
-    def generar_devocional_personalizado(self, s):
-        return f"🌿 **Palabra para ti:**\n\nAnte '{s}', respira paz. Dios obra en el silencio."
-
-    def ver_journal_biblico(self):
-        return "Tu diario espiritual (Próximamente)."
-
-    def agregar_favorito(self, referencia, texto):
-        favoritos = self._cargar_favoritos()
-        if any(f['referencia'] == referencia for f in favoritos):
-            return False, "Ya está en favoritos."
-        favoritos.append({
-            "id": len(favoritos)+1, 
-            "referencia": referencia, 
-            "texto": texto, 
-            "fecha": datetime.datetime.now().strftime("%Y-%m-%d")
-        })
-        self._guardar_favoritos(favoritos)
-        return True, "Guardado ⭐"
-
+    # Helpers de Favoritos (sin cambios)
+    def generar_devocional_personalizado(self, s): return f"🌿 **Devocional:** Dios escucha tu corazón respecto a '{s}'."
+    def ver_journal_biblico(self): return "Diario en construcción."
     def _cargar_favoritos(self):
         if not os.path.exists(self.FAVORITOS_FILE): return []
         try:
             with open(self.FAVORITOS_FILE, "r", encoding="utf-8") as f: return json.load(f)
         except: return []
-
     def _guardar_favoritos(self, data):
-        with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False)
-            
-    def ver_favoritos(self):
-        return self._cargar_favoritos()
-    
+        with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f: json.dump(data, f, ensure_ascii=False)
+    def agregar_favorito(self, referencia, texto):
+        favoritos = self._cargar_favoritos()
+        if any(f['referencia'] == referencia for f in favoritos): return False, "Ya existe."
+        favoritos.append({"id": len(favoritos)+1, "referencia": referencia, "texto": texto, "fecha": datetime.datetime.now().strftime("%Y-%m-%d")})
+        self._guardar_favoritos(favoritos)
+        return True, "Agregado ⭐"
+    def ver_favoritos(self): return self._cargar_favoritos()
     def eliminar_favorito(self, fid):
         data = [f for f in self._cargar_favoritos() if f['id'] != fid]
         self._guardar_favoritos(data)
         return True
+
 
 # =====================================================
 # HANDLER TAROT CON IA
@@ -5262,6 +5257,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
