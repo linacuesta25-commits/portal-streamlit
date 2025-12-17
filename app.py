@@ -1,7 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import random
-import requests
 import sys
 import json
 import os
@@ -1431,155 +1430,20 @@ class GestorPersonalidades:
         if nombre in self.PERSONALIDADES:
             return self.PERSONALIDADES[nombre]
         return "Personalidad no encontrada."
-# -----------------------------------------------------------------------------
-# FUNCIONES DE CARGA FUERA DE LA CLASE (Optimización Streamlit)
-# -----------------------------------------------------------------------------
-@st.cache_resource
-def cargar_base_datos_biblia():
-    """
-    Descarga y cachea la Biblia RVR1960 completa.
-    SOLUCIÓN APLICADA: Manejo de codificación UTF-8-SIG para evitar error BOM.
-    """
-    DATA_FOLDER = "data"
-    BIBLIA_FULL_FILE = os.path.join(DATA_FOLDER, "biblia_completa.json")
-    URL_BIBLIA_JSON = "https://raw.githubusercontent.com/thiagobodruk/bible/master/json/es_rvr.json"
-    
-    os.makedirs(DATA_FOLDER, exist_ok=True)
-    
-    # 1. Si el archivo ya existe localmente y es válido
-    if os.path.exists(BIBLIA_FULL_FILE):
-        try:
-            if os.path.getsize(BIBLIA_FULL_FILE) > 1000: 
-                with open(BIBLIA_FULL_FILE, "r", encoding="utf-8") as f:
-                    return json.load(f)
-        except Exception as e:
-            print(f"⚠️ Archivo local corrupto, descargando de nuevo: {e}")
 
-    # 2. Descarga con corrección de BOM
-    try:
-        response = requests.get(URL_BIBLIA_JSON)
-        response.raise_for_status() 
-        
-        # --- AQUÍ ESTÁ LA CORRECCIÓN CLAVE PARA EL BOM ---
-        datos = json.loads(response.content.decode("utf-8-sig"))
-        
-        # Guardamos el archivo limpio
-        with open(BIBLIA_FULL_FILE, "w", encoding="utf-8") as f:
-            json.dump(datos, f, ensure_ascii=False)
-        return datos
-
-    except Exception as e:
-        st.error(f"⚠️ Error técnico descargando la Biblia: {str(e)}")
-        return None
-
-# -----------------------------------------------------------------------------
-# CLASE PRINCIPAL
-# -----------------------------------------------------------------------------
 class RobustBibliaHandler:
+    VERSICULOS_DB = {
+        "juan 3:16": "Porque de tal manera amó Dios al mundo...",
+        "salmos 23:1": "Jehová es mi pastor; nada me faltará.",
+        "filipenses 4:13": "Todo lo puedo en Cristo que me fortalece."
+    }
+    VERSICULOS_POOL_DIARIO = list(VERSICULOS_DB.values())
+    
     def __init__(self):
         self.DATA_FOLDER = "data"
         self.FAVORITOS_FILE = os.path.join(self.DATA_FOLDER, "versiculos_favoritos.json")
         os.makedirs(self.DATA_FOLDER, exist_ok=True)
-        
-        # Cargar datos
-        self.biblia_completa_datos = cargar_base_datos_biblia()
-        self._inicializar_contenido_curado()
-
-    def _inicializar_contenido_curado(self):
-        self.VERSICULOS_POOL_DIARIO = [
-             {"v": "Lamentaciones 3:22-23", "t": "Por la misericordia de Jehová no hemos sido consumidos...", "r": "Cada amanecer es un lienzo en blanco pintado por la gracia de Dios."},
-             {"v": "Salmos 23:1", "t": "Jehová es mi pastor; nada me faltará.", "r": "No es que no tendrás necesidades, es que tendrás quien las supla."},
-             {"v": "Filipenses 4:13", "t": "Todo lo puedo en Cristo que me fortalece.", "r": "Tu fuerza no viene de tu capacidad, sino de tu conexión con Él."}
-        ]
-        self.BIBLIA_SEMANTICA = [
-            {"ref": "Isaías 41:10", "texto": "No temas, porque yo estoy contigo...", "tags": ["miedo", "ansiedad", "soledad"]},
-            {"ref": "Jeremías 29:11", "texto": "Porque yo sé los pensamientos que tengo acerca de vosotros...", "tags": ["futuro", "esperanza", "planes"]}
-        ]
-
-    def _normalizar(self, texto):
-        if not isinstance(texto, str): return ""
-        texto = texto.lower().strip()
-        return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
-
-    def _buscar_en_biblia_completa(self, query):
-        if not self.biblia_completa_datos:
-            return "⚠️ La base de datos se está reiniciando. Intenta en 5 segundos..."
-
-        query_norm = self._normalizar(query)
-        
-        # --- ESTRATEGIA 1: Búsqueda por Referencia ---
-        match_ref = re.match(r"(\d?\s?[a-zA-Záéíóúñ]+)\s+(\d+):(\d+)", query)
-        
-        if match_ref:
-            libro_input = self._normalizar(match_ref.group(1))
-            cap_input = int(match_ref.group(2))
-            ver_input = int(match_ref.group(3))
-            
-            for libro in self.biblia_completa_datos:
-                nombre_libro = self._normalizar(libro['name'])
-                if libro_input in nombre_libro or (libro.get('abbrev') and libro_input == self._normalizar(libro['abbrev'])):
-                    try:
-                        if cap_input > len(libro['chapters']) or cap_input < 1:
-                            return f"📖 El libro de **{libro['name']}** solo tiene {len(libro['chapters'])} capítulos."
-                        
-                        capitulo_data = libro['chapters'][cap_input - 1]
-                        
-                        if ver_input > len(capitulo_data) or ver_input < 1:
-                            return f"📖 **{libro['name']} {cap_input}** llega hasta el versículo {len(capitulo_data)}."
-                            
-                        texto = capitulo_data[ver_input - 1]
-                        return f"📖 **{libro['name']} {cap_input}:{ver_input}**\n\n{texto}"
-                    except:
-                        continue 
-
-        # --- ESTRATEGIA 2: Búsqueda por Texto ---
-        resultados_txt = ""
-        contador = 0
-        for libro in self.biblia_completa_datos:
-            for i_cap, capitulo in enumerate(libro['chapters']):
-                for i_ver, versiculo in enumerate(capitulo):
-                    if query_norm in self._normalizar(versiculo):
-                        resultados_txt += f"✨ **{libro['name']} {i_cap+1}:{i_ver+1}**\n_{versiculo}_\n\n"
-                        contador += 1
-                        if contador >= 4:
-                             return f"🔎 **Resultados para '{query}':**\n\n{resultados_txt}\n*(Se muestran los primeros resultados)*"
-        
-        if resultados_txt:
-            return f"🔎 **Resultados encontrados:**\n\n{resultados_txt}"
-            
-        return None
-
-    # INTERFAZ PÚBLICA
-    def versiculo_del_dia(self):
-        hoy = datetime.date.today().isoformat()
-        if st.session_state.get("biblia_vdia_date") == hoy and st.session_state.get("biblia_vdia_stored"):
-            return st.session_state["biblia_vdia_stored"]
-        item = random.choice(self.VERSICULOS_POOL_DIARIO)
-        contenido = f"🌟 **Versículo de Hoy:**\n\n_{item['t']}_\n**— {item['v']}**\n\n💡 *Reflexión:* {item['r']}"
-        st.session_state["biblia_vdia_date"] = hoy
-        st.session_state["biblia_vdia_stored"] = contenido
-        return contenido
-
-    def buscar_versiculo_completo(self, ref):
-        if not ref: return "🕊️ Escribe una referencia o tema."
-        
-        resultado = self._buscar_en_biblia_completa(ref)
-        if resultado: return resultado
-            
-        ref_norm = self._normalizar(ref)
-        for item in self.BIBLIA_SEMANTICA:
-            if any(ref_norm in self._normalizar(t) for t in item['tags']):
-                 return f"💖 **Para tu corazón:**\n\n✨ **{item['ref']}**\n_{item['texto']}_"
-
-        return f"No encontré '{ref}' textualmente. Verifica que el libro y capítulo sean correctos."
-
-    def generar_devocional_personalizado(self, s):
-        return f"🌿 **Devocional:** Dios escucha tu corazón respecto a '{s}'."
-
-    def ver_journal_biblico(self):
-        return "Diario en construcción."
-
-    # --- CORRECCIÓN DE SINTAXIS: Bloques expandidos ---
+    
     def _cargar_favoritos(self):
         if not os.path.exists(self.FAVORITOS_FILE):
             return []
@@ -1588,32 +1452,62 @@ class RobustBibliaHandler:
                 return json.load(f)
         except:
             return []
-
-    def _guardar_favoritos(self, data):
-        with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False)
-
-    def agregar_favorito(self, referencia, texto):
-        favoritos = self._cargar_favoritos()
-        if any(f['referencia'] == referencia for f in favoritos):
-            return False, "Ya existe."
-        
-        favoritos.append({
-            "id": len(favoritos)+1, 
-            "referencia": referencia, 
-            "texto": texto, 
-            "fecha": datetime.datetime.now().strftime("%Y-%m-%d")
-        })
-        self._guardar_favoritos(favoritos)
-        return True, "Agregado ⭐"
-
-    def ver_favoritos(self):
-        return self._cargar_favoritos()
     
-    def eliminar_favorito(self, fid):
-        data = [f for f in self._cargar_favoritos() if f['id'] != fid]
-        self._guardar_favoritos(data)
+    def _guardar_favoritos(self, favoritos):
+        with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f:
+            json.dump(favoritos, f, indent=2, ensure_ascii=False)
+
+    def versiculo_del_dia(self):
+        hoy = datetime.date.today().isoformat()
+        if st.session_state.get("biblia_vdia_date") == hoy and st.session_state.get("biblia_vdia_stored"):
+            return st.session_state["biblia_vdia_stored"]
+        nuevo_v = f"📖 {random.choice(self.VERSICULOS_POOL_DIARIO)}"
+        st.session_state["biblia_vdia_date"] = hoy
+        st.session_state["biblia_vdia_stored"] = nuevo_v
+        return nuevo_v
+    def buscar_versiculo_completo(self, ref):
+        try:
+            ref_clean = ref.lower().strip()
+            if ref_clean in self.VERSICULOS_DB: return self.VERSICULOS_DB[ref_clean]
+            return f"🕊️ (Generado): Confía en la palabra para '{ref}'."
+        except: return "La luz brilla en la oscuridad."
+    def generar_devocional_personalizado(self, s): return f"Ante '{s}', ten fe."
+    def ver_journal_biblico(self): return "Diario vacío."
+    
+    def agregar_favorito(self, referencia, texto):
+        """Agrega un versículo a favoritos"""
+        favoritos = self._cargar_favoritos()
+        
+        # Verificar si ya existe
+        existe = any(f['referencia'].lower() == referencia.lower() for f in favoritos)
+        if existe:
+            return False, "Este versículo ya está en favoritos"
+        
+        nuevo_favorito = {
+            "id": len(favoritos) + 1,
+            "referencia": referencia,
+            "texto": texto,
+            "fecha_agregado": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+        
+        favoritos.append(nuevo_favorito)
+        self._guardar_favoritos(favoritos)
+        return True, "Versículo agregado a favoritos ⭐"
+    
+    def ver_favoritos(self):
+        """Ver todos los versículos favoritos"""
+        favoritos = self._cargar_favoritos()
+        if not favoritos:
+            return []
+        return favoritos
+    
+    def eliminar_favorito(self, favorito_id):
+        """Elimina un versículo de favoritos"""
+        favoritos = self._cargar_favoritos()
+        favoritos = [f for f in favoritos if f['id'] != favorito_id]
+        self._guardar_favoritos(favoritos)
         return True
+
 
 # =====================================================
 # HANDLER TAROT CON IA
@@ -5264,11 +5158,4 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
-
-
-
-
-
-
-
 
