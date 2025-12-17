@@ -1440,6 +1440,16 @@ class RobustBibliaHandler:
         with open(self.BIBLIA_FILE, "r", encoding="utf-8") as f:
             self.biblia = json.load(f)
 
+        # Normalizamos los libros para trabajar siempre con una lista
+        self.libros = (
+            self.biblia["books"]
+            if isinstance(self.biblia, dict) and "books" in self.biblia
+            else self.biblia
+        )
+
+    # --------------------------------------------------
+    # 🔍 Buscar versículo exacto
+    # --------------------------------------------------
     def buscar_versiculo_completo(self, ref):
         ref = ref.strip()
 
@@ -1447,14 +1457,14 @@ class RobustBibliaHandler:
             return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
 
         try:
-            libro_input, resto = ref.rsplit(" ", 1)
+            _, resto = ref.rsplit(" ", 1)
             cap, ver = resto.split(":")
             cap = int(cap)
             ver = int(ver)
         except:
             return "⚠️ Formato inválido. Usa Libro capítulo:versículo."
 
-        for libro in self.biblia.get("books", []):
+        for libro in self.libros:
             for capitulo in libro.get("chapters", []):
                 if capitulo.get("chapter") == cap:
                     for versiculo in capitulo.get("verses", []):
@@ -1465,6 +1475,37 @@ class RobustBibliaHandler:
                             )
 
         return "❌ No se encontró el versículo solicitado."
+
+    # --------------------------------------------------
+    # 🌅 Versículo del día (real, no inventado)
+    # --------------------------------------------------
+    def versiculo_del_dia(self):
+        import datetime, random
+        import streamlit as st
+
+        hoy = datetime.date.today().isoformat()
+
+        if (
+            "versiculo_dia_fecha" in st.session_state
+            and st.session_state["versiculo_dia_fecha"] == hoy
+        ):
+            return st.session_state["versiculo_dia_texto"]
+
+        # Elegir un versículo real al azar
+        libro = random.choice(self.libros)
+        capitulo = random.choice(libro.get("chapters", []))
+        versiculo = random.choice(capitulo.get("verses", []))
+
+        texto = (
+            f"{libro.get('name','').title()} "
+            f"{capitulo.get('chapter')}:{versiculo.get('verse')}\n\n"
+            f"{versiculo.get('text','')}"
+        )
+
+        st.session_state["versiculo_dia_fecha"] = hoy
+        st.session_state["versiculo_dia_texto"] = texto
+
+        return texto
 
 
 # =====================================================
@@ -5116,6 +5157,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
