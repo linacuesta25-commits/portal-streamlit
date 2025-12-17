@@ -1438,35 +1438,44 @@ class GestorPersonalidades:
 def cargar_base_datos_biblia():
     """
     Descarga y cachea la Biblia RVR1960 completa.
-    Esto evita recargas y asegura que los datos existan.
+    SOLUCIÓN APLICADA: Manejo de codificación UTF-8-SIG para evitar error BOM.
     """
     DATA_FOLDER = "data"
     BIBLIA_FULL_FILE = os.path.join(DATA_FOLDER, "biblia_completa.json")
+    # Usamos una fuente alternativa más limpia si la anterior da problemas, 
+    # pero primero arreglamos la decodificación de la actual.
     URL_BIBLIA_JSON = "https://raw.githubusercontent.com/thiagobodruk/bible/master/json/es_rvr.json"
     
     os.makedirs(DATA_FOLDER, exist_ok=True)
     
-    # 1. Si el archivo ya existe y tiene contenido, lo cargamos
+    # 1. Si el archivo ya existe localmente y es válido
     if os.path.exists(BIBLIA_FULL_FILE):
         try:
-            if os.path.getsize(BIBLIA_FULL_FILE) > 1000: # Verificar que no esté vacío
+            if os.path.getsize(BIBLIA_FULL_FILE) > 1000: 
                 with open(BIBLIA_FULL_FILE, "r", encoding="utf-8") as f:
                     return json.load(f)
         except Exception as e:
-            print(f"Error leyendo archivo local: {e}. Intentando descargar de nuevo...")
+            print(f"⚠️ Archivo local corrupto, descargando de nuevo: {e}")
 
-    # 2. Si no existe o falló, descargamos
+    # 2. Descarga con corrección de BOM
     try:
         response = requests.get(URL_BIBLIA_JSON)
-        response.raise_for_status() # Lanza error si la URL falla
-        datos = response.json()
+        response.raise_for_status() 
         
-        # Guardamos localmente para la próxima
+        # --- AQUÍ ESTÁ LA CORRECCIÓN CLAVE ---
+        # Usamos .content.decode('utf-8-sig') en lugar de .json() directo
+        # Esto elimina la marca invisible BOM que causaba el error.
+        datos = json.loads(response.content.decode("utf-8-sig"))
+        # -------------------------------------
+        
+        # Guardamos el archivo limpio (sin BOM) para el futuro
         with open(BIBLIA_FULL_FILE, "w", encoding="utf-8") as f:
             json.dump(datos, f, ensure_ascii=False)
         return datos
+
     except Exception as e:
-        st.error(f"⚠️ Error de conexión: No se pudo descargar la Biblia completa. ({e})")
+        # Mensaje de error detallado para depuración
+        st.error(f"⚠️ Error técnico descargando la Biblia: {str(e)}")
         return None
 
 # -----------------------------------------------------------------------------
@@ -1478,10 +1487,8 @@ class RobustBibliaHandler:
         self.FAVORITOS_FILE = os.path.join(self.DATA_FOLDER, "versiculos_favoritos.json")
         os.makedirs(self.DATA_FOLDER, exist_ok=True)
         
-        # Cargar datos usando la función optimizada
+        # Cargar datos
         self.biblia_completa_datos = cargar_base_datos_biblia()
-        
-        # Inicializar contenido curado (rápido)
         self._inicializar_contenido_curado()
 
     def _inicializar_contenido_curado(self):
@@ -1496,19 +1503,17 @@ class RobustBibliaHandler:
         ]
 
     def _normalizar(self, texto):
-        """Elimina tildes y pone en minúsculas para comparaciones robustas"""
+        if not isinstance(texto, str): return ""
         texto = texto.lower().strip()
         return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
 
     def _buscar_en_biblia_completa(self, query):
-        """Busca en el dataset masivo de 31k versículos"""
         if not self.biblia_completa_datos:
-            return "⚠️ La base de datos está cargando o no hay conexión. Intenta en unos segundos."
+            return "⚠️ La base de datos se está reiniciando. Intenta en 5 segundos..."
 
         query_norm = self._normalizar(query)
         
-        # --- ESTRATEGIA 1: Búsqueda por Referencia (ej: "Daniel 2:23") ---
-        # Regex mejorado: Acepta "1 Juan", "Juan", "Salmos", etc.
+        # --- ESTRATEGIA 1: Búsqueda por Referencia (Ej: Daniel 2:23) ---
         match_ref = re.match(r"(\d?\s?[a-zA-Záéíóúñ]+)\s+(\d+):(\d+)", query)
         
         if match_ref:
@@ -1518,48 +1523,41 @@ class RobustBibliaHandler:
             
             for libro in self.biblia_completa_datos:
                 nombre_libro = self._normalizar(libro['name'])
-                
-                # Coincidencia exacta o parcial del nombre del libro
-                if libro_input == nombre_libro or libro_input in nombre_libro:
+                # Buscamos coincidencia en nombre (ej: "daniel" en "el libro de daniel")
+                if libro_input in nombre_libro or (libro.get('abbrev') and libro_input == self._normalizar(libro['abbrev'])):
                     try:
-                        # Ajuste de índices: JSON suele ser base-0, Biblia es base-1
-                        # Verificamos si los datos del JSON están en base 0 o 1.
-                        # En este dataset específico 'chapters' es una lista de listas.
+                        # Validación de índices
                         if cap_input > len(libro['chapters']) or cap_input < 1:
-                            return f"El libro de {libro['name']} solo tiene {len(libro['chapters'])} capítulos."
+                            return f"📖 El libro de **{libro['name']}** solo tiene {len(libro['chapters'])} capítulos."
                         
                         capitulo_data = libro['chapters'][cap_input - 1]
                         
                         if ver_input > len(capitulo_data) or ver_input < 1:
-                            return f"{libro['name']} {cap_input} solo tiene {len(capitulo_data)} versículos."
+                            return f"📖 **{libro['name']} {cap_input}** llega hasta el versículo {len(capitulo_data)}."
                             
                         texto = capitulo_data[ver_input - 1]
                         return f"📖 **{libro['name']} {cap_input}:{ver_input}**\n\n{texto}"
-                    except Exception as e:
-                        return f"Error leyendo {query}: {str(e)}"
+                    except:
+                        continue 
 
         # --- ESTRATEGIA 2: Búsqueda por Texto (Full Text) ---
         resultados_txt = ""
         contador = 0
-        
         for libro in self.biblia_completa_datos:
             for i_cap, capitulo in enumerate(libro['chapters']):
                 for i_ver, versiculo in enumerate(capitulo):
-                    # Normalizamos el versículo también para buscar sin tildes si es necesario
                     if query_norm in self._normalizar(versiculo):
                         resultados_txt += f"✨ **{libro['name']} {i_cap+1}:{i_ver+1}**\n_{versiculo}_\n\n"
                         contador += 1
-                        if contador >= 4: # Límite para no saturar
-                             return f"🔎 **Resultados para '{query}':**\n\n{resultados_txt}\n*(Hay más resultados, sé más específico)*"
+                        if contador >= 4:
+                             return f"🔎 **Resultados para '{query}':**\n\n{resultados_txt}\n*(Se muestran los primeros resultados)*"
         
         if resultados_txt:
             return f"🔎 **Resultados encontrados:**\n\n{resultados_txt}"
             
         return None
 
-    # -------------------------------------------------------------------------
-    # INTERFAZ PÚBLICA
-    # -------------------------------------------------------------------------
+    # INTERFAZ PÚBLICA (API)
     def versiculo_del_dia(self):
         hoy = datetime.date.today().isoformat()
         if st.session_state.get("biblia_vdia_date") == hoy and st.session_state.get("biblia_vdia_stored"):
@@ -1571,28 +1569,26 @@ class RobustBibliaHandler:
         return contenido
 
     def buscar_versiculo_completo(self, ref):
-        if not ref: return "🕊️ Escribe una referencia (ej: Daniel 2:23) o un tema."
+        if not ref: return "🕊️ Escribe una referencia o tema."
         
-        # 1. Búsqueda profunda en la base de datos
+        # Intento de búsqueda profunda
         resultado = self._buscar_en_biblia_completa(ref)
-        if resultado:
-            return resultado
+        if resultado: return resultado
             
-        # 2. Búsqueda en tags emocionales (si falla lo anterior)
+        # Fallback semántico
         ref_norm = self._normalizar(ref)
         for item in self.BIBLIA_SEMANTICA:
             if any(ref_norm in self._normalizar(t) for t in item['tags']):
                  return f"💖 **Para tu corazón:**\n\n✨ **{item['ref']}**\n_{item['texto']}_"
 
-        return f"No encontré '{ref}' textualmente. Intenta verificar el capítulo y versículo, o busca por tema."
+        return f"No encontré '{ref}' textualmente. Verifica que el libro y capítulo sean correctos en la Reina Valera 1960."
 
-    # Helpers de Favoritos (sin cambios)
+    # Helpers
     def generar_devocional_personalizado(self, s): return f"🌿 **Devocional:** Dios escucha tu corazón respecto a '{s}'."
     def ver_journal_biblico(self): return "Diario en construcción."
     def _cargar_favoritos(self):
         if not os.path.exists(self.FAVORITOS_FILE): return []
-        try:
-            with open(self.FAVORITOS_FILE, "r", encoding="utf-8") as f: return json.load(f)
+        try: with open(self.FAVORITOS_FILE, "r", encoding="utf-8") as f: return json.load(f)
         except: return []
     def _guardar_favoritos(self, data):
         with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f: json.dump(data, f, ensure_ascii=False)
@@ -1607,7 +1603,6 @@ class RobustBibliaHandler:
         data = [f for f in self._cargar_favoritos() if f['id'] != fid]
         self._guardar_favoritos(data)
         return True
-
 
 # =====================================================
 # HANDLER TAROT CON IA
@@ -5258,6 +5253,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
