@@ -1431,82 +1431,89 @@ class GestorPersonalidades:
             return self.PERSONALIDADES[nombre]
         return "Personalidad no encontrada."
 
-class RobustBibliaHandler:
-    VERSICULOS_DB = {
-        "juan 3:16": "Porque de tal manera amó Dios al mundo...",
-        "salmos 23:1": "Jehová es mi pastor; nada me faltará.",
-        "filipenses 4:13": "Todo lo puedo en Cristo que me fortalece."
-    }
-    VERSICULOS_POOL_DIARIO = list(VERSICULOS_DB.values())
-    
+cclass RobustBibliaHandler:
     def __init__(self):
         self.DATA_FOLDER = "data"
-        self.FAVORITOS_FILE = os.path.join(self.DATA_FOLDER, "versiculos_favoritos.json")
-        os.makedirs(self.DATA_FOLDER, exist_ok=True)
-    
-    def _cargar_favoritos(self):
-        if not os.path.exists(self.FAVORITOS_FILE):
-            return []
-        try:
-            with open(self.FAVORITOS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            return []
-    
-    def _guardar_favoritos(self, favoritos):
-        with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f:
-            json.dump(favoritos, f, indent=2, ensure_ascii=False)
+        self.BIBLIA_FILE = "data/biblia_completa.json"
 
+        with open(self.BIBLIA_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Soporta JSON como dict {"books": [...]} o como lista [...]
+        self.libros = data["books"] if isinstance(data, dict) and "books" in data else data
+
+        # Pre-filtrar solo libros con capítulos y versículos válidos
+        self.libros_validos = []
+        for libro in self.libros:
+            chapters = libro.get("chapters", [])
+            chapters_validos = [c for c in chapters if c.get("verses")]
+            if chapters_validos:
+                libro["_chapters_validos"] = chapters_validos
+                self.libros_validos.append(libro)
+
+    # --------------------------------------------------
+    # 🔍 Buscar versículo exacto (Libro capítulo:versículo)
+    # --------------------------------------------------
+    def buscar_versiculo_completo(self, ref):
+        if not ref:
+            return "⚠️ Escribe una referencia (ej. Daniel 2:23)"
+
+        ref = ref.strip().lower()
+
+        if ":" not in ref or " " not in ref:
+            return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
+
+        try:
+            libro_input, resto = ref.rsplit(" ", 1)
+            cap_str, ver_str = resto.split(":")
+            cap = int(cap_str)
+            ver = int(ver_str)
+        except Exception:
+            return "⚠️ Formato inválido. Usa Libro capítulo:versículo."
+
+        # Buscar SOLO en el libro indicado
+        for libro in self.libros:
+            nombre = libro.get("name", "").lower()
+            if nombre != libro_input:
+                continue
+
+            for capitulo in libro.get("chapters", []):
+                if capitulo.get("chapter") == cap:
+                    for versiculo in capitulo.get("verses", []):
+                        if versiculo.get("verse") == ver:
+                            return (
+                                f"{libro.get('name','').title()} {cap}:{ver}\n\n"
+                                f"{versiculo.get('text','')}"
+                            )
+
+        return "❌ No se encontró el versículo solicitado."
+
+    # --------------------------------------------------
+    # 🌅 Versículo del día (REAL, sin inventar)
+    # --------------------------------------------------
     def versiculo_del_dia(self):
         hoy = datetime.date.today().isoformat()
-        if st.session_state.get("biblia_vdia_date") == hoy and st.session_state.get("biblia_vdia_stored"):
-            return st.session_state["biblia_vdia_stored"]
-        nuevo_v = f"📖 {random.choice(self.VERSICULOS_POOL_DIARIO)}"
-        st.session_state["biblia_vdia_date"] = hoy
-        st.session_state["biblia_vdia_stored"] = nuevo_v
-        return nuevo_v
-    def buscar_versiculo_completo(self, ref):
-        try:
-            ref_clean = ref.lower().strip()
-            if ref_clean in self.VERSICULOS_DB: return self.VERSICULOS_DB[ref_clean]
-            return f"🕊️ (Generado): Confía en la palabra para '{ref}'."
-        except: return "La luz brilla en la oscuridad."
-    def generar_devocional_personalizado(self, s): return f"Ante '{s}', ten fe."
-    def ver_journal_biblico(self): return "Diario vacío."
-    
-    def agregar_favorito(self, referencia, texto):
-        """Agrega un versículo a favoritos"""
-        favoritos = self._cargar_favoritos()
-        
-        # Verificar si ya existe
-        existe = any(f['referencia'].lower() == referencia.lower() for f in favoritos)
-        if existe:
-            return False, "Este versículo ya está en favoritos"
-        
-        nuevo_favorito = {
-            "id": len(favoritos) + 1,
-            "referencia": referencia,
-            "texto": texto,
-            "fecha_agregado": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-        }
-        
-        favoritos.append(nuevo_favorito)
-        self._guardar_favoritos(favoritos)
-        return True, "Versículo agregado a favoritos ⭐"
-    
-    def ver_favoritos(self):
-        """Ver todos los versículos favoritos"""
-        favoritos = self._cargar_favoritos()
-        if not favoritos:
-            return []
-        return favoritos
-    
-    def eliminar_favorito(self, favorito_id):
-        """Elimina un versículo de favoritos"""
-        favoritos = self._cargar_favoritos()
-        favoritos = [f for f in favoritos if f['id'] != favorito_id]
-        self._guardar_favoritos(favoritos)
-        return True
+
+        if (
+            "versiculo_dia_fecha" in st.session_state
+            and st.session_state["versiculo_dia_fecha"] == hoy
+        ):
+            return st.session_state["versiculo_dia_texto"]
+
+        # Elegir aleatoriamente SOLO de libros/capítulos válidos
+        libro = random.choice(self.libros_validos)
+        capitulo = random.choice(libro["_chapters_validos"])
+        versiculo = random.choice(capitulo["verses"])
+
+        texto = (
+            f"{libro.get('name','').title()} "
+            f"{capitulo.get('chapter')}:{versiculo.get('verse')}\n\n"
+            f"{versiculo.get('text','')}"
+        )
+
+        st.session_state["versiculo_dia_fecha"] = hoy
+        st.session_state["versiculo_dia_texto"] = texto
+        return texto
 
 
 # =====================================================
