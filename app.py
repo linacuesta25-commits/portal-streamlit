@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import random
+import requests
 import sys
 import json
 import os
@@ -5257,6 +5258,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
