@@ -1435,7 +1435,7 @@ import json, os, datetime, random, streamlit as st
 
 class RobustBibliaHandler:
     def __init__(self):
-        self.BIBLIA_FILE = "data/biblia_completa.json"
+        self.BIBLIA_FILE = "data/es_rvr.json"
 
         with open(self.BIBLIA_FILE, "r", encoding="utf-8") as f:
             self.libros = json.load(f)
@@ -5125,6 +5125,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
