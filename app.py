@@ -1437,7 +1437,7 @@ class RobustBibliaHandler:
     def __init__(self):
         self.BIBLIA_FILE = "data/es_rvr.json"
 
-       with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
+        with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
             data = json.load(f)
 
         # Soporta distintas estructuras del JSON
@@ -1477,6 +1477,30 @@ class RobustBibliaHandler:
             f"_{versiculo.get('text', '')}_"
         )
 
+    def buscar_versiculo_completo(self, ref):
+        if ":" not in ref:
+            return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
+
+        try:
+            libro_input, resto = ref.rsplit(" ", 1)
+            cap, ver = resto.split(":")
+            cap = int(cap)
+            ver = int(ver)
+        except:
+            return "⚠️ Formato inválido."
+
+        for libro in self.books:
+            if libro.get("name", "").lower() == libro_input.lower():
+                for capitulo in libro.get("chapters", []):
+                    if capitulo.get("chapter") == cap:
+                        for versiculo in capitulo.get("verses", []):
+                            if versiculo.get("verse") == ver:
+                                return (
+                                    f"📖 **{libro.get('name')} {cap}:{ver}**\n\n"
+                                    f"_{versiculo.get('text', '')}_"
+                                )
+
+        return "❌ No se encontró el versículo solicitado."
 
 # =====================================================
 # HANDLER TAROT CON IA
@@ -5127,6 +5151,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
