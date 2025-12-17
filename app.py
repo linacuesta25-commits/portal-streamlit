@@ -1434,14 +1434,20 @@ class GestorPersonalidades:
 class RobustBibliaHandler:
     def __init__(self):
         self.DATA_FOLDER = "data"
-        self.BIBLIA_FILE = "data/biblia_completa.json"
-
-        with open(self.BIBLIA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        # Soporta JSON como dict {"books": [...]} o como lista [...]
-        self.libros = data["books"] if isinstance(data, dict) and "books" in data else data
-
+        self.BIBLIA_FILE = os.path.join(self.DATA_FOLDER, "biblia_completa.json")
+        self.FAVORITOS_FILE = os.path.join(self.DATA_FOLDER, "versiculos_favoritos.json")
+        os.makedirs(self.DATA_FOLDER, exist_ok=True)
+        
+        # Cargar biblia completa
+        try:
+            with open(self.BIBLIA_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            # Soporta JSON como dict {"books": [...]} o como lista [...]
+            self.libros = data["books"] if isinstance(data, dict) and "books" in data else data
+        except FileNotFoundError:
+            st.error("⚠️ Archivo biblia_completa.json no encontrado. Ejecuta descargar_biblia.py primero.")
+            self.libros = []
+        
         # Pre-filtrar solo libros con capítulos y versículos válidos
         self.libros_validos = []
         for libro in self.libros:
@@ -1450,71 +1456,164 @@ class RobustBibliaHandler:
             if chapters_validos:
                 libro["_chapters_validos"] = chapters_validos
                 self.libros_validos.append(libro)
-
-    # --------------------------------------------------
-    # 🔍 Buscar versículo exacto (Libro capítulo:versículo)
-    # --------------------------------------------------
+        
+        # Crear mapeo de nombres normalizados para búsqueda rápida
+        self._crear_mapeo_libros()
+    
+    def _normalizar_texto(self, texto):
+        """Normaliza texto: sin acentos, minúsculas, sin espacios extra"""
+        import unicodedata
+        import re
+        
+        if not texto:
+            return ""
+        # Remover acentos
+        texto = unicodedata.normalize('NFD', texto)
+        texto = ''.join(char for char in texto if unicodedata.category(char) != 'Mn')
+        # Minúsculas y limpiar espacios
+        texto = texto.lower().strip()
+        # Remover espacios múltiples
+        texto = re.sub(r'\s+', ' ', texto)
+        return texto
+    
+    def _crear_mapeo_libros(self):
+        """Crea mapeo de nombres normalizados a libros originales"""
+        self.mapeo_libros = {}
+        
+        for libro in self.libros_validos:
+            nombre_original = libro.get("name", "")
+            nombre_normalizado = self._normalizar_texto(nombre_original)
+            
+            # Guardar con nombre normalizado
+            self.mapeo_libros[nombre_normalizado] = libro
+            
+            # Agregar variaciones comunes
+            if nombre_normalizado:
+                # Sin espacios
+                sin_espacios = nombre_normalizado.replace(" ", "")
+                self.mapeo_libros[sin_espacios] = libro
+                
+                # Con número al final si empieza con número
+                if nombre_normalizado[0].isdigit():
+                    partes = nombre_normalizado.split(" ", 1)
+                    if len(partes) == 2:
+                        numero, resto = partes
+                        # "1 corintios" -> "corintios 1"
+                        self.mapeo_libros[f"{resto} {numero}"] = libro
+                        self.mapeo_libros[f"{resto}{numero}"] = libro
+    
+    def _buscar_libro(self, nombre_libro):
+        """Busca libro por nombre, con normalización flexible"""
+        import re
+        
+        nombre_normalizado = self._normalizar_texto(nombre_libro)
+        
+        # Búsqueda exacta
+        if nombre_normalizado in self.mapeo_libros:
+            return self.mapeo_libros[nombre_normalizado]
+        
+        # Búsqueda parcial (si contiene)
+        for key, libro in self.mapeo_libros.items():
+            if nombre_normalizado in key or key in nombre_normalizado:
+                return libro
+        
+        return None
+    
     def buscar_versiculo_completo(self, ref):
+        """
+        Busca un versículo específico.
+        Formatos aceptados:
+        - "Juan 3:16"
+        - "1 Corintios 13:4"
+        - "Salmos 23:1"
+        """
+        import re
+        
         if not ref:
-            return "⚠️ Escribe una referencia (ej. Daniel 2:23)"
-
-        ref = ref.strip().lower()
-
-        if ":" not in ref or " " not in ref:
-            return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
-
+            return "⚠️ Escribe una referencia (ej. Juan 3:16)"
+        
+        ref = ref.strip()
+        
+        # Validar formato básico
+        if ":" not in ref:
+            return "⚠️ Usa el formato: Libro capítulo:versículo (ej. Juan 3:16)"
+        
         try:
-            libro_input, resto = ref.rsplit(" ", 1)
-            cap_str, ver_str = resto.split(":")
-            cap = int(cap_str)
-            ver = int(ver_str)
-        except Exception:
-            return "⚠️ Formato inválido. Usa Libro capítulo:versículo."
-
-        # Buscar SOLO en el libro indicado
-        for libro in self.libros:
-            nombre = libro.get("name", "").lower()
-            if nombre != libro_input:
-                continue
-
-            for capitulo in libro.get("chapters", []):
-                if capitulo.get("chapter") == cap:
-                    for versiculo in capitulo.get("verses", []):
-                        if versiculo.get("verse") == ver:
-                            return (
-                                f"{libro.get('name','').title()} {cap}:{ver}\n\n"
-                                f"{versiculo.get('text','')}"
-                            )
-
-        return "❌ No se encontró el versículo solicitado."
-
-    # --------------------------------------------------
-    # 🌅 Versículo del día (REAL, sin inventar)
-    # --------------------------------------------------
+            # Separar libro de capítulo:versículo
+            match = re.match(r'^(.+?)\s+(\d+):(\d+)$', ref)
+            
+            if not match:
+                return "⚠️ Formato inválido. Usa: Libro capítulo:versículo"
+            
+            libro_input = match.group(1).strip()
+            cap = int(match.group(2))
+            ver = int(match.group(3))
+            
+        except Exception as e:
+            return f"⚠️ Error al procesar referencia: {str(e)}"
+        
+        # Buscar libro
+        libro = self._buscar_libro(libro_input)
+        
+        if not libro:
+            return f"❌ No se encontró el libro '{libro_input}'. Verifica el nombre."
+        
+        # Buscar capítulo
+        capitulo_encontrado = None
+        for capitulo in libro.get("chapters", []):
+            if capitulo.get("chapter") == cap:
+                capitulo_encontrado = capitulo
+                break
+        
+        if not capitulo_encontrado:
+            return f"❌ {libro.get('name')} no tiene capítulo {cap}"
+        
+        # Buscar versículo
+        for versiculo in capitulo_encontrado.get("verses", []):
+            if versiculo.get("verse") == ver:
+                texto_versiculo = versiculo.get("text", "")
+                return (
+                    f"📖 **{libro.get('name', '').title()} {cap}:{ver}**\n\n"
+                    f"_{texto_versiculo}_"
+                )
+        
+        return f"❌ {libro.get('name')} {cap} no tiene versículo {ver}"
+    
     def versiculo_del_dia(self):
+        """Retorna un versículo aleatorio real cada día"""
+        import random
+        
         hoy = datetime.date.today().isoformat()
-
+        
+        # Verificar si ya se generó hoy
         if (
-            "versiculo_dia_fecha" in st.session_state
-            and st.session_state["versiculo_dia_fecha"] == hoy
+            st.session_state.get("versiculo_dia_fecha") == hoy
+            and st.session_state.get("versiculo_dia_texto")
         ):
             return st.session_state["versiculo_dia_texto"]
-
-        # Elegir aleatoriamente SOLO de libros/capítulos válidos
+        
+        if not self.libros_validos:
+            return "⚠️ No hay libros disponibles"
+        
+        # Elegir aleatoriamente de libros válidos
         libro = random.choice(self.libros_validos)
         capitulo = random.choice(libro["_chapters_validos"])
         versiculo = random.choice(capitulo["verses"])
-
+        
         texto = (
-            f"{libro.get('name','').title()} "
-            f"{capitulo.get('chapter')}:{versiculo.get('verse')}\n\n"
-            f"{versiculo.get('text','')}"
+            f"📖 **{libro.get('name', '').title()} "
+            f"{capitulo.get('chapter')}:{versiculo.get('verse')}**\n\n"
+            f"_{versiculo.get('text', '')}_"
         )
-
+        
+        # Guardar en session_state
         st.session_state["versiculo_dia_fecha"] = hoy
         st.session_state["versiculo_dia_texto"] = texto
+        
         return texto
-
+    
+    # Mantén todos los otros métodos (_cargar_favoritos, agregar_favorito, etc.)
+    # ... resto del código sin cambios ...
 
 # =====================================================
 # HANDLER TAROT CON IA
@@ -5165,5 +5264,6 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
