@@ -1442,8 +1442,6 @@ def cargar_base_datos_biblia():
     """
     DATA_FOLDER = "data"
     BIBLIA_FULL_FILE = os.path.join(DATA_FOLDER, "biblia_completa.json")
-    # Usamos una fuente alternativa más limpia si la anterior da problemas, 
-    # pero primero arreglamos la decodificación de la actual.
     URL_BIBLIA_JSON = "https://raw.githubusercontent.com/thiagobodruk/bible/master/json/es_rvr.json"
     
     os.makedirs(DATA_FOLDER, exist_ok=True)
@@ -1462,19 +1460,14 @@ def cargar_base_datos_biblia():
         response = requests.get(URL_BIBLIA_JSON)
         response.raise_for_status() 
         
-        # --- AQUÍ ESTÁ LA CORRECCIÓN CLAVE ---
-        # Usamos .content.decode('utf-8-sig') en lugar de .json() directo
-        # Esto elimina la marca invisible BOM que causaba el error.
+        # Corrección UTF-8-SIG (BOM)
         datos = json.loads(response.content.decode("utf-8-sig"))
-        # -------------------------------------
         
-        # Guardamos el archivo limpio (sin BOM) para el futuro
         with open(BIBLIA_FULL_FILE, "w", encoding="utf-8") as f:
             json.dump(datos, f, ensure_ascii=False)
         return datos
 
     except Exception as e:
-        # Mensaje de error detallado para depuración
         st.error(f"⚠️ Error técnico descargando la Biblia: {str(e)}")
         return None
 
@@ -1513,7 +1506,7 @@ class RobustBibliaHandler:
 
         query_norm = self._normalizar(query)
         
-        # --- ESTRATEGIA 1: Búsqueda por Referencia (Ej: Daniel 2:23) ---
+        # --- ESTRATEGIA 1: Búsqueda por Referencia ---
         match_ref = re.match(r"(\d?\s?[a-zA-Záéíóúñ]+)\s+(\d+):(\d+)", query)
         
         if match_ref:
@@ -1523,10 +1516,8 @@ class RobustBibliaHandler:
             
             for libro in self.biblia_completa_datos:
                 nombre_libro = self._normalizar(libro['name'])
-                # Buscamos coincidencia en nombre (ej: "daniel" en "el libro de daniel")
                 if libro_input in nombre_libro or (libro.get('abbrev') and libro_input == self._normalizar(libro['abbrev'])):
                     try:
-                        # Validación de índices
                         if cap_input > len(libro['chapters']) or cap_input < 1:
                             return f"📖 El libro de **{libro['name']}** solo tiene {len(libro['chapters'])} capítulos."
                         
@@ -1540,7 +1531,7 @@ class RobustBibliaHandler:
                     except:
                         continue 
 
-        # --- ESTRATEGIA 2: Búsqueda por Texto (Full Text) ---
+        # --- ESTRATEGIA 2: Búsqueda por Texto ---
         resultados_txt = ""
         contador = 0
         for libro in self.biblia_completa_datos:
@@ -1557,7 +1548,7 @@ class RobustBibliaHandler:
             
         return None
 
-    # INTERFAZ PÚBLICA (API)
+    # INTERFAZ PÚBLICA
     def versiculo_del_dia(self):
         hoy = datetime.date.today().isoformat()
         if st.session_state.get("biblia_vdia_date") == hoy and st.session_state.get("biblia_vdia_stored"):
@@ -1571,34 +1562,53 @@ class RobustBibliaHandler:
     def buscar_versiculo_completo(self, ref):
         if not ref: return "🕊️ Escribe una referencia o tema."
         
-        # Intento de búsqueda profunda
         resultado = self._buscar_en_biblia_completa(ref)
         if resultado: return resultado
             
-        # Fallback semántico
         ref_norm = self._normalizar(ref)
         for item in self.BIBLIA_SEMANTICA:
             if any(ref_norm in self._normalizar(t) for t in item['tags']):
                  return f"💖 **Para tu corazón:**\n\n✨ **{item['ref']}**\n_{item['texto']}_"
 
-        return f"No encontré '{ref}' textualmente. Verifica que el libro y capítulo sean correctos en la Reina Valera 1960."
+        return f"No encontré '{ref}' textualmente. Verifica que el libro y capítulo sean correctos."
 
-    # Helpers
-    def generar_devocional_personalizado(self, s): return f"🌿 **Devocional:** Dios escucha tu corazón respecto a '{s}'."
-    def ver_journal_biblico(self): return "Diario en construcción."
+    def generar_devocional_personalizado(self, s):
+        return f"🌿 **Devocional:** Dios escucha tu corazón respecto a '{s}'."
+
+    def ver_journal_biblico(self):
+        return "Diario en construcción."
+
+    # --- CORRECCIÓN DE SINTAXIS EN ESTAS FUNCIONES ---
     def _cargar_favoritos(self):
-        if not os.path.exists(self.FAVORITOS_FILE): return []
-        try: with open(self.FAVORITOS_FILE, "r", encoding="utf-8") as f: return json.load(f)
-        except: return []
+        if not os.path.exists(self.FAVORITOS_FILE):
+            return []
+        try:
+            with open(self.FAVORITOS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return []
+
     def _guardar_favoritos(self, data):
-        with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f: json.dump(data, f, ensure_ascii=False)
+        with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+
     def agregar_favorito(self, referencia, texto):
         favoritos = self._cargar_favoritos()
-        if any(f['referencia'] == referencia for f in favoritos): return False, "Ya existe."
-        favoritos.append({"id": len(favoritos)+1, "referencia": referencia, "texto": texto, "fecha": datetime.datetime.now().strftime("%Y-%m-%d")})
+        if any(f['referencia'] == referencia for f in favoritos):
+            return False, "Ya existe."
+        
+        favoritos.append({
+            "id": len(favoritos)+1, 
+            "referencia": referencia, 
+            "texto": texto, 
+            "fecha": datetime.datetime.now().strftime("%Y-%m-%d")
+        })
         self._guardar_favoritos(favoritos)
         return True, "Agregado ⭐"
-    def ver_favoritos(self): return self._cargar_favoritos()
+
+    def ver_favoritos(self):
+        return self._cargar_favoritos()
+    
     def eliminar_favorito(self, fid):
         data = [f for f in self._cargar_favoritos() if f['id'] != fid]
         self._guardar_favoritos(data)
@@ -5253,6 +5263,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
