@@ -1432,43 +1432,15 @@ class GestorPersonalidades:
         return "Personalidad no encontrada."
 
 class RobustBibliaHandler:
-
     def __init__(self):
         self.DATA_FOLDER = "data"
         self.BIBLIA_FILE = os.path.join(self.DATA_FOLDER, "biblia_completa.json")
-        self.FAVORITOS_FILE = os.path.join(self.DATA_FOLDER, "versiculos_favoritos.json")
         os.makedirs(self.DATA_FOLDER, exist_ok=True)
 
-        self.biblia = self._cargar_biblia()
+        with open(self.BIBLIA_FILE, "r", encoding="utf-8") as f:
+            self.biblia = json.load(f)
 
-    def _cargar_biblia(self):
-        if not os.path.exists(self.BIBLIA_FILE):
-            return []
-        try:
-            with open(self.BIBLIA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            return []
-
-    def versiculo_del_dia(self):
-        hoy = datetime.date.today().isoformat()
-
-        if st.session_state.get("biblia_vdia_date") == hoy:
-            return st.session_state["biblia_vdia_stored"]
-
-        v = random.choice(self.biblia)
-
-        texto = (
-            f"📖 {v['libro']} {v['capitulo']}:{v['versiculo']}\n\n"
-            f"{v['texto']}\n\n"
-            f"🕊️ {v.get('contexto','Reflexiona sobre este mensaje hoy.')}"
-        )
-
-        st.session_state["biblia_vdia_date"] = hoy
-        st.session_state["biblia_vdia_stored"] = texto
-        return texto
-
-      def buscar_versiculo_completo(self, ref):
+    def buscar_versiculo_completo(self, ref):
         try:
             ref = ref.lower().strip()
 
@@ -1481,24 +1453,8 @@ class RobustBibliaHandler:
             cap = int(cap)
             ver = int(ver)
 
-            # Normalizar nombres comunes en español → claves del JSON
-            mapa_libros = {
-                "daniel": "daniel",
-                "salmos": "psalms",
-                "salmo": "psalms",
-                "juan": "john",
-                "mateo": "matthew",
-                "marcos": "mark",
-                "lucas": "luke",
-                "genesis": "genesis",
-                "éxodo": "exodus",
-                "exodo": "exodus"
-            }
-
-            libro_ref = mapa_libros.get(libro_ref, libro_ref)
-
             for libro in self.biblia["books"]:
-                if libro["name"] == libro_ref:
+                if libro["name"].lower() == libro_ref:
                     for capitulo in libro["chapters"]:
                         if capitulo["chapter"] == cap:
                             for versiculo in capitulo["verses"]:
@@ -1512,6 +1468,7 @@ class RobustBibliaHandler:
 
         except Exception:
             return "⚠️ Error al buscar el versículo."
+
 
 # =====================================================
 # HANDLER TAROT CON IA
@@ -5162,6 +5119,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
