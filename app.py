@@ -3148,21 +3148,19 @@ def mostrar_spotify(url):
         url = url.replace("/album/", "/embed/album/")
         url = url.replace("/playlist/", "/embed/playlist/")
 
-    # Renderizar iframe
-    st.markdown(
-        f"""
-        <iframe
-            style="border-radius:12px"
-            src="{url}"
-            width="100%"
-            height="152"
-            frameborder="0"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy">
-        </iframe>
-        """,
-        unsafe_allow_html=True
-    )
+    html = f"""
+    <iframe
+        style="border-radius:12px"
+        src="{url}"
+        width="100%"
+        height="152"
+        frameborder="0"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        loading="lazy">
+    </iframe>
+    """
+
+    st.markdown(html, unsafe_allow_html=True)
 
 # =====================================================
 # 5. INICIALIZACIÓN DE HANDLERS (OPTIMIZADO CON CACHÉ)
@@ -5221,6 +5219,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
