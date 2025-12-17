@@ -1468,21 +1468,34 @@ class RobustBibliaHandler:
         st.session_state["biblia_vdia_stored"] = texto
         return texto
 
-    def buscar_versiculo_completo(self, ref):
+ def buscar_versiculo_completo(self, ref):
+    try:
         ref = ref.lower().strip()
 
-        for v in self.biblia:
-            if ref in v["texto"].lower() or ref in v["libro"].lower():
-                return (
-                    f"{v['libro']} {v['capitulo']}:{v['versiculo']}\n\n"
-                    f"{v['texto']}\n\n"
-                    f"🕊️ {v.get('contexto','Este versículo invita a la reflexión.')}"
-                )
+        # Separar libro y capítulo:versículo
+        if " " not in ref or ":" not in ref:
+            return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
 
-        return "🕊️ No se encontró un versículo exacto."
+        libro_ref, resto = ref.split(" ", 1)
+        cap, ver = resto.split(":")
+        cap = int(cap)
+        ver = int(ver)
 
-    # Lo demás de tu clase (favoritos, journal, etc.) lo dejas tal cual
+        for libro in self.biblia["books"]:
+            if libro["name"].lower() == libro_ref:
+                for capitulo in libro["chapters"]:
+                    if capitulo["chapter"] == cap:
+                        for versiculo in capitulo["verses"]:
+                            if versiculo["verse"] == ver:
+                                return (
+                                    f"{libro['name'].title()} {cap}:{ver}\n\n"
+                                    f"{versiculo['text']}"
+                                )
 
+        return "❌ No se encontró el versículo solicitado."
+
+    except Exception as e:
+        return "⚠️ Error al buscar el versículo."
 
 # =====================================================
 # HANDLER TAROT CON IA
@@ -5133,5 +5146,6 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
