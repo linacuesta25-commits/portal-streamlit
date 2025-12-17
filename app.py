@@ -1432,40 +1432,39 @@ class GestorPersonalidades:
         return "Personalidad no encontrada."
 
 class RobustBibliaHandler:
+
     def __init__(self):
         self.DATA_FOLDER = "data"
-        self.BIBLIA_FILE = os.path.join(self.DATA_FOLDER, "biblia_completa.json")
-        os.makedirs(self.DATA_FOLDER, exist_ok=True)
+        self.BIBLIA_FILE = "data/biblia_completa.json"
 
         with open(self.BIBLIA_FILE, "r", encoding="utf-8") as f:
             self.biblia = json.load(f)
 
-       def buscar_versiculo_completo(self, ref):
+    def buscar_versiculo_completo(self, ref):
+        ref = ref.strip()
+
+        if ":" not in ref:
+            return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
+
         try:
-            ref = ref.lower().strip()
-
-            if ":" not in ref:
-                return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
-
-            partes = ref.split()
-            cap, ver = partes[-1].split(":")
+            libro_input, resto = ref.rsplit(" ", 1)
+            cap, ver = resto.split(":")
             cap = int(cap)
             ver = int(ver)
+        except:
+            return "⚠️ Formato inválido. Usa Libro capítulo:versículo."
 
-            for libro in self.biblia["books"]:
-                for capitulo in libro.get("chapters", []):
-                    if capitulo.get("chapter") == cap:
-                        for versiculo in capitulo.get("verses", []):
-                            if versiculo.get("verse") == ver:
-                                return (
-                                    f"{libro['name'].title()} {cap}:{ver}\n\n"
-                                    f"{versiculo.get('text','')}"
-                                )
+        for libro in self.biblia.get("books", []):
+            for capitulo in libro.get("chapters", []):
+                if capitulo.get("chapter") == cap:
+                    for versiculo in capitulo.get("verses", []):
+                        if versiculo.get("verse") == ver:
+                            return (
+                                f"{libro.get('name','').title()} {cap}:{ver}\n\n"
+                                f"{versiculo.get('text','')}"
+                            )
 
-            return "❌ No se encontró el versículo solicitado."
-
-        except Exception as e:
-            return "⚠️ Error al buscar el versículo."
+        return "❌ No se encontró el versículo solicitado."
 
 
 # =====================================================
@@ -5117,6 +5116,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
