@@ -3136,14 +3136,13 @@ def render_spotify_persistente():
     </style>
     
 def mostrar_spotify(url):
-    # Auto-corrige el enlace para que sea "embed" si es necesario
-    # (Asegúrate de que tu lógica de reemplazo sea correcta para tu caso específico)
+    # Lógica de corrección de URL
     if "open.spotify.com" in url and "embed" not in url:
-         url = url.replace("/track/", "/embed/track/")
-         url = url.replace("/album/", "/embed/album/")
-         url = url.replace("/playlist/", "/embed/playlist/")
+        url = url.replace("/track/", "/embed/track/")
+        url = url.replace("/album/", "/embed/album/")
+        url = url.replace("/playlist/", "/embed/playlist/")
     
-    # Renderizar el iframe directamente
+    # CÓDIGO CORRECTO: Todo el HTML está dentro de las tres comillas f""" ... """
     st.markdown(f"""
         <iframe style="border-radius:12px" src="{url}" width="100%" height="352" 
         frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
@@ -5206,6 +5205,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
