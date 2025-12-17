@@ -1450,14 +1450,14 @@ class RobustBibliaHandler:
     # --------------------------------------------------
     # 🔍 Buscar versículo exacto
     # --------------------------------------------------
-    def buscar_versiculo_completo(self, ref):
-        ref = ref.strip()
+      def buscar_versiculo_completo(self, ref):
+        ref = ref.strip().lower()
 
-        if ":" not in ref:
+        if ":" not in ref or " " not in ref:
             return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
 
         try:
-            _, resto = ref.rsplit(" ", 1)
+            libro_input, resto = ref.rsplit(" ", 1)
             cap, ver = resto.split(":")
             cap = int(cap)
             ver = int(ver)
@@ -1465,6 +1465,11 @@ class RobustBibliaHandler:
             return "⚠️ Formato inválido. Usa Libro capítulo:versículo."
 
         for libro in self.libros:
+            nombre_libro = libro.get("name", "").lower()
+
+            if nombre_libro != libro_input:
+                continue
+
             for capitulo in libro.get("chapters", []):
                 if capitulo.get("chapter") == cap:
                     for versiculo in capitulo.get("verses", []):
@@ -1479,7 +1484,7 @@ class RobustBibliaHandler:
     # --------------------------------------------------
     # 🌅 Versículo del día (real, no inventado)
     # --------------------------------------------------
-    def versiculo_del_dia(self):
+      def versiculo_del_dia(self):
         import datetime, random
         import streamlit as st
 
@@ -1491,10 +1496,22 @@ class RobustBibliaHandler:
         ):
             return st.session_state["versiculo_dia_texto"]
 
-        # Elegir un versículo real al azar
-        libro = random.choice(self.libros)
-        capitulo = random.choice(libro.get("chapters", []))
-        versiculo = random.choice(capitulo.get("verses", []))
+        # Libros que realmente tienen capítulos
+        libros_validos = [
+            libro for libro in self.libros
+            if libro.get("chapters")
+        ]
+
+        libro = random.choice(libros_validos)
+
+        # Capítulos que realmente tienen versículos
+        capitulos_validos = [
+            cap for cap in libro["chapters"]
+            if cap.get("verses")
+        ]
+
+        capitulo = random.choice(capitulos_validos)
+        versiculo = random.choice(capitulo["verses"])
 
         texto = (
             f"{libro.get('name','').title()} "
@@ -5157,6 +5174,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
