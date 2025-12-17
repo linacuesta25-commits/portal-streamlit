@@ -3184,7 +3184,7 @@ biblia = biblia_handler
 # =====================================================
 # 6. NAVEGACIÓN PRINCIPAL
 # =====================================================
-CONTRASENA = "portal123"
+CONTRASENA = "portal1058*"
 st.markdown('<div class="top-banner">✨ Tu refugio de magia, intuición y energía ✨</div>', unsafe_allow_html=True)
 
 if not st.session_state.login:
@@ -5207,3 +5207,4 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
