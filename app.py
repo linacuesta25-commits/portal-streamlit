@@ -1431,7 +1431,7 @@ class GestorPersonalidades:
             return self.PERSONALIDADES[nombre]
         return "Personalidad no encontrada."
 
-cclass RobustBibliaHandler:
+class RobustBibliaHandler:
     def __init__(self):
         self.DATA_FOLDER = "data"
         self.BIBLIA_FILE = "data/biblia_completa.json"
@@ -5165,4 +5165,5 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
