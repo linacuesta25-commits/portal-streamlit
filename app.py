@@ -1456,22 +1456,108 @@ class RobustBibliaHandler:
     def _guardar_favoritos(self, favoritos):
         with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f:
             json.dump(favoritos, f, indent=2, ensure_ascii=False)
-
+    
     def versiculo_del_dia(self):
         hoy = datetime.date.today().isoformat()
         if st.session_state.get("biblia_vdia_date") == hoy and st.session_state.get("biblia_vdia_stored"):
             return st.session_state["biblia_vdia_stored"]
-        nuevo_v = f"📖 {random.choice(self.VERSICULOS_POOL_DIARIO)}"
+        
+        versiculos_enriquecidos = [
+            {
+                "referencia": "Salmos 23:1",
+                "texto": "Jehová es mi pastor; nada me faltará.",
+                "reflexion": "Este versículo nos recuerda que Dios provee todo lo que necesitamos. No habla de deseos, sino de necesidades. Cuando David dice 'nada me faltará', está declarando confianza absoluta en la provisión divina, incluso en momentos de escasez.",
+                "aplicacion": "¿Qué área de tu vida necesita que confíes más en la provisión divina? Hoy, cada vez que sientas ansiedad por el futuro, recuerda estas palabras: 'Nada me faltará'. Respira profundo y declara confianza.",
+                "oracion": "Señor, ayúdame a confiar en que Tú eres mi pastor y que nada me faltará. Libérame de la ansiedad por el mañana. Que mi corazón descanse en tu cuidado. Amén."
+            },
+            {
+                "referencia": "Filipenses 4:13",
+                "texto": "Todo lo puedo en Cristo que me fortalece.",
+                "reflexion": "Pablo escribió esto desde una prisión, no desde un palacio. Su fortaleza no venía de circunstancias cómodas, sino de una conexión profunda con Cristo. Este versículo no es sobre hacer todo lo que queremos, sino sobre tener fuerza divina para lo que Dios nos llama a hacer.",
+                "aplicacion": "¿Qué desafío enfrentas hoy que parece imposible? No estás sola. La fortaleza no viene de ti, viene a través de ti cuando te conectas con lo divino. Da el primer paso, aunque no veas el camino completo.",
+                "oracion": "Cristo, necesito tu fortaleza hoy. Reconozco que por mí misma no puedo, pero contigo todo es posible. Dame valentía para enfrentar lo que viene. Amén."
+            },
+            {
+                "referencia": "Proverbios 3:5-6",
+                "texto": "Confía en Jehová con todo tu corazón, y no te apoyes en tu propia prudencia. Reconócelo en todos tus caminos, y él enderezará tus veredas.",
+                "reflexion": "Este pasaje nos invita a soltar el control. 'No te apoyes en tu propia prudencia' no significa no usar la razón, sino no depender SOLO de ella. A veces, el camino correcto no tiene sentido lógico al principio, pero tiene sentido espiritual.",
+                "aplicacion": "¿En qué área estás intentando controlarlo todo? Hoy, practica soltar. Reconoce que hay un plan mayor que tu entendimiento. Confía en el proceso, incluso cuando no veas el panorama completo.",
+                "oracion": "Señor, suelto mi necesidad de entenderlo todo. Confío en que tus caminos son más altos que los míos. Guía mis pasos hoy, aunque no vea el destino. Amén."
+            },
+            {
+                "referencia": "Isaías 40:31",
+                "texto": "Pero los que esperan en Jehová tendrán nuevas fuerzas; levantarán alas como las águilas; correrán, y no se cansarán; caminarán, y no se fatigarán.",
+                "reflexion": "Esperar en Dios no es pasividad, es expectativa activa. Las águilas no aletean constantemente; usan las corrientes térmicas para elevarse. Así funciona la fe: aprendes a moverte con la gracia divina, no contra ella.",
+                "aplicacion": "¿Estás agotada de tanto esfuerzo? Tal vez es momento de cambiar el 'modo'. No más forzar. Hoy, busca las 'corrientes térmicas' - esos momentos de gracia que te elevan sin esfuerzo excesivo.",
+                "oracion": "Padre, estoy cansada de luchar sola. Enséñame a esperar en ti, a moverme con tu gracia y no contra ella. Renueva mis fuerzas hoy. Amén."
+            },
+            {
+                "referencia": "Juan 14:27",
+                "texto": "La paz os dejo, mi paz os doy; yo no os la doy como el mundo la da. No se turbe vuestro corazón, ni tenga miedo.",
+                "reflexion": "La paz del mundo es condicional: 'Tendré paz cuando consiga X'. La paz de Cristo es incondicional: es un estado del ser, no un resultado de circunstancias. Jesús ofreció esta paz horas antes de ser crucificado - eso es paz real.",
+                "aplicacion": "¿De qué depende tu paz ahora mismo? ¿De que algo salga bien? ¿De que alguien cambie? La paz divina existe ANTES de que las cosas se resuelvan. Puedes elegirla ahora, no después.",
+                "oracion": "Jesús, necesito tu paz que sobrepasa todo entendimiento. No la paz del mundo, sino tu paz incondicional. Que mi corazón deje de turbarse. Amén."
+            },
+            {
+                "referencia": "Romanos 8:28",
+                "texto": "Y sabemos que a los que aman a Dios, todas las cosas les ayudan a bien.",
+                "reflexion": "Este versículo no dice que todas las cosas SON buenas, sino que ayudan a bien. Dios tiene la habilidad de tomar incluso nuestros errores, dolor y caos, y tejer algo hermoso con ellos. Tu historia no ha terminado.",
+                "aplicacion": "¿Qué situación difícil estás viviendo ahora? Aunque no lo veas, hay un hilo de redención tejiéndose. No tienes que entenderlo hoy, solo confiar que existe un propósito mayor.",
+                "oracion": "Dios, confío en que estás trabajando en mi situación, aunque no vea cómo. Ayúdame a creer que algo bueno viene de esto. Amén."
+            },
+            {
+                "referencia": "Josué 1:9",
+                "texto": "Mira que te mando que te esfuerces y seas valiente; no temas ni desmayes, porque Jehová tu Dios estará contigo en dondequiera que vayas.",
+                "reflexion": "La valentía no es ausencia de miedo, es acción a pesar del miedo. Dios no nos pide que no sintamos miedo, nos pide que no dejemos que el miedo nos detenga. Hay una diferencia enorme.",
+                "aplicacion": "¿Qué te está deteniendo por miedo? Dios no te pide que lo hagas sola, te promete ir contigo. Identifica un paso pequeño que puedes dar hoy, aunque tengas miedo.",
+                "oracion": "Señor, dame valentía para enfrentar lo que me asusta. Recuérdame que no voy sola, que tú estás conmigo en cada paso. Amén."
+            }
+        ]
+        
+        random.seed(hoy)
+        versiculo = random.choice(versiculos_enriquecidos)
+        random.seed()
+        
+        resultado = f"""**🌅 VERSÍCULO DEL DÍA**
+
+📖 **{versiculo['referencia']}**
+
+---
+
+**"{versiculo['texto']}"**
+
+---
+
+**💡 REFLEXIÓN:**
+
+{versiculo['reflexion']}
+
+---
+
+**🎯 APLICACIÓN HOY:**
+
+{versiculo['aplicacion']}
+
+---
+
+**✨ ORACIÓN:**
+
+_{versiculo['oracion']}_
+"""
+        
         st.session_state["biblia_vdia_date"] = hoy
-        st.session_state["biblia_vdia_stored"] = nuevo_v
-        return nuevo_v
+        st.session_state["biblia_vdia_stored"] = resultado
+        return resultado
+    
     def buscar_versiculo_completo(self, ref):
         try:
             ref_clean = ref.lower().strip()
             if ref_clean in self.VERSICULOS_DB: return self.VERSICULOS_DB[ref_clean]
             return f"🕊️ (Generado): Confía en la palabra para '{ref}'."
         except: return "La luz brilla en la oscuridad."
+    
     def generar_devocional_personalizado(self, s): return f"Ante '{s}', ten fe."
+    
     def ver_journal_biblico(self): return "Diario vacío."
     
     def agregar_favorito(self, referencia, texto):
@@ -1507,7 +1593,6 @@ class RobustBibliaHandler:
         favoritos = [f for f in favoritos if f['id'] != favorito_id]
         self._guardar_favoritos(favoritos)
         return True
-
 
 # =====================================================
 # HANDLER TAROT CON IA
