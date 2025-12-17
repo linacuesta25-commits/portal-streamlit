@@ -3136,18 +3136,34 @@ def render_spotify_persistente():
     </style>
     
 def mostrar_spotify(url):
-    # Lógica de corrección de URL
+    import streamlit as st
+
+    if not url:
+        st.warning("⚠️ No se proporcionó una URL de Spotify.")
+        return
+
+    # Convertir URL normal a embed si es necesario
     if "open.spotify.com" in url and "embed" not in url:
         url = url.replace("/track/", "/embed/track/")
         url = url.replace("/album/", "/embed/album/")
         url = url.replace("/playlist/", "/embed/playlist/")
-    
-    # CÓDIGO CORRECTO: Todo el HTML está dentro de las tres comillas f""" ... """
-    st.markdown(f"""
-        <iframe style="border-radius:12px" src="{url}" width="100%" height="352" 
-        frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-        loading="lazy"></iframe>
-    """, unsafe_allow_html=True)
+
+    # Renderizar iframe
+    st.markdown(
+        f"""
+        <iframe
+            style="border-radius:12px"
+            src="{url}"
+            width="100%"
+            height="152"
+            frameborder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy">
+        </iframe>
+        """,
+        unsafe_allow_html=True
+    )
+
 # =====================================================
 # 5. INICIALIZACIÓN DE HANDLERS (OPTIMIZADO CON CACHÉ)
 # =====================================================
@@ -5205,6 +5221,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
