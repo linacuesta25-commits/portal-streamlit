@@ -3135,31 +3135,18 @@ def render_spotify_persistente():
         }
     </style>
     
-   spotify_html = """
-<div class="spotify-container">
-    <iframe
-        style="border-radius:12px"
-        src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4sWSpwq3LiO?theme=0"
-        width="100%"
-        height="152"
-        frameborder="0"
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-        loading="lazy">
-    </iframe>
-</div>
-
-<style>
-.spotify-container {
-    position: relative;
-    border-radius: 14px;
-    padding: 10px;
-    background-image: url("https://i.scdn.co/image/ab67706c0000bebb9b08f6a1f8d5cdb0e9b8f4c6");
-    background-size: cover;
-    background-position: center;
-    backdrop-filter: blur(12px);
-}
-</style>
-""" 
+def mostrar_spotify(url):
+    # Auto-corrige el enlace para que sea "embed"
+    if "spotify.com" in url and "embed" not in url:
+        # Lógica simple para convertir link de share a link de embed
+        # Ejemplo: open.spotify.com/playlist/ID -> open.spotify.com/embed/playlist/ID
+        url = url.replace("spotify.com/", "spotify.com/embed/")
+    
+    st.markdown(f"""
+        <iframe style="border-radius:12px" src="{url}" width="100%" height="352" 
+        frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+        loading="lazy"></iframe>
+    """, unsafe_allow_html=True)
     components.html(spotify_html, height=180, scrolling=False)
 # =====================================================
 # 5. INICIALIZACIÓN DE HANDLERS (OPTIMIZADO CON CACHÉ)
@@ -5218,6 +5205,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
