@@ -1,0 +1,16 @@
+[
+  {
+    "libro": "Salmos",
+    "capitulo": 23,
+    "versiculo": 1,
+    "texto": "Jehová es mi pastor; nada me faltará.",
+    "contexto": "Este salmo expresa confianza total en Dios como guía y protector."
+  },
+  {
+    "libro": "Juan",
+    "capitulo": 3,
+    "versiculo": 16,
+    "texto": "Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito...",
+    "contexto": "Jesús habla del amor de Dios y la promesa de vida eterna."
+  }
+]
