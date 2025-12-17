@@ -1432,206 +1432,185 @@ class GestorPersonalidades:
         return "Personalidad no encontrada."
 
 class RobustBibliaHandler:
-    # -------------------------------------------------------------------------
-    # MEJORA 1: DATASET EXPANDIDO (Simulación de Base de Datos Completa)
-    # -------------------------------------------------------------------------
-    # Mantenemos VERSICULOS_DB para retrocompatibilidad, pero lo poblamos
-    # con datos mucho más ricos internamente.
-    VERSICULOS_DB = {} 
+    # URL estable de la Biblia Reina Valera 1960 en JSON (Fuente pública GitHub)
+    URL_BIBLIA_JSON = "https://raw.githubusercontent.com/thiagobodruk/bible/master/json/es_rvr.json"
     
     def __init__(self):
         self.DATA_FOLDER = "data"
         self.FAVORITOS_FILE = os.path.join(self.DATA_FOLDER, "versiculos_favoritos.json")
+        self.BIBLIA_FULL_FILE = os.path.join(self.DATA_FOLDER, "biblia_completa.json")
         os.makedirs(self.DATA_FOLDER, exist_ok=True)
         
-        # Inicializamos la "Base de Datos" extendida en memoria
-        self._inicializar_contenido_biblico()
-
-    def _inicializar_contenido_biblico(self):
-        """
-        Carga un dataset robusto de versículos categorizados para búsqueda semántica.
-        Esto soluciona el problema de contenido 'pobre'.
-        """
-        self.BIBLIA_EXTENDIDA = [
-            {"ref": "Juan 3:16", "texto": "Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito, para que todo aquel que en él cree, no se pierda, mas tenga vida eterna.", "tags": ["amor", "salvación", "esperanza", "vida eterna"]},
-            {"ref": "Salmos 23:1", "texto": "Jehová es mi pastor; nada me faltará. En lugares de delicados pastos me hará descansar.", "tags": ["paz", "provision", "ansiedad", "descanso", "miedo"]},
-            {"ref": "Filipenses 4:13", "texto": "Todo lo puedo en Cristo que me fortalece.", "tags": ["fuerza", "animo", "superacion", "fe"]},
-            {"ref": "Isaías 41:10", "texto": "No temas, porque yo estoy contigo; no desmayes, porque yo soy tu Dios que te esfuerzo; siempre te ayudaré, siempre te sustentaré.", "tags": ["miedo", "soledad", "ansiedad", "ayuda"]},
-            {"ref": "Jeremías 29:11", "texto": "Porque yo sé los pensamientos que tengo acerca de vosotros, dice Jehová, pensamientos de paz, y no de mal, para daros el fin que esperáis.", "tags": ["futuro", "proposito", "esperanza", "planes"]},
-            {"ref": "Mateo 11:28", "texto": "Venid a mí todos los que estáis trabajados y cargados, y yo os haré descansar.", "tags": ["cansancio", "estres", "descanso", "paz"]},
-            {"ref": "Romanos 8:28", "texto": "Y sabemos que a los que aman a Dios, todas las cosas les ayudan a bien.", "tags": ["confianza", "problemas", "proposito", "bien"]},
-            {"ref": "Proverbios 3:5-6", "texto": "Fíate de Jehová de todo tu corazón, y no te apoyes en tu propia prudencia.", "tags": ["sabiduria", "direccion", "confianza", "decisiones"]},
-            {"ref": "Josué 1:9", "texto": "Mira que te mando que te esfuerces y seas valiente; no temas ni desmayes, porque Jehová tu Dios estará contigo.", "tags": ["valentia", "nuevo trabajo", "desafio", "miedo"]},
-            {"ref": "Salmos 46:1", "texto": "Dios es nuestro amparo y fortaleza, nuestro pronto auxilio en las tribulaciones.", "tags": ["refugio", "seguridad", "peligro", "proteccion"]},
-            {"ref": "1 Corintios 13:4-7", "texto": "El amor es sufrido, es benigno; el amor no tiene envidia, el amor no es jactancioso, no se envanece...", "tags": ["amor", "matrimonio", "relaciones", "paciencia"]},
-            {"ref": "2 Timoteo 1:7", "texto": "Porque no nos ha dado Dios espíritu de cobardía, sino de poder, de amor y de dominio propio.", "tags": ["miedo", "autocontrol", "mentoria", "liderazgo"]},
-            {"ref": "Salmos 91:4", "texto": "Con sus plumas te cubrirá, y debajo de sus alas estarás seguro; escudo y adarga es su verdad.", "tags": ["proteccion", "seguridad", "noche", "miedo"]},
-            {"ref": "Mateo 6:34", "texto": "Así que, no os afanéis por el día de mañana, porque el día de mañana traerá su afán. Basta a cada día su propio mal.", "tags": ["ansiedad", "futuro", "preocupacion", "presente"]},
-            {"ref": "Salmos 34:18", "texto": "Cercano está Jehová a los quebrantados de corazón; y salva a los contritos de espíritu.", "tags": ["tristeza", "depresion", "dolor", "consuelo"]}
-        ]
+        # 1. Inicializar contenido curado (rápido y con tags emocionales)
+        self._inicializar_contenido_curado()
         
-        # Mapeo rápido para compatibilidad con código antiguo
-        for v in self.BIBLIA_EXTENDIDA:
-            self.VERSICULOS_DB[v["ref"].lower()] = v["texto"]
+        # 2. Intentar cargar la Biblia completa (31,000+ versículos)
+        self.biblia_completa_datos = self._cargar_o_descargar_biblia()
 
-        # Pool diario con reflexiones asociadas
+    def _inicializar_contenido_curado(self):
+        """Contenido de alta calidad para versículo del día y búsquedas rápidas"""
         self.VERSICULOS_POOL_DIARIO = [
-            {"v": "Lamentaciones 3:22-23", "t": "Por la misericordia de Jehová no hemos sido consumidos, porque nunca decayeron sus misericordias. Nuevas son cada mañana.", "r": "Cada amanecer es un lienzo en blanco pintado por la gracia de Dios. No importan los errores de ayer, hoy tienes una nueva oportunidad."},
-            {"v": "Isaías 43:2", "t": "Cuando pases por las aguas, yo estaré contigo; y si por los ríos, no te anegarán.", "r": "La promesa no es la ausencia de problemas, sino la presencia de Dios en medio de ellos. No estás nadando solo/a."},
-            {"v": "Salmos 121:1-2", "t": "Alzaré mis ojos a los montes; ¿De dónde vendrá mi socorro? Mi socorro viene de Jehová.", "r": "A veces buscamos ayuda en lo horizontal, pero tu verdadera fuente de poder viene de lo vertical. Mira hacia arriba."},
-            {"v": "Juan 14:27", "t": "La paz os dejo, mi paz os doy; yo no os la doy como el mundo la da.", "r": "La paz del mundo depende de las circunstancias; la paz de Dios permanece a pesar de ellas. Respira profundo, Él tiene el control."}
+             {"v": "Lamentaciones 3:22-23", "t": "Por la misericordia de Jehová no hemos sido consumidos...", "r": "Cada amanecer es un lienzo en blanco pintado por la gracia de Dios."},
+             {"v": "Salmos 23:1", "t": "Jehová es mi pastor; nada me faltará.", "r": "No es que no tendrás necesidades, es que tendrás quien las supla."},
+             {"v": "Filipenses 4:13", "t": "Todo lo puedo en Cristo que me fortalece.", "r": "Tu fuerza no viene de tu capacidad, sino de tu conexión con Él."},
+             {"v": "Josué 1:9", "t": "Mira que te mando que te esfuerces y seas valiente...", "r": "La valentía no es la ausencia de miedo, es avanzar confiando en que Dios va contigo."}
+        ]
+        # Dataset semántico para emociones
+        self.BIBLIA_SEMANTICA = [
+            {"ref": "Isaías 41:10", "texto": "No temas, porque yo estoy contigo...", "tags": ["miedo", "ansiedad", "soledad"]},
+            {"ref": "Jeremías 29:11", "texto": "Porque yo sé los pensamientos que tengo acerca de vosotros...", "tags": ["futuro", "esperanza", "planes"]},
+            {"ref": "Mateo 11:28", "texto": "Venid a mí todos los que estáis trabajados...", "tags": ["cansancio", "estres", "descanso"]}
         ]
 
-    def _cargar_favoritos(self):
-        if not os.path.exists(self.FAVORITOS_FILE):
-            return []
+    def _cargar_o_descargar_biblia(self):
+        """
+        Lógica Senior: Verifica si tenemos la Biblia completa localmente.
+        Si no, la descarga silenciosamente de GitHub.
+        """
+        if os.path.exists(self.BIBLIA_FULL_FILE):
+            try:
+                with open(self.BIBLIA_FULL_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except:
+                return None # Archivo corrupto, fallback a modo simple
+        
+        # Si no existe, intentamos descargar
         try:
-            with open(self.FAVORITOS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            return []
-    
-    def _guardar_favoritos(self, favoritos):
-        with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f:
-            json.dump(favoritos, f, indent=2, ensure_ascii=False)
+            with st.spinner("🚀 Configurando base de datos bíblica completa (solo la primera vez)..."):
+                response = requests.get(self.URL_BIBLIA_JSON)
+                if response.status_code == 200:
+                    datos = response.json()
+                    with open(self.BIBLIA_FULL_FILE, "w", encoding="utf-8") as f:
+                        json.dump(datos, f, ensure_ascii=False)
+                    return datos
+        except Exception as e:
+            # Si falla (sin internet), no rompemos la app, solo devolvemos None
+            print(f"Aviso: No se pudo descargar la Biblia completa: {e}")
+            return None
+        return None
+
+    def _buscar_en_biblia_completa(self, query):
+        """Busca en el dataset masivo de 31k versículos"""
+        if not self.biblia_completa_datos:
+            return None
+
+        query = query.lower().strip()
+        resultados = []
+        
+        # Lógica para detectar referencia (ej: "juan 3:16")
+        # Estructura del JSON esperado: lista de libros -> capitulos -> versiculos
+        match_ref = re.match(r"(\d?\s?[a-zA-Záéíóúñ]+)\s+(\d+):(\d+)", query)
+        
+        if match_ref:
+            # Búsqueda EXACTA por referencia
+            libro_buscado = match_ref.group(1).lower()
+            cap_buscado = int(match_ref.group(2)) - 1 # Array index 0
+            ver_buscado = int(match_ref.group(3)) - 1
+            
+            for libro in self.biblia_completa_datos:
+                # Normalizamos nombres (quitamos tildes para comparar mejor si fuera necesario)
+                if libro_buscado in libro['name'].lower() or (libro.get('abbrev') and libro_buscado == libro['abbrev']):
+                    try:
+                        texto = libro['chapters'][cap_buscado][ver_buscado]
+                        return f"📖 **{libro['name']} {cap_buscado+1}:{ver_buscado+1}**\n\n{texto}"
+                    except IndexError:
+                        return "Ese capítulo o versículo no existe en este libro."
+        
+        # Búsqueda por PALABRA CLAVE (Full Text Search)
+        # Limitamos a 5 resultados para no saturar
+        contador = 0
+        txt_res = ""
+        
+        for libro in self.biblia_completa_datos:
+            for i_cap, capitulo in enumerate(libro['chapters']):
+                for i_ver, versiculo in enumerate(capitulo):
+                    if query in versiculo.lower():
+                        txt_res += f"✨ **{libro['name']} {i_cap+1}:{i_ver+1}**\n_{versiculo}_\n\n"
+                        contador += 1
+                        if contador >= 5:
+                            return f"🔎 **Resultados para '{query}' (Biblia Completa):**\n\n{txt_res}\n*(Se muestran los primeros 5 resultados)*"
+        
+        if txt_res:
+            return f"🔎 **Resultados para '{query}':**\n\n{txt_res}"
+            
+        return None
 
     # -------------------------------------------------------------------------
-    # MEJORA 2: VERSÍCULO DEL DÍA (Profundidad y Reflexión)
+    # FUNCIONES PÚBLICAS (Interfaz)
     # -------------------------------------------------------------------------
+    
     def versiculo_del_dia(self):
-        """
-        Selecciona un versículo basado en una rotación más amplia y añade
-        una breve reflexión espiritual contextual.
-        """
         hoy = datetime.date.today().isoformat()
-        
-        # Sistema de caché diario para que no cambie al recargar la página
         if st.session_state.get("biblia_vdia_date") == hoy and st.session_state.get("biblia_vdia_stored"):
             return st.session_state["biblia_vdia_stored"]
-        
-        # Selección aleatoria del pool enriquecido
+            
         item = random.choice(self.VERSICULOS_POOL_DIARIO)
-        
-        # Formateo visual rico
-        contenido_formateado = (
+        contenido = (
             f"🌟 **Versículo de Hoy:**\n\n"
             f"_{item['t']}_\n"
             f"**— {item['v']}**\n\n"
             f"💡 *Reflexión:* {item['r']}"
         )
-        
         st.session_state["biblia_vdia_date"] = hoy
-        st.session_state["biblia_vdia_stored"] = contenido_formateado
-        return contenido_formateado
+        st.session_state["biblia_vdia_stored"] = contenido
+        return contenido
 
-    # -------------------------------------------------------------------------
-    # MEJORA 3: BUSCADOR UNIVERSAL (Semántico y Flexible)
-    # -------------------------------------------------------------------------
     def buscar_versiculo_completo(self, ref):
-        """
-        Motor de búsqueda mejorado. Busca por referencia, contenido exacto,
-        palabras clave o temas emocionales (ej: 'ansiedad').
-        """
-        try:
-            if not ref:
-                return "🕊️ Por favor, escribe un tema, una emoción o una cita bíblica para buscar."
+        """Buscador Inteligente Híbrido"""
+        if not ref:
+            return "🕊️ Escribe un tema o cita bíblica."
 
-            query = ref.lower().strip()
-            resultados = []
+        # 1. Intentar búsqueda semántica curada (Mejor para emociones)
+        ref_lower = ref.lower()
+        for item in self.BIBLIA_SEMANTICA:
+            if ref_lower in item['tags'] or ref_lower in item['texto'].lower():
+                return f"💖 **Sugerencia Espiritual:**\n\n✨ **{item['ref']}**\n_{item['texto']}_"
 
-            # 1. Búsqueda directa por Referencia (ej: "juan 3:16")
-            if query in self.VERSICULOS_DB:
-                return f"📖 **{ref.title()}**\n\n{self.VERSICULOS_DB[query]}"
+        # 2. Intentar búsqueda en la Biblia Completa (Dataset descargado)
+        resultado_full = self._buscar_en_biblia_completa(ref)
+        if resultado_full:
+            return resultado_full
 
-            # 2. Búsqueda profunda (Iterar sobre la colección extendida)
-            for item in self.BIBLIA_EXTENDIDA:
-                # Coincidencia en el texto del versículo
-                if query in item["texto"].lower():
-                    resultados.append(item)
-                    continue # Ya lo agregamos
-                
-                # Coincidencia en la referencia (ej: buscar "salmos")
-                if query in item["ref"].lower():
-                    resultados.append(item)
-                    continue
+        # 3. Fallback espiritual
+        return (f"No encontré '{ref}' textualmente, pero recuerda: "
+                f"**'Clama a mí, y yo te responderé' (Jeremías 33:3)**. "
+                f"Intenta buscar palabras como 'fe', 'amor' o el libro exacto.")
 
-                # Coincidencia en TAGS (Semántica: "miedo", "amor")
-                if any(query in tag for tag in item["tags"]):
-                    resultados.append(item)
-                    continue
-
-            # 3. Procesamiento de resultados
-            if resultados:
-                # Si hay muchos, mostramos los 3 más relevantes aleatoriamente para variedad
-                seleccion = resultados[:3] 
-                respuesta = f"🔎 **Encontré esto para ti sobre '{ref}':**\n\n"
-                for res in seleccion:
-                    respuesta += f"✨ **{res['ref']}**\n_{res['texto']}_\n\n"
-                return respuesta
-
-            # 4. Fallback espiritual (Si no encuentra nada)
-            fallback_msgs = [
-                f"No encontré una coincidencia exacta para '{ref}', pero recuerda que **Dios tiene el control**.",
-                f"A veces la respuesta no está escrita textualmente, pero la paz llega orando. Intenta buscar 'paz' o 'amor'.",
-                f"🕊️ Tu búsqueda de '{ref}' es válida. Quizás intenta con una palabra más general como 'fe' o 'esperanza'."
-            ]
-            return random.choice(fallback_msgs)
-
-        except Exception as e:
-            return "La luz brilla en la oscuridad. Intenta tu búsqueda nuevamente."
-
-    # -------------------------------------------------------------------------
-    # MEJORA 4: DEVOCIONAL (Lenguaje más humano y cálido)
-    # -------------------------------------------------------------------------
     def generar_devocional_personalizado(self, s):
-        """Genera un pequeño texto de ánimo basado en el input del usuario."""
-        if not s:
-            return "Dime, ¿cómo te sientes hoy? Estoy aquí para escuchar."
-            
-        return (f"🌿 **Devocional para tu momento:**\n\n"
-                f"Entiendo que estás pensando en '{s}'. "
-                f"A veces, solo necesitamos detenernos y respirar. "
-                f"Recuerda que tu fe es como una semilla; aunque hoy parezca pequeña ante esta situación, "
-                f"tiene el potencial de mover montañas. Tómate un momento ahora mismo para soltar esa carga.")
+        return f"🌿 **Palabra para ti:**\n\nAnte '{s}', respira paz. Dios obra en el silencio."
 
     def ver_journal_biblico(self):
-        return "Tu diario espiritual está listo para recibir tus pensamientos. (Funcionalidad en expansión)."
-    
-    # -------------------------------------------------------------------------
-    # FUNCIONES ORIGINALES INTACTAS (Favoritos)
-    # -------------------------------------------------------------------------
+        return "Tu diario espiritual (Próximamente)."
+
     def agregar_favorito(self, referencia, texto):
-        """Agrega un versículo a favoritos"""
         favoritos = self._cargar_favoritos()
-        
-        # Verificar si ya existe
-        existe = any(f['referencia'].lower() == referencia.lower() for f in favoritos)
-        if existe:
-            return False, "Este versículo ya está guardado en tu corazón (y en favoritos)."
-        
-        nuevo_favorito = {
-            "id": len(favoritos) + 1,
-            "referencia": referencia,
-            "texto": texto,
-            "fecha_agregado": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-        }
-        
-        favoritos.append(nuevo_favorito)
+        if any(f['referencia'] == referencia for f in favoritos):
+            return False, "Ya está en favoritos."
+        favoritos.append({
+            "id": len(favoritos)+1, 
+            "referencia": referencia, 
+            "texto": texto, 
+            "fecha": datetime.datetime.now().strftime("%Y-%m-%d")
+        })
         self._guardar_favoritos(favoritos)
-        return True, "Versículo guardado en favoritos ⭐"
-    
+        return True, "Guardado ⭐"
+
+    def _cargar_favoritos(self):
+        if not os.path.exists(self.FAVORITOS_FILE): return []
+        try:
+            with open(self.FAVORITOS_FILE, "r", encoding="utf-8") as f: return json.load(f)
+        except: return []
+
+    def _guardar_favoritos(self, data):
+        with open(self.FAVORITOS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+            
     def ver_favoritos(self):
-        """Ver todos los versículos favoritos"""
-        favoritos = self._cargar_favoritos()
-        if not favoritos:
-            return []
-        return favoritos
+        return self._cargar_favoritos()
     
-    def eliminar_favorito(self, favorito_id):
-        """Elimina un versículo de favoritos"""
-        favoritos = self._cargar_favoritos()
-        favoritos = [f for f in favoritos if f['id'] != favorito_id]
-        self._guardar_favoritos(favoritos)
+    def eliminar_favorito(self, fid):
+        data = [f for f in self._cargar_favoritos() if f['id'] != fid]
+        self._guardar_favoritos(data)
         return True
 
 # =====================================================
@@ -5283,5 +5262,6 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
