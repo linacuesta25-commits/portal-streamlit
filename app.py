@@ -1440,7 +1440,7 @@ class RobustBibliaHandler:
         with open(self.BIBLIA_FILE, "r", encoding="utf-8") as f:
             self.biblia = json.load(f)
 
-    def buscar_versiculo_completo(self, ref):
+       def buscar_versiculo_completo(self, ref):
         try:
             ref = ref.lower().strip()
 
@@ -1448,25 +1448,23 @@ class RobustBibliaHandler:
                 return "⚠️ Usa el formato Libro capítulo:versículo (ej. Daniel 2:23)"
 
             partes = ref.split()
-            libro_ref = " ".join(partes[:-1])
             cap, ver = partes[-1].split(":")
             cap = int(cap)
             ver = int(ver)
 
             for libro in self.biblia["books"]:
-                if libro["name"].lower() == libro_ref:
-                    for capitulo in libro["chapters"]:
-                        if capitulo["chapter"] == cap:
-                            for versiculo in capitulo["verses"]:
-                                if versiculo["verse"] == ver:
-                                    return (
-                                        f"{libro['name'].title()} {cap}:{ver}\n\n"
-                                        f"{versiculo['text']}"
-                                    )
+                for capitulo in libro.get("chapters", []):
+                    if capitulo.get("chapter") == cap:
+                        for versiculo in capitulo.get("verses", []):
+                            if versiculo.get("verse") == ver:
+                                return (
+                                    f"{libro['name'].title()} {cap}:{ver}\n\n"
+                                    f"{versiculo.get('text','')}"
+                                )
 
             return "❌ No se encontró el versículo solicitado."
 
-        except Exception:
+        except Exception as e:
             return "⚠️ Error al buscar el versículo."
 
 
@@ -5119,6 +5117,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
