@@ -3212,7 +3212,7 @@ else:
                 left: 50% !important;
                 transform: translateX(-50%) !important;
                 z-index: 999999 !important;
-                width: 300px !important;
+                width: 380px !important;
                 box-shadow: 0 8px 32px rgba(147, 51, 234, 0.6) !important;
                 border-radius: 12px !important;
                 background: rgba(2, 6, 23, 0.95) !important;
@@ -5207,6 +5207,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
