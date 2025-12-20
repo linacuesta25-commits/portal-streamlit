@@ -4951,21 +4951,27 @@ else:
                         st.session_state.selected_project_id = None
                         st.rerun()
                 with col2:
+                    # ✅ LÓGICA DE ELIMINACIÓN SEGURA
                     if not st.session_state.get('confirmar_eliminar_proyecto', False):
                         if st.button("🗑️ Eliminar Proyecto", key="btn_eliminar_proyecto", use_container_width=True):
                             st.session_state.confirmar_eliminar_proyecto = True
                             st.rerun()
                     else:
-                        st.warning("⚠️ ¿Segura que quieres eliminar?")
-                        c_si, c_no = st.columns(2)
-                        with c_si:
-                            if st.button("✅ Sí", key="confirm_si", use_container_width=True):
-                                ideas_handler.eliminar_proyecto(proyecto['id'])
-                                st.session_state.confirmar_eliminar_proyecto = False
-                                st.session_state.ideas_subview = "menu"
-                                st.rerun()
-                        with c_no:
-                            if st.button("❌ No", key="confirm_no", use_container_width=True):
+                        st.warning("⚠️ ¿Segura que quieres eliminar este proyecto?")
+                        
+                        col_si, col_no = st.columns(2)
+                        
+                        with col_si:
+                            if st.button("✅ Sí, eliminar", key="btn_confirmar_eliminar", use_container_width=True):
+                                if ideas_handler.eliminar_proyecto(proyecto['id']):
+                                    st.session_state.confirmar_eliminar_proyecto = False
+                                    st.session_state.ideas_subview = "menu"
+                                    st.session_state.selected_project_id = None
+                                    st.success("✅ Proyecto eliminado")
+                                    st.rerun()
+                        
+                        with col_no:
+                            if st.button("❌ Cancelar", key="btn_cancelar_eliminar", use_container_width=True):
                                 st.session_state.confirmar_eliminar_proyecto = False
                                 st.rerun()
 
@@ -5271,6 +5277,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
