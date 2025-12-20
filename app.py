@@ -2525,6 +2525,16 @@ class IdeasHandler:
         with open(self.PROYECTOS_FILE, "w", encoding="utf-8") as f:
             json.dump(proyectos, f, indent=2, ensure_ascii=False)
     
+    def _imagen_a_base64(self, uploaded_file):
+        """Convierte archivo subido a base64"""
+        try:
+            import base64
+            bytes_data = uploaded_file.getvalue()
+            base64_str = base64.b64encode(bytes_data).decode()
+            return f"data:image/{uploaded_file.type.split('/')[-1]};base64,{base64_str}"
+        except:
+            return None
+    
     def conversar_con_ia(self, mensaje_usuario, contexto=""):
         """Conversa con IA sobre ideas"""
         if not self.openai_enabled:
@@ -2624,131 +2634,59 @@ Escribe en prosa natural."""
         """Elimina un proyecto completo"""
         try:
             proyectos = self._cargar_proyectos()
-            
-            # Buscar el proyecto
-            proyecto = next((p for p in proyectos if p["id"] == int(proyecto_id)), None)
-            
-            if not proyecto:
-                return False
-            
-            # Filtrar (eliminar) el proyecto
             proyectos_filtrados = [p for p in proyectos if p["id"] != int(proyecto_id)]
-            
-            # Guardar
             self._guardar_proyectos(proyectos_filtrados)
-            
             return True
-            
         except Exception as e:
             print(f"Error eliminando proyecto: {e}")
             return False
     
-    def agregar_item_a_un_proyecto(self, proyecto_id, tipo, descripcion, **kwargs):
-        """Agrega un item (inspiración o compra) a un proyecto específico"""
-        
-        # 1. Cargar todos los proyectos existentes
+    def agregar_item(self, proyecto_id, tipo, descripcion, precio=None, imagen_file=None, **kwargs):
+        """Agrega item a un proyecto con soporte para precio e imagen"""
         proyectos = self._cargar_proyectos()
         
-        # 2. Convertir proyecto_id a número
         try:
             pid = int(proyecto_id)
-        except (ValueError, TypeError):
+        except:
             return None
         
-        # 3. Buscar el proyecto específico
         proyecto = next((p for p in proyectos if p["id"] == pid), None)
         if not proyecto:
             return None
         
-        # 4. Crear el nuevo item
+        # Convertir imagen a base64 si existe
+        imagen_base64 = None
+        if imagen_file:
+            imagen_base64 = self._imagen_a_base64(imagen_file)
+        
+        # Crear el nuevo item
         nuevo_item = {
-            "id": len(proyecto.get('items', [])) + 1,
-            "tipo": tipo, # 'compra' o 'inspiracion'
+            "id": len(proyecto['items']) + 1,
+            "tipo": tipo,
             "descripcion": descripcion,
             "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "conseguido": False
+            "conseguido": False,
+            "precio": float(precio) if precio and precio > 0 else None,
+            "imagen": imagen_base64
         }
         
-        # 5. Si tiene precio, agregarlo y actualizar totales
-        precio = kwargs.get('precio')
-        if precio and float(precio) > 0:
-            nuevo_item['precio'] = float(precio)
-            if tipo == 'compra':
-                proyecto['total_gastado'] = proyecto.get('total_gastado', 0.0) + float(precio)
-                proyecto['total_compras'] = proyecto.get('total_compras', 0) + 1
-            else:
-                proyecto['total_inspiracion'] = proyecto.get('total_inspiracion', 0) + 1
-        
-        # 6. Guardar cambios
+        # Agregar al proyecto
         proyecto['items'].append(nuevo_item)
-        self._guardar_proyectos(proyectos)
         
-        return nuevo_item
-    
-    # Crear el nuevo item
-    nuevo_item = {
-        "id": len(proyecto['items']) + 1,
-        "tipo": tipo,
-        "descripcion": descripcion,
-        "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "conseguido": False
-    }
-    
-    # Si tiene precio, agregarlo
-    if kwargs.get('precio') and kwargs['precio'] > 0:
-        nuevo_item['precio'] = float(kwargs['precio'])
-        if tipo == 'compra':
-            proyecto['total_gastado'] = proyecto.get('total_gastado', 0) + float(kwargs['precio'])
-    
-    # ✨ AQUÍ ESTÁ LA MAGIA: Convertir imagen a texto
-    if kwargs.get('imagen_file') is not None:
-        try:
-            import base64
-            
-            # 1. Obtener el archivo de imagen
-            imagen_file = kwargs['imagen_file']
-            
-            # 2. Leer los bytes (el contenido binario)
-            bytes_data = imagen_file.getvalue()
-            
-            # 3. Convertir bytes a texto Base64
-            base64_img = base64.b64encode(bytes_data).decode('utf-8')
-            
-            # 4. Detectar el tipo de imagen (png, jpg, etc)
-            file_type = imagen_file.type if hasattr(imagen_file, 'type') else 'image/png'
-            
-            # 5. Guardar como "data URL" (formato que Streamlit entiende)
-            nuevo_item['imagen'] = f"data:{file_type};base64,{base64_img}"
-            nuevo_item['imagen_nombre'] = imagen_file.name if hasattr(imagen_file, 'name') else 'imagen.png'
-            
-            print(f"✅ Imagen convertida exitosamente: {nuevo_item['imagen_nombre']}")
-            
-        except Exception as e:
-            # Si algo falla, solo mostrar el error pero continuar sin imagen
-            print(f"⚠️ Error al procesar imagen: {e}")
-    
-    # Agregar el item al proyecto
-    proyecto['items'].append(nuevo_item)
-    
-    # Actualizar contadores
-    if tipo == 'inspiracion':
-        proyecto['total_inspiracion'] = proyecto.get('total_inspiracion', 0) + 1
-    else:
-        proyecto['total_compras'] = proyecto.get('total_compras', 0) + 1
-    
-    # Guardar todo en el archivo JSON
-    try:
+        # Actualizar contadores
+        if tipo == 'inspiracion':
+            proyecto['total_inspiracion'] = proyecto.get('total_inspiracion', 0) + 1
+        else:
+            proyecto['total_compras'] = proyecto.get('total_compras', 0) + 1
+        
+        # Guardar
         self._guardar_proyectos(proyectos)
         return nuevo_item
-    except Exception as e:
-        print(f"❌ Error al guardar: {e}")
-        return None
+    
     def eliminar_item(self, proyecto_id, item_id):
         """Elimina un item de un proyecto"""
         try:
             proyectos = self._cargar_proyectos()
-            
-            # Buscar el proyecto
             proyecto = next((p for p in proyectos if p["id"] == int(proyecto_id)), None)
             
             if not proyecto:
@@ -2756,7 +2694,6 @@ Escribe en prosa natural."""
             
             # Buscar el item
             item = next((i for i in proyecto.get('items', []) if i["id"] == int(item_id)), None)
-            
             if not item:
                 return False
             
@@ -2777,7 +2714,6 @@ Escribe en prosa natural."""
             
             # Guardar
             self._guardar_proyectos(proyectos)
-            
             return True
             
         except Exception as e:
@@ -2804,6 +2740,10 @@ Escribe en prosa natural."""
         item['conseguido'] = True
         item['fecha_conseguido'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
         proyecto['conseguidos'] = proyecto.get('conseguidos', 0) + 1
+        
+        # Sumar al total gastado si tiene precio
+        if item.get('precio'):
+            proyecto['total_gastado'] = proyecto.get('total_gastado', 0) + item['precio']
         
         self._guardar_proyectos(proyectos)
         return True
@@ -5477,6 +5417,7 @@ with st.container():
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
