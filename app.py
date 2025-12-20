@@ -5031,16 +5031,23 @@ else:
                 # Agregar nuevo item
                 with st.expander(f"{emoji} {titulo}", expanded=False):
     # ✅ PRIMERO: Mostrar la imagen si existe
+    # Línea 5032 - Asegúrate de que el 'with' esté así:
+with st.container(): # o el elemento que estés usando
+    # TODO el bloque siguiente debe tener un nivel extra de indentación
     if item.get('imagen'):
         try:
             # Streamlit puede mostrar directamente imágenes en Base64
             st.image(
                 item['imagen'], 
                 caption=item.get('imagen_nombre', 'Imagen del item'),
-                use_column_width=True  # Se ajusta al ancho disponible
+                use_container_width=True  # Nota: use_column_width está siendo deprecado por use_container_width
             )
         except Exception as e:
             st.caption(f"⚠️ No se pudo cargar la imagen")
+    
+    # Aquí puedes seguir con el resto de la información, 
+    # manteniendo la misma alineación que el 'if'
+    st.write(f"**Descripción:** {item.get('descripcion', 'Sin descripción')}")
     
     # Luego mostrar el resto de la información
     st.write(item['descripcion'])
@@ -5468,6 +5475,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
