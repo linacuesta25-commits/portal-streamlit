@@ -3400,6 +3400,21 @@ def render_spotify_persistente():
         }
     </style>
     
+    <div id="spotify-fixed">
+        <iframe 
+            style="border-radius:12px" 
+            src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4sWSpwq3LiO?utm_source=generator&theme=0" 
+            width="100%" 
+            height="152" 
+            frameBorder="0" 
+            allowfullscreen="" 
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+            loading="lazy">
+        </iframe>
+    </div>
+    """
+    
+    components.html(spotify_html, height=180, scrolling=False)
 # =====================================================
 # 5. INICIALIZACIÓN DE HANDLERS (OPTIMIZADO CON CACHÉ)
 # =====================================================
@@ -3454,52 +3469,52 @@ if not st.session_state.login:
 
 else:
     # === SPOTIFY FLOTANTE CON TU PLAYLIST ===
-   st.markdown("""
-<style>
-    .spotify-bottom-fixed {
-        position: fixed !important;
-        bottom: 60px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        z-index: 999999 !important;
-        width: 380px !important;
-        box-shadow: 0 8px 32px rgba(147, 51, 234, 0.6) !important;
-        border-radius: 12px !important;
-        background: rgba(2, 6, 23, 0.95) !important;
-        padding: 5px !important;
-        pointer-events: auto !important;
-    }
-    
-    .spotify-bottom-fixed iframe {
-        border-radius: 12px !important;
-    }
-    
-    .spotify-bottom-fixed:hover {
-        transform: translateX(-50%) translateY(-5px) !important;
-        box-shadow: 0 12px 40px rgba(147, 51, 234, 0.8) !important;
-    }
-    
-    @media (max-width: 768px) {
-        .spotify-bottom-fixed {
-            width: 280px !important;
-            bottom: 60px !important;
-        }
-    }
-</style>
-
-<div id="spotify-fixed">
-    <iframe
-        style="border-radius:12px"
-        src="https://open.spotify.com/embed/album/3QC8nwNxiwe68Rj96yjgzo?utm_source=generator&theme=0"
-        width="100%"
-        height="380"
-        frameBorder="0"
-        allowfullscreen=""
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-        loading="lazy">
-    </iframe>
-</div>
-""", unsafe_allow_html=True)
+    st.markdown("""
+        <style>
+            .spotify-bottom-fixed {
+                position: fixed !important;
+                bottom: 60px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                z-index: 999999 !important;
+                width: 380px !important;
+                box-shadow: 0 8px 32px rgba(147, 51, 234, 0.6) !important;
+                border-radius: 12px !important;
+                background: rgba(2, 6, 23, 0.95) !important;
+                padding: 5px !important;
+                pointer-events: auto !important;
+            }
+            
+            .spotify-bottom-fixed iframe {
+                border-radius: 12px !important;
+            }
+            
+            .spotify-bottom-fixed:hover {
+                transform: translateX(-50%) translateY(-5px) !important;
+                box-shadow: 0 12px 40px rgba(147, 51, 234, 0.8) !important;
+            }
+            
+            @media (max-width: 768px) {
+                .spotify-bottom-fixed {
+                    width: 280px !important;
+                    bottom: 60px !important;
+                }
+            }
+        </style>
+        
+        <div class="spotify-bottom-fixed">
+            <iframe 
+                style="border-radius:12px" 
+                src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcNb6Ba0LuVc?utm_source=generator&theme=0" 
+                width="100%" 
+                height="152" 
+                frameBorder="0" 
+                allowfullscreen="" 
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                loading="lazy">
+            </iframe>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Función para mostrar breadcrumbs
     def mostrar_breadcrumbs():
@@ -5260,350 +5275,4 @@ else:
             
             mensaje = st.text_area("¿Qué idea tienes en mente?", height=100, 
                                   placeholder="Ej: Quiero empezar un proyecto de decoración para mi cuarto...",
-                                  key="input_chat_ideas")
-            
-            if st.button("💬 Enviar", use_container_width=True, key="btn_chat_ideas_send"):
-                if mensaje:
-                    st.session_state.ideas_history.append({'role': 'user', 'content': mensaje})
-                    contexto = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.ideas_history[-3:]])
-                    
-                    with st.spinner("💭 Conversando con IA..."):
-                        respuesta = ideas_handler.conversar_con_ia(mensaje, contexto)
-                    
-                    st.session_state.ideas_history.append({'role': 'assistant', 'content': respuesta})
-                    st.rerun()
-                else:
-                    st.warning("⚠️ Escribe algo primero")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver al Menú", key="btn_ideas_volver_chat", use_container_width=True):
-                st.session_state.ideas_subview = "menu"
-                st.rerun()
-    # --- MÓDULO PROFESIONAL ---
-    elif st.session_state.current_view == "profesional":
-        mostrar_breadcrumbs()
-        st.markdown("<div class='title-glow'>💼 Profesional</div>", unsafe_allow_html=True)
-        
-        if st.session_state.profesional_subview == "menu":
-            st.markdown("<p class='subtitle-text'>Herramientas para tu carrera profesional</p>", unsafe_allow_html=True)
-            
-            opciones_prof = [
-                ("📧", "Generar Correos", "correos", "frases-icon"),
-                ("💬", "Preparar Entrevistas", "entrevistas", "ideas-icon"),
-                ("📊", "Seguir Vacantes", "vacantes", "finanzas-icon"),
-                ("📈", "Estadísticas", "estadisticas", "tarot-icon"),
-                ("🏠", "Volver", "volver", "notas-icon")
-            ]
-            
-            rows_prof = [opciones_prof[i:i+3] for i in range(0, len(opciones_prof), 3)]
-            for row in rows_prof:
-                cols = st.columns(3, gap="small")
-                for idx, (icon, label, sub_key, css) in enumerate(row):
-                    if idx < len(row):
-                        with cols[idx]:
-                            st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
-                            if st.button(f"Abrir {label}" if sub_key != "volver" else label, key=f"btn_prof_{sub_key}", use_container_width=True):
-                                if sub_key == "volver":
-                                    st.session_state.current_view = "menu"
-                                else:
-                                    st.session_state.profesional_subview = sub_key
-                                st.rerun()
-                st.markdown("<br>", unsafe_allow_html=True)
-        
-        elif st.session_state.profesional_subview == "correos":
-            st.markdown("### 📧 Generar Correos Profesionales")
-            st.markdown("<p style='color:#d8c9ff;'>IA creará correos profesionales para distintas situaciones</p>", unsafe_allow_html=True)
-            
-            tipo_correo = st.selectbox(
-                "Tipo de correo:",
-                ["agradecimiento", "seguimiento", "networking", "feedback", "negociacion"],
-                format_func=lambda x: {
-                    "agradecimiento": "📧 Agradecimiento post-entrevista",
-                    "seguimiento": "📤 Seguimiento de aplicación",
-                    "networking": "🤝 Networking / LinkedIn",
-                    "feedback": "💬 Solicitar feedback",
-                    "negociacion": "💰 Negociar oferta/salario"
-                }[x],
-                key="select_tipo_correo"
-            )
-            
-            contexto_correo = st.text_area(
-                "Contexto adicional (opcional):",
-                height=100,
-                placeholder="Ej: Entrevista con Google para puesto de PM, hablamos sobre...",
-                key="input_contexto_correo"
-            )
-            
-            if st.button("📧 Generar Correo", use_container_width=True, key="btn_generar_correo"):
-                with st.spinner("✍️ Generando correo profesional con IA... (5-10 seg)"):
-                    resultado = profesional_handler.generar_correo_profesional(tipo_correo, contexto_correo)
-                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver al Menú", key="btn_prof_volver_correos", use_container_width=True):
-                st.session_state.profesional_subview = "menu"
-                st.rerun()
-        
-        elif st.session_state.profesional_subview == "entrevistas":
-            st.markdown("### 💬 Preparar Entrevistas")
-            st.markdown("<p style='color:#d8c9ff;'>Practica con preguntas comunes y recibe feedback de IA</p>", unsafe_allow_html=True)
-            
-            if st.button("🎲 Nueva Pregunta Aleatoria", use_container_width=True, key="btn_nueva_pregunta"):
-                pregunta = profesional_handler.obtener_pregunta_entrevista()
-                st.session_state.profesional_pregunta = pregunta
-                st.session_state.profesional_respuesta = None
-                st.rerun()
-            
-            if st.session_state.profesional_pregunta:
-                st.markdown(f'<div class="result-card">{st.session_state.profesional_pregunta.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
-                
-                respuesta_usuario = st.text_area(
-                    "Tu respuesta:",
-                    height=150,
-                    placeholder="Escribe tu respuesta usando el método STAR...",
-                    key="input_respuesta_entrevista"
-                )
-                
-                if st.button("📋 Recibir Feedback", use_container_width=True, key="btn_feedback_respuesta"):
-                    if respuesta_usuario:
-                        # Extraer solo la pregunta del texto completo
-                        pregunta_limpia = st.session_state.profesional_pregunta.split("\n")[2].strip("_")
-                        
-                        with st.spinner("🤔 Analizando tu respuesta con IA... (10-15 seg)"):
-                            feedback = profesional_handler.analizar_respuesta_entrevista(pregunta_limpia, respuesta_usuario)
-                        st.session_state.profesional_respuesta = feedback
-                        st.rerun()
-                    else:
-                        st.warning("⚠️ Escribe tu respuesta primero")
-                
-                if st.session_state.profesional_respuesta:
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown(f'<div class="result-card">{st.session_state.profesional_respuesta.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver al Menú", key="btn_prof_volver_entrevistas", use_container_width=True):
-                st.session_state.profesional_subview = "menu"
-                st.session_state.profesional_pregunta = None
-                st.session_state.profesional_respuesta = None
-                st.rerun()
-        
-        elif st.session_state.profesional_subview == "vacantes":
-            st.markdown("### 📊 Seguimiento de Vacantes")
-            
-            # Verificar vacantes pendientes de seguimiento
-            pendientes = profesional_handler.verificar_vacantes_pendientes_seguimiento()
-            if pendientes:
-                st.warning(f"⏰ **Recordatorio de Seguimiento:** Tienes {len(pendientes)} vacante(s) con 7+ días sin respuesta")
-                for p in pendientes[:3]:  # Mostrar máximo 3
-                    st.caption(f"• #{p['id']} {p['empresa']} - {p['cargo']} ({p['dias']} días)")
-                st.markdown("<br>", unsafe_allow_html=True)
-            
-            # Mostrar vacantes existentes
-            vacantes = profesional_handler.listar_vacantes()
-            
-            if vacantes:
-                st.markdown(f"**Tienes {len(vacantes)} vacante(s) en seguimiento:**")
-                
-                # Agrupar por estado
-                estados = {}
-                for v in vacantes:
-                    estado = v.get('estado', 'aplicado')
-                    if estado not in estados:
-                        estados[estado] = []
-                    estados[estado].append(v)
-                
-                emojis_estado = {
-                    "aplicado": "📤",
-                    "entrevista": "💬",
-                    "oferta": "🎉",
-                    "rechazado": "❌",
-                    "retirado": "🔙"
-                }
-                
-                for estado, lista in estados.items():
-                    if lista:
-                        st.markdown(f"**{emojis_estado.get(estado, '📋')} {estado.upper()}** ({len(lista)})")
-                        for v in lista:
-                            with st.expander(f"#{v['id']} - {v['empresa']} - {v['cargo']}", expanded=False):
-                                st.markdown(f"**Aplicado:** {v['fecha_aplicacion']}")
-                                st.markdown(f"**Estado:** {v['estado']}")
-                                if v.get('contacto'):
-                                    st.markdown(f"**Contacto:** {v['contacto']}")
-                                if v.get('notas'):
-                                    st.markdown(f"**Notas:** {v['notas']}")
-                                
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    nuevo_estado = st.selectbox(
-                                        "Cambiar estado:",
-                                        ["aplicado", "entrevista", "oferta", "rechazado", "retirado"],
-                                        index=["aplicado", "entrevista", "oferta", "rechazado", "retirado"].index(v['estado']),
-                                        key=f"estado_{v['id']}"
-                                    )
-                                    if st.button("💾 Actualizar", key=f"btn_actualizar_{v['id']}"):
-                                        profesional_handler.actualizar_estado_vacante(v['id'], nuevo_estado)
-                                        st.success("✅ Actualizado")
-                                        st.rerun()
-                                with col2:
-                                    if st.button("🗑️ Eliminar", key=f"btn_eliminar_{v['id']}"):
-                                        profesional_handler.borrar_vacante(v['id'])
-                                        st.success("✅ Eliminado")
-                                        st.rerun()
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-            else:
-                st.info("No tienes vacantes en seguimiento aún.")
-            
-            # Formulario para agregar nueva vacante
-            st.markdown("### ✨ Agregar Nueva Vacante")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                empresa = st.text_input("Empresa:", placeholder="Google", key="input_empresa")
-                fecha_app = st.date_input("Fecha de aplicación:", key="input_fecha_app")
-            with col2:
-                cargo = st.text_input("Cargo:", placeholder="Product Manager", key="input_cargo")
-                contacto = st.text_input("Contacto (opcional):", placeholder="Juan Pérez - Recruiter", key="input_contacto")
-            
-            notas = st.text_area("Notas (opcional):", height=80, placeholder="Detalles de la aplicación...", key="input_notas_vac")
-            
-            if st.button("✨ Agregar Vacante", use_container_width=True, key="btn_agregar_vacante"):
-                if empresa and cargo:
-                    fecha_str = fecha_app.strftime("%Y-%m-%d")
-                    profesional_handler.agregar_vacante(empresa, cargo, fecha_str, contacto, notas)
-                    st.success(f"✅ Vacante agregada: {empresa} - {cargo}")
-                    st.balloons()
-                    st.rerun()
-                else:
-                    st.warning("⚠️ Completa al menos Empresa y Cargo")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver al Menú", key="btn_prof_volver_vacantes", use_container_width=True):
-                st.session_state.profesional_subview = "menu"
-                st.rerun()
-        
-        elif st.session_state.profesional_subview == "estadisticas":
-            st.markdown("### 📈 Estadísticas de Búsqueda Laboral")
-            
-            stats = profesional_handler.generar_estadisticas_vacantes()
-            
-            if stats:
-                # Resumen general
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Total Aplicaciones", stats['total'])
-                with col2:
-                    st.metric("Activas", stats['activas'])
-                with col3:
-                    st.metric("Tasa de Respuesta", f"{stats['tasa_respuesta']:.1f}%")
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                # Distribución por estado
-                st.markdown("**📊 Distribución por Estado:**")
-                estados = stats['estados']
-                for estado, cantidad in estados.items():
-                    if cantidad > 0:
-                        porcentaje = (cantidad / stats['total'] * 100)
-                        emoji = {"aplicado": "📤", "entrevista": "💬", "oferta": "🎉", "rechazado": "❌", "retirado": "🔙"}
-                        st.progress(porcentaje / 100, text=f"{emoji.get(estado, '📋')} {estado.capitalize()}: {cantidad} ({porcentaje:.0f}%)")
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                # Métricas adicionales
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Tasa de Éxito", f"{stats['tasa_exito']:.1f}%", 
-                             help="Porcentaje de ofertas recibidas")
-                with col2:
-                    st.metric("Días Promedio", f"{stats['dias_promedio']:.0f}", 
-                             help="Tiempo promedio por proceso")
-                
-                # Top empresas contactadas
-                if stats['top_empresas']:
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown("**🏢 Empresas Más Contactadas:**")
-                    for i, (empresa, cantidad) in enumerate(stats['top_empresas'], 1):
-                        st.caption(f"{i}. {empresa}: {cantidad} aplicación(es)")
-                
-                # Mensajes motivacionales
-                st.markdown("<br>", unsafe_allow_html=True)
-                if stats['tasa_respuesta'] >= 20:
-                    st.success("✨ ¡Excelente tasa de respuesta! Sigue así 💪")
-                elif stats['tasa_respuesta'] >= 10:
-                    st.info("💡 Buena tasa de respuesta. Considera optimizar tu CV o aplicaciones")
-                else:
-                    st.warning("💪 Sigue aplicando. Cada 'no' te acerca al 'sí' perfecto")
-            else:
-                st.info("No tienes vacantes registradas aún. ¡Agrega algunas para ver estadísticas!")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver al Menú", key="btn_prof_volver_estadisticas", use_container_width=True):
-                st.session_state.profesional_subview = "menu"
-                st.rerun()
-
-    # DEFAULT
-    else:
-        st.markdown(f"<div class='title-glow'>{st.session_state.current_view.capitalize()}</div>", unsafe_allow_html=True)
-        st.info("✨ Sección en construcción energética")
-        if st.button("🔙 Menú Principal", key="btn_default_home"): 
-            st.session_state.current_view = "menu"
-            st.rerun()
-    
-    # =====================================================
-    # SPOTIFY: Renderizado al final cuando usuario está loggeado
-    # =====================================================
-    # ===== SPOTIFY =====
-    st.markdown("""
-    <div style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); z-index: 999999; width: 300px; box-shadow: 0 4px 20px rgba(147, 51, 234, 0.5); border-radius: 12px; background: rgba(2, 6, 23, 0.95); padding: 5px;">
-        <iframe 
-            style="border-radius:12px" 
-            src="https://open.spotify.com/embed/album/3QC8nwNxiwe68Rj96yjgzo?utm_source=generator&theme=0"
-            width="100%" 
-            height="152" 
-            frameBorder="0" 
-            allowfullscreen="" 
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-            loading="lazy">
-        </iframe>
-    </div>
-    """, unsafe_allow_html=True)
-      
-st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                                  key="input_chat_i
