@@ -4746,7 +4746,7 @@ else:
     
    
   # --- MÓDULO IDEAS ---
-        elif st.session_state.current_view == "ideas":
+    elif st.session_state.current_view == "ideas":
         mostrar_breadcrumbs()
         st.markdown("<div class='title-glow'>💡 Ideas</div>", unsafe_allow_html=True)
         
@@ -4994,7 +4994,6 @@ else:
                 if st.button("🗑️ Limpiar Chat", key="btn_limpiar_chat", use_container_width=True):
                     st.session_state.ideas_history = []
                     st.rerun()
-
     # --- MÓDULO PROFESIONAL ---
     elif st.session_state.current_view == "profesional":
         mostrar_breadcrumbs()
@@ -5271,6 +5270,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
