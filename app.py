@@ -3237,19 +3237,29 @@ else:
             }
         </style>
         
-        <div class="spotify-bottom-fixed">
-            <iframe 
-                style="border-radius:12px" 
-                src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcNb6Ba0LuVc?utm_source=generator&theme=0" 
-                width="100%" 
-                height="152" 
-                frameBorder="0" 
-                allowfullscreen="" 
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                loading="lazy">
-            </iframe>
-        </div>
-    """, unsafe_allow_html=True)
+        if st.session_state.login:
+    st.markdown("---")
+    st.markdown("<h3 style='text-align: center; color: #1DB954;'>🎵 Sintonía Nocturna</h3>", unsafe_allow_html=True)
+    
+    # El ID de tu playlist (puedes cambiar este ID por la tuya)
+    playlist_id = "37i9dQZF1DX7qK8maMRCcA" # Ejemplo: Chill Lofi Study
+    
+    spotify_html = f"""
+    <div style="display: flex; justify-content: center;">
+        <iframe 
+            style="border-radius:12px" 
+            src="https://open.spotify.com/embed/playlist/{playlist_id}?utm_source=generator&theme=0" 
+            width="100%" 
+            height="352" 
+            frameBorder="0" 
+            allowfullscreen="" 
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+            loading="lazy">
+        </iframe>
+    </div>
+    """
+    
+    components.html(spotify_html, height=380)
     
     # Función para mostrar breadcrumbs
     def mostrar_breadcrumbs():
@@ -5207,4 +5217,5 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
