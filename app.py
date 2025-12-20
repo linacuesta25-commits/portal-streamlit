@@ -4969,50 +4969,60 @@ else:
                 st.markdown("<br>", unsafe_allow_html=True)
                 
                 # Agregar nuevo item
-                with st.expander(f"{emoji} {titulo}", expanded=False):
-    # ✅ PRIMERO: Mostrar la imagen si existe
-    # Línea 5032
-with st.container(): 
-    # Todo lo que sigue tiene 4 espacios extra a la derecha
-    if item.get('imagen'):
-        try:
-            st.image(
-                item['imagen'], 
-                caption=item.get('imagen_nombre', 'Imagen del item'),
-                use_container_width=True
-            )
-        except Exception as e:
-            st.caption(f"⚠️ No se pudo cargar la imagen")
-    
-    # El resto de la información también debe estar indentado
-    st.write(f"**Título:** {item.get('titulo', 'Sin título')}")
-    st.write(f"**Descripción:** {item.get('descripcion', 'Sin descripción')}")
-    # Aquí puedes seguir con el resto de la información, 
-    # manteniendo la misma alineación que el 'if'
-    st.write(f"**Descripción:** {item.get('descripcion', 'Sin descripción')}")
-    
-    # Luego mostrar el resto de la información
-    st.write(item['descripcion'])
-    st.caption(f"📅 Agregado: {item['fecha']}")
-    
-    if item.get('precio'):
-        st.markdown(f"**💰 Precio:** ${item['precio']:.2f}")
-    
-    if item.get('conseguido') and item.get('fecha_conseguido'):
-        st.success(f"✅ Conseguido el: {item['fecha_conseguido']}")
-    
-    # Botones de acción
-    col1, col2 = st.columns(2)
-    with col1:
-        if not item.get('conseguido'):
-            if st.button("✅ Marcar conseguido", key=f"btn_check_{item['id']}", use_container_width=True):
-                if ideas_handler.marcar_conseguido(proyecto['id'], item['id']):
-                    st.rerun()
-    with col2:
-        if st.button("🗑️ Eliminar", key=f"btn_del_item_{item['id']}", use_container_width=True):
-            # Código para eliminar (lo tienes en tu código actual)
-            if ideas_handler.eliminar_item(proyecto['id'], item['id']):
-                st.rerun()
+                with st.expander("➕ **Agregar Nuevo Item**", expanded=False):
+                    tipo_item = st.selectbox(
+                        "Tipo de item:",
+                        ["🎨 Inspiración", "🛒 Compra"],
+                        key="select_tipo_item"
+                    )
+                    
+                    descripcion_item = st.text_area(
+                        "Descripción del item:",
+                        height=80,
+                        key="input_desc_item"
+                    )
+                    
+                    # Campo de precio
+                    precio_item = st.number_input(
+                        "💰 Precio (opcional):",
+                        min_value=0.0,
+                        step=0.01,
+                        format="%.2f",
+                        key="input_precio_item"
+                    )
+                    
+                    # Upload de imagen
+                    imagen_item = st.file_uploader(
+                        "📸 Subir foto (opcional):",
+                        type=['png', 'jpg', 'jpeg'],
+                        key="upload_imagen_item"
+                    )
+                    
+                    # Mostrar preview si hay imagen
+                    if imagen_item:
+                        st.image(imagen_item, caption="Preview", width=200)
+                    
+                    if st.button("✅ Agregar Item", use_container_width=True, key="btn_agregar_item"):
+                        if descripcion_item:
+                            tipo = "inspiracion" if "Inspiración" in tipo_item else "compra"
+                            
+                            item = ideas_handler.agregar_item(
+                                proyecto_id=st.session_state.selected_project_id,
+                                tipo=tipo,
+                                descripcion=descripcion_item,
+                                precio=precio_item,
+                                imagen_file=imagen_item
+                            )
+                            
+                            if item:
+                                st.success(f"✅ Item agregado: {descripcion_item}")
+                                st.rerun()
+                            else:
+                                st.error("❌ Error al agregar item")
+                        else:
+                            st.warning("⚠️ Escribe una descripción")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
                 
                 # Ver items del proyecto
                 if proyecto['items']:
@@ -5417,6 +5427,7 @@ with st.container():
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
