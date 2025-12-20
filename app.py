@@ -3400,21 +3400,6 @@ def render_spotify_persistente():
         }
     </style>
     
-    <div id="spotify-fixed">
-        <iframe 
-            style="border-radius:12px" 
-            src="https://open.spotify.com/embed/album/3QC8nwNxiwe68Rj96yjgzo?utm_source=generator&theme=0"
-            width="100%" 
-            height="380" 
-            frameBorder="0" 
-            allowfullscreen="" 
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-            loading="lazy">
-        </iframe>
-    </div>
-    """
-    
-    components.html(spotify_html, height=180, scrolling=False)
 # =====================================================
 # 5. INICIALIZACIÓN DE HANDLERS (OPTIMIZADO CON CACHÉ)
 # =====================================================
@@ -3502,19 +3487,6 @@ else:
             }
         </style>
         
-        <div id="spotify-fixed">
-    <iframe
-        style="border-radius:12px"
-        src="https://open.spotify.com/embed/album/3QC8nwNxiwe68Rj96yjgzo?utm_source=generator&theme=0"
-        width="100%"
-        height="380"
-        frameBorder="0"
-        allowfullscreen=""
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-        loading="lazy">
-    </iframe>
-</div>
-""", unsafe_allow_html=True)
     
     # Función para mostrar breadcrumbs
     def mostrar_breadcrumbs():
@@ -5568,8 +5540,24 @@ else:
     # =====================================================
     # SPOTIFY: Renderizado al final cuando usuario está loggeado
     # =====================================================
+    # ===== SPOTIFY =====
+    st.markdown("""
+    <div style="position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); z-index: 999999; width: 300px; box-shadow: 0 4px 20px rgba(147, 51, 234, 0.5); border-radius: 12px; background: rgba(2, 6, 23, 0.95); padding: 5px;">
+        <iframe 
+            style="border-radius:12px" 
+            src="https://open.spotify.com/embed/album/3QC8nwNxiwe68Rj96yjgzo?utm_source=generator&theme=0"
+            width="100%" 
+            height="152" 
+            frameBorder="0" 
+            allowfullscreen="" 
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+            loading="lazy">
+        </iframe>
+    </div>
+    """, unsafe_allow_html=True)
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
