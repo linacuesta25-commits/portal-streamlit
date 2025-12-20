@@ -2645,12 +2645,12 @@ Escribe en prosa natural."""
     
     def agregar_item_a_un_proyecto(proyecto_id, titulo, descripcion):
     """Agrega item a un proyecto"""
-
+    
     nuevo_item = {
         "titulo": titulo,
         "descripcion": descripcion
     }
-
+    
     return nuevo_item
 
     # Cargar todos los proyectos existentes
@@ -5450,6 +5450,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
