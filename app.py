@@ -2643,8 +2643,15 @@ Escribe en prosa natural."""
             print(f"Error eliminando proyecto: {e}")
             return False
     
-    def agregar_item(self, proyecto_id, tipo, descripcion, **kwargs):
+    def agregar_item_a_un_proyecto(proyecto_id, titulo, descripcion):
     """Agrega item a un proyecto"""
+
+    nuevo_item = {
+        "titulo": titulo,
+        "descripcion": descripcion
+    }
+
+    return nuevo_item
     # Cargar todos los proyectos existentes
     proyectos = self._cargar_proyectos()
     
@@ -5442,6 +5449,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
