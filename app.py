@@ -4944,40 +4944,41 @@ else:
                                             st.rerun()
                 
                
-    # Opciones del proyecto
+   # Opciones del proyecto
             st.markdown("<br>", unsafe_allow_html=True)
             col1, col2 = st.columns(2)
             
             with col1:
                 if st.button("🔙 Volver a Proyectos", key="btn_volver_proyectos", use_container_width=True):
-                    if 'confirmar_eliminar_proyecto' in st.session_state:
-                        st.session_state.confirmar_eliminar_proyecto = False
+                    # Forzamos el reset de la variable de eliminación al salir
+                    st.session_state["confirmar_eliminar_proyecto"] = False
                     st.session_state.ideas_subview = "menu"
                     st.session_state.selected_project_id = None
                     st.rerun()
             
             with col2:
-                # Inicializar la variable de control si no existe para evitar el error
-                if 'confirmar_eliminar_proyecto' not in st.session_state:
-                    st.session_state.confirmar_eliminar_proyecto = False
+                # 🛠️ PROTECCIÓN TOTAL: Si la variable no existe, la creamos como False
+                if "confirmar_eliminar_proyecto" not in st.session_state:
+                    st.session_state["confirmar_eliminar_proyecto"] = False
 
-                if not st.session_state.confirmar_eliminar_proyecto:
+                if not st.session_state["confirmar_eliminar_proyecto"]:
                     if st.button("🗑️ Eliminar Proyecto", key="btn_eliminar_proyecto", use_container_width=True):
-                        st.session_state.confirmar_eliminar_proyecto = True
+                        st.session_state["confirmar_eliminar_proyecto"] = True
                         st.rerun()
                 else:
+                    # Si ya está en modo confirmación, mostramos la advertencia y los botones finales
                     st.error("⚠️ ¿Confirmas la eliminación?")
                     c_si, c_no = st.columns(2)
                     with c_si:
-                        if st.button("✅ Sí", key="btn_conf_si", use_container_width=True):
+                        if st.button("✅ Sí, eliminar", key="btn_conf_si_final", use_container_width=True):
                             if ideas_handler.eliminar_proyecto(proyecto['id']):
-                                st.session_state.confirmar_eliminar_proyecto = False
+                                st.session_state["confirmar_eliminar_proyecto"] = False
                                 st.session_state.ideas_subview = "menu"
                                 st.session_state.selected_project_id = None
                                 st.rerun()
                     with c_no:
-                        if st.button("❌ No", key="btn_conf_no", use_container_width=True):
-                            st.session_state.confirmar_eliminar_proyecto = False
+                        if st.button("❌ No, cancelar", key="btn_conf_no_final", use_container_width=True):
+                            st.session_state["confirmar_eliminar_proyecto"] = False
                             st.rerun()
     # --- MÓDULO PROFESIONAL ---
     elif st.session_state.current_view == "profesional":
@@ -5255,6 +5256,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
