@@ -2652,6 +2652,7 @@ Escribe en prosa natural."""
     }
 
     return nuevo_item
+
     # Cargar todos los proyectos existentes
     proyectos = self._cargar_proyectos()
     
@@ -5449,6 +5450,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
