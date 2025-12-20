@@ -1266,7 +1266,7 @@ class TarotHandler:
     
     def energia_del_dia(self):
         carta = self._seleccionar_carta()
-        return f"✨ **ENERGÍA DEL DÍA**\n\n🃏 **{carta['nombre']}** {"(Invertida)" if carta['invertida'] else ""}\n\n_{carta['significado']}_"
+        return f"✨ **ENERGÍA DEL DÍA**\n\n🃏 **{carta['nombre']}** {'(Invertida)' if carta['invertida'] else ''}\n\n_{carta['significado']}_"
 
 
 class AstrologiaHandler:
@@ -1531,3 +1531,4 @@ else:
             st.rerun()
 
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
