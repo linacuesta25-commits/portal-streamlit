@@ -2644,54 +2644,79 @@ Escribe en prosa natural."""
             return False
     
     def agregar_item(self, proyecto_id, tipo, descripcion, **kwargs):
-        """Agrega item a un proyecto"""
-        proyectos = self._cargar_proyectos()
+    """Agrega item a un proyecto"""
+    # Cargar todos los proyectos existentes
+    proyectos = self._cargar_proyectos()
+    
+    # Convertir proyecto_id a número
+    try:
+        pid = int(proyecto_id)
+    except:
+        return None
+    
+    # Buscar el proyecto específico
+    proyecto = next((p for p in proyectos if p["id"] == pid), None)
+    if not proyecto:
+        return None
+    
+    # Crear el nuevo item
+    nuevo_item = {
+        "id": len(proyecto['items']) + 1,
+        "tipo": tipo,
+        "descripcion": descripcion,
+        "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "conseguido": False
+    }
+    
+    # Si tiene precio, agregarlo
+    if kwargs.get('precio') and kwargs['precio'] > 0:
+        nuevo_item['precio'] = float(kwargs['precio'])
+        if tipo == 'compra':
+            proyecto['total_gastado'] = proyecto.get('total_gastado', 0) + float(kwargs['precio'])
+    
+    # ✨ AQUÍ ESTÁ LA MAGIA: Convertir imagen a texto
+    if kwargs.get('imagen_file') is not None:
         try:
-            pid = int(proyecto_id)
-        except:
-            return None
-        
-        proyecto = next((p for p in proyectos if p["id"] == pid), None)
-        if not proyecto:
-            return None
-        
-        nuevo_item = {
-            "id": len(proyecto['items']) + 1,
-            "tipo": tipo,
-            "descripcion": descripcion,
-            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "conseguido": False
-        }
-        
-        # Manejar precio
-        if kwargs.get('precio') and kwargs['precio'] > 0:
-            nuevo_item['precio'] = float(kwargs['precio'])
-            # Actualizar total gastado si es compra
-            if tipo == 'compra':
-                proyecto['total_gastado'] = proyecto.get('total_gastado', 0) + float(kwargs['precio'])
-        
-        # Manejar imagen
-        if kwargs.get('imagen_file'):
-            try:
-                import base64
-                imagen_file = kwargs['imagen_file']
-                # Convertir a base64 para guardar en JSON
-                bytes_data = imagen_file.getvalue()
-                base64_img = base64.b64encode(bytes_data).decode()
-                nuevo_item['imagen'] = f"data:image/png;base64,{base64_img}"
-            except:
-                pass
-        
-        proyecto['items'].append(nuevo_item)
-        
-        if tipo == 'inspiracion':
-            proyecto['total_inspiracion'] = proyecto.get('total_inspiracion', 0) + 1
-        else:
-            proyecto['total_compras'] = proyecto.get('total_compras', 0) + 1
-        
+            import base64
+            
+            # 1. Obtener el archivo de imagen
+            imagen_file = kwargs['imagen_file']
+            
+            # 2. Leer los bytes (el contenido binario)
+            bytes_data = imagen_file.getvalue()
+            
+            # 3. Convertir bytes a texto Base64
+            base64_img = base64.b64encode(bytes_data).decode('utf-8')
+            
+            # 4. Detectar el tipo de imagen (png, jpg, etc)
+            file_type = imagen_file.type if hasattr(imagen_file, 'type') else 'image/png'
+            
+            # 5. Guardar como "data URL" (formato que Streamlit entiende)
+            nuevo_item['imagen'] = f"data:{file_type};base64,{base64_img}"
+            nuevo_item['imagen_nombre'] = imagen_file.name if hasattr(imagen_file, 'name') else 'imagen.png'
+            
+            print(f"✅ Imagen convertida exitosamente: {nuevo_item['imagen_nombre']}")
+            
+        except Exception as e:
+            # Si algo falla, solo mostrar el error pero continuar sin imagen
+            print(f"⚠️ Error al procesar imagen: {e}")
+    
+    # Agregar el item al proyecto
+    proyecto['items'].append(nuevo_item)
+    
+    # Actualizar contadores
+    if tipo == 'inspiracion':
+        proyecto['total_inspiracion'] = proyecto.get('total_inspiracion', 0) + 1
+    else:
+        proyecto['total_compras'] = proyecto.get('total_compras', 0) + 1
+    
+    # Guardar todo en el archivo JSON
+    try:
         self._guardar_proyectos(proyectos)
         return nuevo_item
-    
+    except Exception as e:
+        print(f"❌ Error al guardar: {e}")
+        return None
     def eliminar_item(self, proyecto_id, item_id):
         """Elimina un item de un proyecto"""
         try:
@@ -4978,55 +5003,41 @@ else:
                 st.markdown("<br>", unsafe_allow_html=True)
                 
                 # Agregar nuevo item
-                with st.expander("➕ **Agregar Nuevo Item**", expanded=False):
-                    tipo_item = st.selectbox(
-                        "Tipo de item:",
-                        ["🎨 Inspiración", "🛒 Compra"],
-                        key="select_tipo_item"
-                    )
-                    
-                    descripcion_item = st.text_area(
-                        "Descripción del item:",
-                        height=80,
-                        key="input_desc_item"
-                    )
-                    
-                    precio_item = st.number_input(
-                        "💰 Precio (opcional):",
-                        min_value=0.0,
-                        step=0.01,
-                        format="%.2f",
-                        key="input_precio_item"
-                    )
-                    
-                    imagen_item = st.file_uploader(
-                        "📸 Subir foto (opcional):",
-                        type=['png', 'jpg', 'jpeg'],
-                        key="upload_imagen_item"
-                    )
-                    
-                    if imagen_item:
-                        st.image(imagen_item, caption="Preview", width=200)
-                    
-                    if st.button("✅ Agregar Item", use_container_width=True, key="btn_agregar_item"):
-                        if descripcion_item:
-                            tipo = "inspiracion" if "Inspiración" in tipo_item else "compra"
-                            item = ideas_handler.agregar_item(
-                                proyecto_id=st.session_state.selected_project_id,
-                                tipo=tipo,
-                                descripcion=descripcion_item,
-                                precio=precio_item,
-                                imagen_file=imagen_item
-                            )
-                            if item:
-                                st.success(f"✅ Item agregado: {descripcion_item}")
-                                st.rerun()
-                            else:
-                                st.error("❌ Error al agregar item")
-                        else:
-                            st.warning("⚠️ Escribe una descripción")
-                
-                st.markdown("<br>", unsafe_allow_html=True)
+                with st.expander(f"{emoji} {titulo}", expanded=False):
+    # ✅ PRIMERO: Mostrar la imagen si existe
+    if item.get('imagen'):
+        try:
+            # Streamlit puede mostrar directamente imágenes en Base64
+            st.image(
+                item['imagen'], 
+                caption=item.get('imagen_nombre', 'Imagen del item'),
+                use_column_width=True  # Se ajusta al ancho disponible
+            )
+        except Exception as e:
+            st.caption(f"⚠️ No se pudo cargar la imagen")
+    
+    # Luego mostrar el resto de la información
+    st.write(item['descripcion'])
+    st.caption(f"📅 Agregado: {item['fecha']}")
+    
+    if item.get('precio'):
+        st.markdown(f"**💰 Precio:** ${item['precio']:.2f}")
+    
+    if item.get('conseguido') and item.get('fecha_conseguido'):
+        st.success(f"✅ Conseguido el: {item['fecha_conseguido']}")
+    
+    # Botones de acción
+    col1, col2 = st.columns(2)
+    with col1:
+        if not item.get('conseguido'):
+            if st.button("✅ Marcar conseguido", key=f"btn_check_{item['id']}", use_container_width=True):
+                if ideas_handler.marcar_conseguido(proyecto['id'], item['id']):
+                    st.rerun()
+    with col2:
+        if st.button("🗑️ Eliminar", key=f"btn_del_item_{item['id']}", use_container_width=True):
+            # Código para eliminar (lo tienes en tu código actual)
+            if ideas_handler.eliminar_item(proyecto['id'], item['id']):
+                st.rerun()
                 
                 # Ver items del proyecto
                 if proyecto['items']:
@@ -5431,6 +5442,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
