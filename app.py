@@ -31,6 +31,7 @@ def init_session_state():
         "frases_subview": "menu", "frases_result": None,
         "personalidades_subview": "menu",
         "ideas_subview": "menu", "ideas_history": [], "selected_project_id": None,
+        "confirmar_eliminar_proyecto": False, 
         "tarot_subview": "menu", "tarot_result": None, "tarot_reading_type": None,
         "astro_subview": "menu", "astro_result": None,
         "nume_subview": "menu", "nume_result": None, "oculto_subview": "menu",
@@ -4744,190 +4745,306 @@ else:
                 st.rerun()
     
     # --- MÓDULO IDEAS ---
-    elif st.session_state.current_view == "ideas":
-        mostrar_breadcrumbs()
-        st.markdown("<div class='title-glow'>💡 Ideas</div>", unsafe_allow_html=True)
+  # --- MÓDULO IDEAS ---
+elif st.session_state.current_view == "ideas":
+    mostrar_breadcrumbs()
+    st.markdown("<div class='title-glow'>💡 Ideas</div>", unsafe_allow_html=True)
+    
+    if st.session_state.ideas_subview == "menu":
+        st.markdown("<p class='subtitle-text'>Tu espacio creativo para proyectos personales.</p>", unsafe_allow_html=True)
         
-        if st.session_state.ideas_subview == "menu":
-            st.markdown("<p class='subtitle-text'>Tu espacio para soñar y crear</p>", unsafe_allow_html=True)
-            
-            opciones_ideas = [
-                ("💬", "Chat con IA", "chat", "frases-icon"),
-                ("📂", "Mis Proyectos", "proyectos", "libros-icon"),
-                ("✨", "Expandir Idea", "expandir", "ideas-icon"),
-                ("🎨", "Generar Imagen", "imagen", "tarot-icon"),
-                ("🏠", "Volver", "volver", "notas-icon")
-            ]
-            
-            rows_ideas = [opciones_ideas[i:i+3] for i in range(0, len(opciones_ideas), 3)]
-            for row in rows_ideas:
-                cols = st.columns(3, gap="small")
-                for idx, (icon, label, sub_key, css) in enumerate(row):
-                    if idx < len(row):
-                        with cols[idx]:
-                            st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
-                            if st.button(f"Abrir {label}" if sub_key != "volver" else label, key=f"btn_ideas_{sub_key}", use_container_width=True):
-                                if sub_key == "volver":
-                                    st.session_state.current_view = "menu"
-                                else:
-                                    st.session_state.ideas_subview = sub_key
-                                st.rerun()
-                st.markdown("<br>", unsafe_allow_html=True)
+        # Mostrar proyectos existentes
+        proyectos = ideas_handler.listar_proyectos()
         
-        elif st.session_state.ideas_subview == "chat":
-            st.markdown("### 💬 Chat con IA")
-            st.markdown("<p style='color:#d8c9ff;'>Conversa sobre tus ideas y proyectos</p>", unsafe_allow_html=True)
+        if proyectos:
+            st.markdown("### 📂 Tus Proyectos")
             
-            # Mostrar historial
-            if st.session_state.ideas_history:
-                st.markdown("**Conversación:**")
-                for msg in st.session_state.ideas_history[-5:]:
-                    if msg['role'] == 'user':
-                        st.markdown(f"**Tú:** {msg['content']}")
-                    else:
-                        st.markdown(f'<div class="result-card">**IA:** {msg["content"]}</div>', unsafe_allow_html=True)
-                st.markdown("<br>", unsafe_allow_html=True)
-            
-            mensaje = st.text_area("¿Qué idea tienes en mente?", height=100, 
-                                  placeholder="Ej: Quiero empezar un proyecto de decoración para mi cuarto...",
-                                  key="input_chat_ideas")
-            
-            if st.button("💬 Enviar", use_container_width=True, key="btn_chat_ideas"):
-                if mensaje:
-                    # Guardar mensaje del usuario
-                    st.session_state.ideas_history.append({'role': 'user', 'content': mensaje})
+            cols_proyectos = st.columns(2)
+            for idx, proyecto in enumerate(proyectos):
+                with cols_proyectos[idx % 2]:
+                    total_items = len(proyecto.get('items', []))
+                    conseguidos = proyecto.get('conseguidos', 0)
+                    progreso = (conseguidos / total_items * 100) if total_items > 0 else 0
                     
-                    # Generar contexto
-                    contexto = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.ideas_history[-3:]])
+                    st.markdown(f"""
+                    <div class="result-card" style="text-align:left; min-height:120px;">
+                        <h3 style="color:#ffda89 !important; margin-bottom:10px;">{proyecto['nombre']}</h3>
+                        <p style="font-size:0.9rem; margin:5px 0;">{proyecto.get('descripcion', 'Sin descripción')[:80]}...</p>
+                        <p style="font-size:0.85rem; color:#d8c9ff !important;">
+                            📊 {total_items} items • ✅ {conseguidos} conseguidos • 🎯 {progreso:.0f}%
+                        </p>
+                        <p style="font-size:0.85rem; color:#86efac !important;">
+                            💰 Total gastado: ${proyecto.get('total_gastado', 0):.2f}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    with st.spinner("💭 Conversando con IA... (5-10 seg)"):
-                        respuesta = ideas_handler.conversar_con_ia(mensaje, contexto)
+                    if st.button(f"Abrir {proyecto['nombre']}", key=f"btn_abrir_proyecto_{proyecto['id']}", use_container_width=True):
+                        st.session_state.selected_project_id = proyecto['id']
+                        st.session_state.ideas_subview = "ver_proyecto"
+                        st.rerun()
                     
-                    # Guardar respuesta
-                    st.session_state.ideas_history.append({'role': 'assistant', 'content': respuesta})
-                    st.rerun()
-                else:
-                    st.warning("⚠️ Escribe algo primero")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver al Menú", key="btn_ideas_volver_chat", use_container_width=True):
-                st.session_state.ideas_subview = "menu"
+                    st.markdown("<br>", unsafe_allow_html=True)
+        else:
+            st.info("📭 No tienes proyectos aún. ¡Crea el primero!")
+        
+        # Crear nuevo proyecto
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("### ➕ Crear Nuevo Proyecto")
+        
+        nombre_proyecto = st.text_input("Nombre del proyecto:", key="input_nombre_proyecto")
+        desc_proyecto = st.text_area("Descripción (opcional):", height=80, key="input_desc_proyecto")
+        
+        if st.button("✨ Crear Proyecto", use_container_width=True, key="btn_crear_proyecto"):
+            if nombre_proyecto:
+                proyecto = ideas_handler.crear_proyecto(nombre_proyecto, desc_proyecto)
+                st.success(f"✅ Proyecto '{nombre_proyecto}' creado")
                 st.rerun()
-        
-        elif st.session_state.ideas_subview == "proyectos":
-            st.markdown("### 📂 Mis Proyectos")
-            
-            # Mostrar proyectos existentes
-            proyectos = ideas_handler.listar_proyectos()
-            
-            if proyectos:
-                st.markdown(f"**Tienes {len(proyectos)} proyecto(s):**")
-                for proyecto in proyectos:
-                    with st.expander(f"💡 {proyecto['nombre']}", expanded=False):
-                        st.markdown(f"**Creado:** {proyecto['fecha_creacion']}")
-                        if proyecto.get('descripcion'):
-                            st.markdown(f"**Descripción:** {proyecto['descripcion']}")
-                        st.markdown(f"**Items:** {len(proyecto['items'])} ({proyecto.get('conseguidos', 0)} conseguidos)")
-                        
-                        # Mostrar items
-                        if proyecto['items']:
-                            st.markdown("---")
-                            st.markdown("**Items del proyecto:**")
-                            for item in proyecto['items']:
-                                icono = "✅" if item.get('conseguido') else "⬜"
-                                tipo_emoji = "💡" if item.get('tipo') == 'inspiracion' else "🛒"
-                                st.caption(f"{icono} {tipo_emoji} {item.get('descripcion', 'N/A')}")
-                        
-                        # Agregar nuevo item
-                        st.markdown("---")
-                        st.markdown("**➕ Agregar Item**")
-                        
-                        col1, col2 = st.columns([2, 1])
-                        with col1:
-                            desc_item = st.text_input("Descripción:", key=f"input_item_{proyecto['id']}", 
-                                                     placeholder="Ej: Lámpara de lectura")
-                        with col2:
-                            tipo_item = st.selectbox("Tipo:", ["inspiracion", "compra"], 
-                                                    format_func=lambda x: "💡 Inspiración" if x == "inspiracion" else "🛒 Compra",
-                                                    key=f"select_tipo_item_{proyecto['id']}")
-                        
-                        if st.button("➕ Agregar", key=f"btn_agregar_item_{proyecto['id']}"):
-                            if desc_item:
-                                nuevo_item = ideas_handler.agregar_item(proyecto['id'], tipo_item, desc_item)
-                                if nuevo_item:
-                                    st.success("✅ Item agregado")
-                                    st.rerun()
-                            else:
-                                st.warning("⚠️ Escribe una descripción")
-                
-                st.markdown("<br>", unsafe_allow_html=True)
             else:
-                st.info("Aún no tienes proyectos. ¡Crea uno!")
-            
-            # Crear nuevo proyecto
-            st.markdown("### ✨ Crear Nuevo Proyecto")
-            nombre_proy = st.text_input("Nombre del proyecto:", placeholder="Ej: Mi Cuarto Nuevo", key="input_nombre_proyecto")
-            desc_proy = st.text_area("Descripción (opcional):", height=80, placeholder="Describe tu proyecto...", key="input_desc_proyecto")
-            
-            if st.button("✨ Crear Proyecto", use_container_width=True, key="btn_crear_proyecto"):
-                if nombre_proy:
-                    nuevo = ideas_handler.crear_proyecto(nombre_proy, desc_proy)
-                    st.success(f"✅ Proyecto '{nuevo['nombre']}' creado!")
-                    st.balloons()
-                    st.rerun()
-                else:
-                    st.warning("⚠️ Escribe un nombre para el proyecto")
-            
+                st.warning("⚠️ Escribe un nombre para el proyecto")
+        
+        # Chat con IA
+        if ideas_handler.openai_enabled:
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver al Menú", key="btn_ideas_volver_proyectos", use_container_width=True):
-                st.session_state.ideas_subview = "menu"
+            st.markdown("### 💬 Habla con IA sobre tus ideas")
+            
+            if st.button("🤖 Abrir Chat de Ideas", use_container_width=True, key="btn_chat_ideas"):
+                st.session_state.ideas_subview = "chat"
                 st.rerun()
         
-        elif st.session_state.ideas_subview == "expandir":
-            st.markdown("### ✨ Expandir una Idea")
-            st.markdown("<p style='color:#d8c9ff;'>La IA te ayudará a desarrollar tu idea</p>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🏠 Menú Principal", key="btn_ideas_home", use_container_width=True):
+            st.session_state.current_view = "menu"
+            st.rerun()
+    
+    elif st.session_state.ideas_subview == "ver_proyecto":
+        proyecto = ideas_handler.obtener_proyecto(st.session_state.selected_project_id)
+        
+        if not proyecto:
+            st.error("❌ Proyecto no encontrado")
+            if st.button("🔙 Volver", key="btn_volver_proyecto_error"):
+                st.session_state.ideas_subview = "menu"
+                st.session_state.selected_project_id = None
+                st.rerun()
+        else:
+            st.markdown(f"### 📂 {proyecto['nombre']}")
             
-            idea = st.text_area("Cuéntame tu idea:", height=120,
-                               placeholder="Ej: Quiero crear un espacio de lectura acogedor en mi casa",
-                               key="input_expandir_idea")
+            if proyecto.get('descripcion'):
+                st.caption(proyecto['descripcion'])
             
-            if st.button("✨ Expandir con IA", use_container_width=True, key="btn_expandir_idea"):
-                if idea:
-                    with st.spinner("🌟 Expandiendo tu idea con IA... (10-15 seg)"):
-                        resultado = ideas_handler.expandir_idea(idea)
-                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
-                else:
-                    st.warning("⚠️ Escribe una idea primero")
+            # Estadísticas del proyecto
+            total_items = len(proyecto.get('items', []))
+            conseguidos = proyecto.get('conseguidos', 0)
+            total_gastado = proyecto.get('total_gastado', 0)
+            progreso = (conseguidos / total_items * 100) if total_items > 0 else 0
+            
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("📊 Total Items", total_items)
+            col2.metric("✅ Conseguidos", conseguidos)
+            col3.metric("🎯 Progreso", f"{progreso:.0f}%")
+            col4.metric("💰 Gastado", f"${total_gastado:.2f}")
             
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver al Menú", key="btn_ideas_volver_expandir", use_container_width=True):
-                st.session_state.ideas_subview = "menu"
-                st.rerun()
-        
-        elif st.session_state.ideas_subview == "imagen":
-            st.markdown("### 🎨 Generar Imagen con IA")
-            st.markdown("<p style='color:#d8c9ff;'>DALL-E 3 creará una imagen basada en tu descripción</p>", unsafe_allow_html=True)
             
-            descripcion_img = st.text_area("Describe la imagen que quieres:", height=120,
-                                          placeholder="Ej: Un cuarto acogedor con muchas plantas, luz natural y libros",
-                                          key="input_desc_imagen")
-            
-            if st.button("🎨 Generar Imagen", use_container_width=True, key="btn_generar_imagen"):
-                if descripcion_img:
-                    with st.spinner("🎨 Generando imagen con DALL-E 3... (esto puede tardar ~30 segundos)"):
-                        resultado = ideas_handler.generar_imagen_dalle(descripcion_img)
-                    
-                    if resultado['success']:
-                        st.success("✅ ¡Imagen generada!")
-                        st.image(resultado['url'], caption=f"Prompt: {resultado['prompt']}", use_container_width=True)
+            # Agregar nuevo item
+            with st.expander("➕ **Agregar Nuevo Item**", expanded=False):
+                tipo_item = st.selectbox(
+                    "Tipo de item:",
+                    ["🎨 Inspiración", "🛒 Compra"],
+                    key="select_tipo_item"
+                )
+                
+                descripcion_item = st.text_area(
+                    "Descripción del item:",
+                    height=80,
+                    key="input_desc_item"
+                )
+                
+                # Campo de precio
+                precio_item = st.number_input(
+                    "💰 Precio (opcional):",
+                    min_value=0.0,
+                    step=0.01,
+                    format="%.2f",
+                    key="input_precio_item"
+                )
+                
+                # Upload de imagen
+                imagen_item = st.file_uploader(
+                    "📸 Subir foto (opcional):",
+                    type=['png', 'jpg', 'jpeg'],
+                    key="upload_imagen_item"
+                )
+                
+                # Mostrar preview si hay imagen
+                if imagen_item:
+                    st.image(imagen_item, caption="Preview", width=200)
+                
+                if st.button("✅ Agregar Item", use_container_width=True, key="btn_agregar_item"):
+                    if descripcion_item:
+                        tipo = "inspiracion" if "Inspiración" in tipo_item else "compra"
+                        
+                        item = ideas_handler.agregar_item(
+                            proyecto_id=st.session_state.selected_project_id,
+                            tipo=tipo,
+                            descripcion=descripcion_item,
+                            precio=precio_item,
+                            imagen_file=imagen_item
+                        )
+                        
+                        if item:
+                            st.success(f"✅ Item agregado: {descripcion_item}")
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al agregar item")
                     else:
-                        st.error(f"❌ Error: {resultado.get('error', 'No se pudo generar la imagen')}")
-                else:
-                    st.warning("⚠️ Describe la imagen que quieres")
+                        st.warning("⚠️ Escribe una descripción")
             
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver al Menú", key="btn_ideas_volver_imagen", use_container_width=True):
+            
+            # Ver items del proyecto
+            if proyecto['items']:
+                st.markdown("### 📋 Items del Proyecto")
+                
+                # Filtros
+                filtro_tipo = st.radio(
+                    "Filtrar por:",
+                    ["Todos", "🎨 Inspiración", "🛒 Compras", "✅ Conseguidos", "⏳ Pendientes"],
+                    horizontal=True,
+                    key="radio_filtro_items"
+                )
+                
+                items_filtrados = proyecto['items']
+                
+                if filtro_tipo == "🎨 Inspiración":
+                    items_filtrados = [i for i in items_filtrados if i['tipo'] == 'inspiracion']
+                elif filtro_tipo == "🛒 Compras":
+                    items_filtrados = [i for i in items_filtrados if i['tipo'] == 'compra']
+                elif filtro_tipo == "✅ Conseguidos":
+                    items_filtrados = [i for i in items_filtrados if i.get('conseguido')]
+                elif filtro_tipo == "⏳ Pendientes":
+                    items_filtrados = [i for i in items_filtrados if not i.get('conseguido')]
+                
+                if items_filtrados:
+                    for item in items_filtrados:
+                        emoji = "✅" if item.get('conseguido') else ("🎨" if item['tipo'] == 'inspiracion' else "🛒")
+                        titulo = item['descripcion'][:60]
+                        if len(item['descripcion']) > 60:
+                            titulo += "..."
+                        
+                        with st.expander(f"{emoji} {titulo}", expanded=False):
+                            # Mostrar imagen si existe
+                            if item.get('imagen'):
+                                st.image(item['imagen'], width=300)
+                            
+                            st.markdown(f"**Descripción completa:**")
+                            st.write(item['descripcion'])
+                            st.caption(f"📅 Agregado: {item['fecha']}")
+                            
+                            # Mostrar precio si existe
+                            if item.get('precio'):
+                                st.markdown(f"**💰 Precio:** ${item['precio']:.2f}")
+                            
+                            # Mostrar fecha de conseguido si aplica
+                            if item.get('conseguido') and item.get('fecha_conseguido'):
+                                st.success(f"✅ Conseguido el: {item['fecha_conseguido']}")
+                            
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                if not item.get('conseguido'):
+                                    if st.button("✅ Marcar conseguido", key=f"btn_check_{item['id']}", use_container_width=True):
+                                        if ideas_handler.marcar_conseguido(proyecto['id'], item['id']):
+                                            st.success("¡Conseguido!")
+                                            st.rerun()
+                            
+                            with col2:
+                                if st.button("🗑️ Eliminar", key=f"btn_del_item_{item['id']}", use_container_width=True):
+                                    if ideas_handler.eliminar_item(proyecto['id'], item['id']):
+                                        st.success("Item eliminado")
+                                        st.rerun()
+                else:
+                    st.info(f"📭 No hay items con el filtro '{filtro_tipo}'")
+            else:
+                st.info("📭 No hay items aún. ¡Agrega el primero!")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Opciones del proyecto
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("🔙 Volver a Proyectos", key="btn_volver_proyectos", use_container_width=True):
+                    st.session_state.ideas_subview = "menu"
+                    st.session_state.selected_project_id = None
+                    st.session_state.confirmar_eliminar_proyecto = False
+                    st.rerun()
+            
+            with col2:
+                # ✅ CONFIRMACIÓN DE ELIMINACIÓN
+                if not st.session_state.confirmar_eliminar_proyecto:
+                    if st.button("🗑️ Eliminar Proyecto", key="btn_eliminar_proyecto", use_container_width=True):
+                        st.session_state.confirmar_eliminar_proyecto = True
+                        st.rerun()
+                else:
+                    st.warning("⚠️ ¿Segura que quieres eliminar este proyecto?")
+                    
+                    col_si, col_no = st.columns(2)
+                    
+                    with col_si:
+                        if st.button("✅ Sí, eliminar", key="btn_confirmar_eliminar", use_container_width=True):
+                            if ideas_handler.eliminar_proyecto(proyecto['id']):
+                                st.session_state.confirmar_eliminar_proyecto = False
+                                st.session_state.ideas_subview = "menu"
+                                st.session_state.selected_project_id = None
+                                st.success("✅ Proyecto eliminado")
+                                st.rerun()
+                    
+                    with col_no:
+                        if st.button("❌ Cancelar", key="btn_cancelar_eliminar", use_container_width=True):
+                            st.session_state.confirmar_eliminar_proyecto = False
+                            st.rerun()
+    
+    elif st.session_state.ideas_subview == "chat":
+        st.markdown("### 💬 Chat de Ideas con IA")
+        
+        # Historial de chat
+        if 'ideas_history' not in st.session_state:
+            st.session_state.ideas_history = []
+        
+        # Mostrar historial
+        for msg in st.session_state.ideas_history:
+            if msg['role'] == 'user':
+                st.chat_message("user").write(msg['content'])
+            else:
+                st.chat_message("assistant").write(msg['content'])
+        
+        # Input de usuario
+        if prompt := st.chat_input("Háblame de tu idea..."):
+            # Agregar mensaje del usuario
+            st.session_state.ideas_history.append({"role": "user", "content": prompt})
+            st.chat_message("user").write(prompt)
+            
+            # Obtener respuesta de IA
+            contexto = f"Últimas {len(st.session_state.ideas_history)} interacciones"
+            respuesta = ideas_handler.conversar_con_ia(prompt, contexto)
+            
+            # Agregar respuesta de IA
+            st.session_state.ideas_history.append({"role": "assistant", "content": respuesta})
+            st.chat_message("assistant").write(respuesta)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🔙 Volver", key="btn_volver_chat", use_container_width=True):
                 st.session_state.ideas_subview = "menu"
+                st.rerun()
+        
+        with col2:
+            if st.button("🗑️ Limpiar Chat", key="btn_limpiar_chat", use_container_width=True):
+                st.session_state.ideas_history = []
                 st.rerun()
 
 
@@ -5207,6 +5324,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
