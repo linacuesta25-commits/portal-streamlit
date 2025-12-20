@@ -3140,7 +3140,7 @@ def render_spotify_persistente():
             style="border-radius:12px" 
             src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4sWSpwq3LiO?utm_source=generator&theme=0" 
             width="100%" 
-            height="152" 
+            height="352" 
             frameBorder="0" 
             allowfullscreen="" 
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
@@ -3212,7 +3212,7 @@ else:
                 left: 50% !important;
                 transform: translateX(-50%) !important;
                 z-index: 999999 !important;
-                width: 300px !important;
+                width: 380px !important;
                 box-shadow: 0 8px 32px rgba(147, 51, 234, 0.6) !important;
                 border-radius: 12px !important;
                 background: rgba(2, 6, 23, 0.95) !important;
@@ -3242,7 +3242,7 @@ else:
                 style="border-radius:12px" 
                 src="https://open.spotify.com/embed/playlist/37i9dQZF1DXcNb6Ba0LuVc?utm_source=generator&theme=0" 
                 width="100%" 
-                height="152" 
+                height="352" 
                 frameBorder="0" 
                 allowfullscreen="" 
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
@@ -5207,4 +5207,5 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
