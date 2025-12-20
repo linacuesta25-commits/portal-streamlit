@@ -3455,38 +3455,51 @@ if not st.session_state.login:
 else:
     # === SPOTIFY FLOTANTE CON TU PLAYLIST ===
     st.markdown("""
-        <style>
-            .spotify-bottom-fixed {
-                position: fixed !important;
-                bottom: 60px !important;
-                left: 50% !important;
-                transform: translateX(-50%) !important;
-                z-index: 999999 !important;
-                width: 380px !important;
-                box-shadow: 0 8px 32px rgba(147, 51, 234, 0.6) !important;
-                border-radius: 12px !important;
-                background: rgba(2, 6, 23, 0.95) !important;
-                padding: 5px !important;
-                pointer-events: auto !important;
-            }
-            
-            .spotify-bottom-fixed iframe {
-                border-radius: 12px !important;
-            }
-            
-            .spotify-bottom-fixed:hover {
-                transform: translateX(-50%) translateY(-5px) !important;
-                box-shadow: 0 12px 40px rgba(147, 51, 234, 0.8) !important;
-            }
-            
-            @media (max-width: 768px) {
-                .spotify-bottom-fixed {
-                    width: 280px !important;
-                    bottom: 60px !important;
-                }
-            }
-        </style>
-        
+<style>
+    .spotify-bottom-fixed {
+        position: fixed !important;
+        bottom: 60px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 999999 !important;
+        width: 380px !important;
+        box-shadow: 0 8px 32px rgba(147, 51, 234, 0.6) !important;
+        border-radius: 12px !important;
+        background: rgba(2, 6, 23, 0.95) !important;
+        padding: 5px !important;
+        pointer-events: auto !important;
+    }
+    
+    .spotify-bottom-fixed iframe {
+        border-radius: 12px !important;
+    }
+    
+    .spotify-bottom-fixed:hover {
+        transform: translateX(-50%) translateY(-5px) !important;
+        box-shadow: 0 12px 40px rgba(147, 51, 234, 0.8) !important;
+    }
+    
+    @media (max-width: 768px) {
+        .spotify-bottom-fixed {
+            width: 280px !important;
+            bottom: 60px !important;
+        }
+    }
+</style>
+
+<div id="spotify-fixed">
+    <iframe
+        style="border-radius:12px"
+        src="https://open.spotify.com/embed/album/3QC8nwNxiwe68Rj96yjgzo?utm_source=generator&theme=0"
+        width="100%"
+        height="380"
+        frameBorder="0"
+        allowfullscreen=""
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        loading="lazy">
+    </iframe>
+</div>
+""", unsafe_allow_html=True)
     
     # Función para mostrar breadcrumbs
     def mostrar_breadcrumbs():
@@ -5557,6 +5570,7 @@ else:
     """, unsafe_allow_html=True)
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
