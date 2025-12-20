@@ -4943,64 +4943,42 @@ else:
                                         if ideas_handler.eliminar_item(proyecto['id'], item['id']):
                                             st.rerun()
                 
-                st.markdown("<br>", unsafe_allow_html=True)
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("🔙 Volver a Proyectos", key="btn_volver_proyectos", use_container_width=True):
-                        st.session_state.ideas_subview = "menu"
-                        st.session_state.selected_project_id = None
-                        st.rerun()
-                with col2:
-                    # ✅ LÓGICA DE ELIMINACIÓN SEGURA
-                    if not st.session_state.get('confirmar_eliminar_proyecto', False):
-                        if st.button("🗑️ Eliminar Proyecto", key="btn_eliminar_proyecto", use_container_width=True):
-                            st.session_state.confirmar_eliminar_proyecto = True
-                            st.rerun()
-                    else:
-                        st.warning("⚠️ ¿Segura que quieres eliminar este proyecto?")
-                        
-                        col_si, col_no = st.columns(2)
-                        
-                        with col_si:
-                            if st.button("✅ Sí, eliminar", key="btn_confirmar_eliminar", use_container_width=True):
-                                if ideas_handler.eliminar_proyecto(proyecto['id']):
-                                    st.session_state.confirmar_eliminar_proyecto = False
-                                    st.session_state.ideas_subview = "menu"
-                                    st.session_state.selected_project_id = None
-                                    st.success("✅ Proyecto eliminado")
-                                    st.rerun()
-                        
-                        with col_no:
-                            if st.button("❌ Cancelar", key="btn_cancelar_eliminar", use_container_width=True):
-                                st.session_state.confirmar_eliminar_proyecto = False
-                                st.rerun()
-
-        elif st.session_state.ideas_subview == "chat":
-            st.markdown("### 💬 Chat de Ideas con IA")
-            if 'ideas_history' not in st.session_state:
-                st.session_state.ideas_history = []
-            
-            for msg in st.session_state.ideas_history:
-                st.chat_message(msg['role']).write(msg['content'])
-            
-            if prompt := st.chat_input("Háblame de tu idea..."):
-                st.session_state.ideas_history.append({"role": "user", "content": prompt})
-                st.chat_message("user").write(prompt)
-                
-                respuesta = ideas_handler.conversar_con_ia(prompt, "Contexto de ideas")
-                st.session_state.ideas_history.append({"role": "assistant", "content": respuesta})
-                st.chat_message("assistant").write(respuesta)
-            
+               
+    # Opciones del proyecto
+            st.markdown("<br>", unsafe_allow_html=True)
             col1, col2 = st.columns(2)
+            
             with col1:
-                if st.button("🔙 Volver", key="btn_volver_chat", use_container_width=True):
+                if st.button("🔙 Volver a Proyectos", key="btn_volver_proyectos", use_container_width=True):
+                    if 'confirmar_eliminar_proyecto' in st.session_state:
+                        st.session_state.confirmar_eliminar_proyecto = False
                     st.session_state.ideas_subview = "menu"
+                    st.session_state.selected_project_id = None
                     st.rerun()
+            
             with col2:
-                if st.button("🗑️ Limpiar Chat", key="btn_limpiar_chat", use_container_width=True):
-                    st.session_state.ideas_history = []
-                    st.rerun()
+                # Inicializar la variable de control si no existe para evitar el error
+                if 'confirmar_eliminar_proyecto' not in st.session_state:
+                    st.session_state.confirmar_eliminar_proyecto = False
 
+                if not st.session_state.confirmar_eliminar_proyecto:
+                    if st.button("🗑️ Eliminar Proyecto", key="btn_eliminar_proyecto", use_container_width=True):
+                        st.session_state.confirmar_eliminar_proyecto = True
+                        st.rerun()
+                else:
+                    st.error("⚠️ ¿Confirmas la eliminación?")
+                    c_si, c_no = st.columns(2)
+                    with c_si:
+                        if st.button("✅ Sí", key="btn_conf_si", use_container_width=True):
+                            if ideas_handler.eliminar_proyecto(proyecto['id']):
+                                st.session_state.confirmar_eliminar_proyecto = False
+                                st.session_state.ideas_subview = "menu"
+                                st.session_state.selected_project_id = None
+                                st.rerun()
+                    with c_no:
+                        if st.button("❌ No", key="btn_conf_no", use_container_width=True):
+                            st.session_state.confirmar_eliminar_proyecto = False
+                            st.rerun()
     # --- MÓDULO PROFESIONAL ---
     elif st.session_state.current_view == "profesional":
         mostrar_breadcrumbs()
@@ -5277,6 +5255,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
