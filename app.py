@@ -5096,19 +5096,23 @@ else:
                         st.session_state["confirmar_eliminar_proyecto"] = True
                         st.rerun()
                 else:
-                    # Si ya está en modo confirmación, mostramos la advertencia y los botones finales
+                    # Si ya está en modo confirmación
                     st.error("⚠️ ¿Confirmas la eliminación?")
                     c_si, c_no = st.columns(2)
                     with c_si:
                         if st.button("✅ Sí, eliminar", key="btn_conf_si_final", use_container_width=True):
-                        if hasattr(ideas_handler, 'eliminar_proyecto'):
-                        if ideas_handler.eliminar_proyecto(proyecto['id']):
-                        st.session_state["confirmar_eliminar_proyecto"] = False
-                        st.session_state.ideas_subview = "menu"
-                        st.session_state.selected_project_id = None
-                        st.rerun()
-                else:
-                st.error("❌ Método eliminar_proyecto no encontrado. Contacta soporte.")
+                            if ideas_handler.eliminar_proyecto(proyecto['id']):
+                                st.session_state["confirmar_eliminar_proyecto"] = False
+                                st.session_state.ideas_subview = "menu"
+                                st.session_state.selected_project_id = None
+                                st.success("✅ Proyecto eliminado")
+                                st.rerun()
+                            else:
+                                st.error("❌ Error al eliminar proyecto")
+                    with c_no:
+                        if st.button("❌ No, cancelar", key="btn_conf_no_final", use_container_width=True):
+                            st.session_state["confirmar_eliminar_proyecto"] = False
+                            st.rerun()
     # --- MÓDULO PROFESIONAL ---
     elif st.session_state.current_view == "profesional":
         mostrar_breadcrumbs()
@@ -5385,6 +5389,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
