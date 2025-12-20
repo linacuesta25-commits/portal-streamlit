@@ -2526,30 +2526,29 @@ class IdeasHandler:
             json.dump(proyectos, f, indent=2, ensure_ascii=False)
     
     def _imagen_a_base64(self, uploaded_file):
-    """Convierte archivo subido a base64"""
-    try:
-        import base64
-        
-        # Obtener los bytes de la imagen
-        bytes_data = uploaded_file.getvalue()
-        
-        # Convertir a base64
-        base64_str = base64.b64encode(bytes_data).decode('utf-8')
-        
-        # Detectar tipo MIME de forma segura
-        if hasattr(uploaded_file, 'type') and uploaded_file.type:
-            mime_type = uploaded_file.type
-        else:
-            # Default a PNG si no hay tipo
-            mime_type = 'image/png'
-        
-        # Retornar data URL
-        return f"data:{mime_type};base64,{base64_str}"
-        
-    except Exception as e:
-        print(f"Error convirtiendo imagen a base64: {e}")
-        return None
-    
+        """Convierte archivo subido a base64"""
+        try:
+            import base64
+            
+            # Obtener los bytes de la imagen
+            bytes_data = uploaded_file.getvalue()
+            
+            # Convertir a base64
+            base64_str = base64.b64encode(bytes_data).decode('utf-8')
+            
+            # Detectar tipo MIME de forma segura
+            if hasattr(uploaded_file, 'type') and uploaded_file.type:
+                mime_type = uploaded_file.type
+            else:
+                # Default a PNG si no hay tipo
+                mime_type = 'image/png'
+            
+            # Retornar data URL
+            return f"data:{mime_type};base64,{base64_str}"
+            
+        except Exception as e:
+            print(f"Error convirtiendo imagen a base64: {e}")
+            return None
     def conversar_con_ia(self, mensaje_usuario, contexto=""):
         """Conversa con IA sobre ideas"""
         if not self.openai_enabled:
@@ -5452,6 +5451,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
