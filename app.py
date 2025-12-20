@@ -2653,7 +2653,113 @@ Escribe en prosa natural."""
         self._guardar_proyectos(proyectos)
         return nuevo_item
 
-
+    # 🆕 AGREGAR ESTE MÉTODO
+    def eliminar_proyecto(self, proyecto_id):
+        """Elimina un proyecto completo"""
+        try:
+            proyectos = self._cargar_proyectos()
+            
+            # Buscar el proyecto
+            proyecto = next((p for p in proyectos if p["id"] == int(proyecto_id)), None)
+            
+            if not proyecto:
+                return False
+            
+            # Filtrar (eliminar) el proyecto
+            proyectos = [p for p in proyectos if p["id"] != int(proyecto_id)]
+            
+            # Guardar
+            self._guardar_proyectos(proyectos)
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error eliminando proyecto: {e}")
+            return False
+    
+    # 🆕 AGREGAR ESTE MÉTODO TAMBIÉN (si no existe)
+    def eliminar_item(self, proyecto_id, item_id):
+        """Elimina un item de un proyecto"""
+        try:
+            proyectos = self._cargar_proyectos()
+            
+            # Buscar el proyecto
+            proyecto = next((p for p in proyectos if p["id"] == int(proyecto_id)), None)
+            
+            if not proyecto:
+                return False
+            
+            # Buscar el item
+            item = next((i for i in proyecto.get('items', []) if i["id"] == int(item_id)), None)
+            
+            if not item:
+                return False
+            
+            # Filtrar (eliminar) el item
+            proyecto['items'] = [i for i in proyecto['items'] if i["id"] != int(item_id)]
+            
+            # Actualizar contadores
+            if item.get('conseguido'):
+                proyecto['conseguidos'] = proyecto.get('conseguidos', 0) - 1
+            
+            if item.get('precio'):
+                proyecto['total_gastado'] = proyecto.get('total_gastado', 0) - item['precio']
+            
+            # Guardar
+            self._guardar_proyectos(proyectos)
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error eliminando item: {e}")
+            return False
+    
+    # 🆕 TAMBIÉN NECESITAS ESTE (manejo de imágenes)
+    def agregar_item(self, proyecto_id, tipo, descripcion, **kwargs):
+        """Agrega item a un proyecto"""
+        proyectos = self._cargar_proyectos()
+        try:
+            pid = int(proyecto_id)
+        except:
+            return None
+        
+        proyecto = next((p for p in proyectos if p["id"] == pid), None)
+        if not proyecto:
+            return None
+        
+        nuevo_item = {
+            "id": len(proyecto['items']) + 1,
+            "tipo": tipo,
+            "descripcion": descripcion,
+            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "conseguido": False
+        }
+        
+        # Manejar precio
+        if kwargs.get('precio'):
+            nuevo_item['precio'] = float(kwargs['precio'])
+            # Actualizar total gastado si es compra
+            if tipo == 'compra':
+                proyecto['total_gastado'] = proyecto.get('total_gastado', 0) + float(kwargs['precio'])
+        
+        # Manejar imagen
+        if kwargs.get('imagen_file'):
+            import base64
+            imagen_file = kwargs['imagen_file']
+            # Convertir a base64 para guardar en JSON
+            bytes_data = imagen_file.getvalue()
+            base64_img = base64.b64encode(bytes_data).decode()
+            nuevo_item['imagen'] = f"data:image/png;base64,{base64_img}"
+        
+        proyecto['items'].append(nuevo_item)
+        
+        if tipo == 'inspiracion':
+            proyecto['total_inspiracion'] = proyecto.get('total_inspiracion', 0) + 1
+        else:
+            proyecto['total_compras'] = proyecto.get('total_compras', 0) + 1
+        
+        self._guardar_proyectos(proyectos)
+        return nuevo_item
 # =====================================================
 # HANDLER PROFESIONAL CON IA
 # =====================================================
@@ -5256,6 +5362,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
