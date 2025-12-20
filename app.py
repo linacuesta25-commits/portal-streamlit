@@ -2643,29 +2643,47 @@ Escribe en prosa natural."""
             print(f"Error eliminando proyecto: {e}")
             return False
     
-   def agregar_item_a_un_proyecto(proyecto_id, titulo, descripcion):
-   ····"""Agrega item a un proyecto"""
-   ····
-   ····nuevo_item = {
-   ········"titulo": titulo,
-   ········"descripcion": descripcion
-   ····}
-   ····
-   ····return nuevo_item
-
-    # Cargar todos los proyectos existentes
-    proyectos = self._cargar_proyectos()
-    
-    # Convertir proyecto_id a número
-    try:
-        pid = int(proyecto_id)
-    except:
-        return None
-    
-    # Buscar el proyecto específico
-    proyecto = next((p for p in proyectos if p["id"] == pid), None)
-    if not proyecto:
-        return None
+    def agregar_item_a_un_proyecto(self, proyecto_id, tipo, descripcion, **kwargs):
+        """Agrega un item (inspiración o compra) a un proyecto específico"""
+        
+        # 1. Cargar todos los proyectos existentes
+        proyectos = self._cargar_proyectos()
+        
+        # 2. Convertir proyecto_id a número
+        try:
+            pid = int(proyecto_id)
+        except (ValueError, TypeError):
+            return None
+        
+        # 3. Buscar el proyecto específico
+        proyecto = next((p for p in proyectos if p["id"] == pid), None)
+        if not proyecto:
+            return None
+        
+        # 4. Crear el nuevo item
+        nuevo_item = {
+            "id": len(proyecto.get('items', [])) + 1,
+            "tipo": tipo, # 'compra' o 'inspiracion'
+            "descripcion": descripcion,
+            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "conseguido": False
+        }
+        
+        # 5. Si tiene precio, agregarlo y actualizar totales
+        precio = kwargs.get('precio')
+        if precio and float(precio) > 0:
+            nuevo_item['precio'] = float(precio)
+            if tipo == 'compra':
+                proyecto['total_gastado'] = proyecto.get('total_gastado', 0.0) + float(precio)
+                proyecto['total_compras'] = proyecto.get('total_compras', 0) + 1
+            else:
+                proyecto['total_inspiracion'] = proyecto.get('total_inspiracion', 0) + 1
+        
+        # 6. Guardar cambios
+        proyecto['items'].append(nuevo_item)
+        self._guardar_proyectos(proyectos)
+        
+        return nuevo_item
     
     # Crear el nuevo item
     nuevo_item = {
@@ -5450,6 +5468,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
