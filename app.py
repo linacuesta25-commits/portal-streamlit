@@ -3454,7 +3454,7 @@ if not st.session_state.login:
 
 else:
     # === SPOTIFY FLOTANTE CON TU PLAYLIST ===
-    st.markdown("""
+   st.markdown("""
 <style>
     .spotify-bottom-fixed {
         position: fixed !important;
@@ -5570,6 +5570,7 @@ else:
     """, unsafe_allow_html=True)
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
