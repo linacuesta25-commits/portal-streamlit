@@ -2526,14 +2526,29 @@ class IdeasHandler:
             json.dump(proyectos, f, indent=2, ensure_ascii=False)
     
     def _imagen_a_base64(self, uploaded_file):
-        """Convierte archivo subido a base64"""
-        try:
-            import base64
-            bytes_data = uploaded_file.getvalue()
-            base64_str = base64.b64encode(bytes_data).decode()
-            return f"data:image/{uploaded_file.type.split('/')[-1]};base64,{base64_str}"
-        except:
-            return None
+    """Convierte archivo subido a base64"""
+    try:
+        import base64
+        
+        # Obtener los bytes de la imagen
+        bytes_data = uploaded_file.getvalue()
+        
+        # Convertir a base64
+        base64_str = base64.b64encode(bytes_data).decode('utf-8')
+        
+        # Detectar tipo MIME de forma segura
+        if hasattr(uploaded_file, 'type') and uploaded_file.type:
+            mime_type = uploaded_file.type
+        else:
+            # Default a PNG si no hay tipo
+            mime_type = 'image/png'
+        
+        # Retornar data URL
+        return f"data:{mime_type};base64,{base64_str}"
+        
+    except Exception as e:
+        print(f"Error convirtiendo imagen a base64: {e}")
+        return None
     
     def conversar_con_ia(self, mensaje_usuario, contexto=""):
         """Conversa con IA sobre ideas"""
@@ -2642,46 +2657,56 @@ Escribe en prosa natural."""
             return False
     
     def agregar_item(self, proyecto_id, tipo, descripcion, precio=None, imagen_file=None, **kwargs):
-        """Agrega item a un proyecto con soporte para precio e imagen"""
-        proyectos = self._cargar_proyectos()
-        
+    """Agrega item a un proyecto con soporte para precio e imagen"""
+    proyectos = self._cargar_proyectos()
+    
+    try:
+        pid = int(proyecto_id)
+    except:
+        return None
+    
+    proyecto = next((p for p in proyectos if p["id"] == pid), None)
+    if not proyecto:
+        return None
+    
+    # Convertir imagen a base64 si existe
+    imagen_base64 = None
+    if imagen_file:
         try:
-            pid = int(proyecto_id)
-        except:
-            return None
-        
-        proyecto = next((p for p in proyectos if p["id"] == pid), None)
-        if not proyecto:
-            return None
-        
-        # Convertir imagen a base64 si existe
-        imagen_base64 = None
-        if imagen_file:
             imagen_base64 = self._imagen_a_base64(imagen_file)
-        
-        # Crear el nuevo item
-        nuevo_item = {
-            "id": len(proyecto['items']) + 1,
-            "tipo": tipo,
-            "descripcion": descripcion,
-            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "conseguido": False,
-            "precio": float(precio) if precio and precio > 0 else None,
-            "imagen": imagen_base64
-        }
-        
-        # Agregar al proyecto
-        proyecto['items'].append(nuevo_item)
-        
-        # Actualizar contadores
-        if tipo == 'inspiracion':
-            proyecto['total_inspiracion'] = proyecto.get('total_inspiracion', 0) + 1
-        else:
-            proyecto['total_compras'] = proyecto.get('total_compras', 0) + 1
-        
-        # Guardar
+            if not imagen_base64:
+                print("⚠️ No se pudo convertir la imagen")
+        except Exception as e:
+            print(f"Error procesando imagen: {e}")
+            imagen_base64 = None
+    
+    # Crear el nuevo item
+    nuevo_item = {
+        "id": len(proyecto['items']) + 1,
+        "tipo": tipo,
+        "descripcion": descripcion,
+        "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "conseguido": False,
+        "precio": float(precio) if precio and precio > 0 else None,
+        "imagen": imagen_base64
+    }
+    
+    # Agregar al proyecto
+    proyecto['items'].append(nuevo_item)
+    
+    # Actualizar contadores
+    if tipo == 'inspiracion':
+        proyecto['total_inspiracion'] = proyecto.get('total_inspiracion', 0) + 1
+    else:
+        proyecto['total_compras'] = proyecto.get('total_compras', 0) + 1
+    
+    # Guardar con manejo de errores
+    try:
         self._guardar_proyectos(proyectos)
         return nuevo_item
+    except Exception as e:
+        print(f"Error guardando proyecto: {e}")
+        return None
     
     def eliminar_item(self, proyecto_id, item_id):
         """Elimina un item de un proyecto"""
@@ -5427,6 +5452,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
