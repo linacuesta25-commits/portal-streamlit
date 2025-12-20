@@ -4876,6 +4876,7 @@ else:
     
   
     # --- MÓDULO IDEAS ---
+    # --- MÓDULO IDEAS ---
     elif st.session_state.current_view == "ideas":
         mostrar_breadcrumbs()
         st.markdown("<div class='title-glow'>💡 Ideas</div>", unsafe_allow_html=True)
@@ -5072,47 +5073,88 @@ else:
                                     if st.button("🗑️ Eliminar", key=f"btn_del_item_{item['id']}", use_container_width=True):
                                         if ideas_handler.eliminar_item(proyecto['id'], item['id']):
                                             st.rerun()
-                
-               
-   # Opciones del proyecto
-            st.markdown("<br>", unsafe_allow_html=True)
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                if st.button("🔙 Volver a Proyectos", key="btn_volver_proyectos", use_container_width=True):
-                    # Forzamos el reset de la variable de eliminación al salir
-                    st.session_state["confirmar_eliminar_proyecto"] = False
-                    st.session_state.ideas_subview = "menu"
-                    st.session_state.selected_project_id = None
-                    st.rerun()
-            
-            with col2:
-                # 🛠️ PROTECCIÓN TOTAL: Si la variable no existe, la creamos como False
-                if "confirmar_eliminar_proyecto" not in st.session_state:
-                    st.session_state["confirmar_eliminar_proyecto"] = False
-
-                if not st.session_state["confirmar_eliminar_proyecto"]:
-                    if st.button("🗑️ Eliminar Proyecto", key="btn_eliminar_proyecto", use_container_width=True):
-                        st.session_state["confirmar_eliminar_proyecto"] = True
-                        st.rerun()
+                    else:
+                        st.info(f"No hay items que mostrar con el filtro '{filtro_tipo}'")
                 else:
-                    # Si ya está en modo confirmación
-                    st.error("⚠️ ¿Confirmas la eliminación?")
-                    c_si, c_no = st.columns(2)
-                    with c_si:
-                        if st.button("✅ Sí, eliminar", key="btn_conf_si_final", use_container_width=True):
-                            if ideas_handler.eliminar_proyecto(proyecto['id']):
-                                st.session_state["confirmar_eliminar_proyecto"] = False
-                                st.session_state.ideas_subview = "menu"
-                                st.session_state.selected_project_id = None
-                                st.success("✅ Proyecto eliminado")
-                                st.rerun()
-                            else:
-                                st.error("❌ Error al eliminar proyecto")
-                    with c_no:
-                        if st.button("❌ No, cancelar", key="btn_conf_no_final", use_container_width=True):
-                            st.session_state["confirmar_eliminar_proyecto"] = False
+                    st.info("📭 Este proyecto aún no tiene items. ¡Agrega el primero!")
+                
+                # Opciones del proyecto
+                st.markdown("<br>", unsafe_allow_html=True)
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if st.button("🔙 Volver a Proyectos", key="btn_volver_proyectos", use_container_width=True):
+                        st.session_state["confirmar_eliminar_proyecto"] = False
+                        st.session_state.ideas_subview = "menu"
+                        st.session_state.selected_project_id = None
+                        st.rerun()
+                
+                with col2:
+                    # Inicializar variable de confirmación
+                    if "confirmar_eliminar_proyecto" not in st.session_state:
+                        st.session_state["confirmar_eliminar_proyecto"] = False
+
+                    if not st.session_state["confirmar_eliminar_proyecto"]:
+                        if st.button("🗑️ Eliminar Proyecto", key="btn_eliminar_proyecto", use_container_width=True):
+                            st.session_state["confirmar_eliminar_proyecto"] = True
                             st.rerun()
+                    else:
+                        st.error("⚠️ ¿Confirmas la eliminación?")
+                        c_si, c_no = st.columns(2)
+                        with c_si:
+                            if st.button("✅ Sí", key="btn_conf_si_final", use_container_width=True):
+                                # Usar workaround directo hasta que el método se actualice
+                                try:
+                                    proyectos = ideas_handler._cargar_proyectos()
+                                    proyectos_filtrados = [p for p in proyectos if p["id"] != proyecto['id']]
+                                    ideas_handler._guardar_proyectos(proyectos_filtrados)
+                                    st.session_state["confirmar_eliminar_proyecto"] = False
+                                    st.session_state.ideas_subview = "menu"
+                                    st.session_state.selected_project_id = None
+                                    st.success("✅ Proyecto eliminado")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Error: {e}")
+                        with c_no:
+                            if st.button("❌ No", key="btn_conf_no_final", use_container_width=True):
+                                st.session_state["confirmar_eliminar_proyecto"] = False
+                                st.rerun()
+        
+        elif st.session_state.ideas_subview == "chat":
+            st.markdown("### 💬 Chat de Ideas con IA")
+            st.markdown("<p style='color:#d8c9ff;'>Conversa sobre tus proyectos y recibe sugerencias</p>", unsafe_allow_html=True)
+            
+            # Mostrar historial
+            if st.session_state.ideas_history:
+                st.markdown("**Conversación:**")
+                for msg in st.session_state.ideas_history[-5:]:
+                    if msg['role'] == 'user':
+                        st.markdown(f"**Tú:** {msg['content']}")
+                    else:
+                        st.markdown(f'<div class="result-card">**IA:** {msg["content"]}</div>', unsafe_allow_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
+            
+            mensaje = st.text_area("¿Qué idea tienes en mente?", height=100, 
+                                  placeholder="Ej: Quiero empezar un proyecto de decoración para mi cuarto...",
+                                  key="input_chat_ideas")
+            
+            if st.button("💬 Enviar", use_container_width=True, key="btn_chat_ideas_send"):
+                if mensaje:
+                    st.session_state.ideas_history.append({'role': 'user', 'content': mensaje})
+                    contexto = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.ideas_history[-3:]])
+                    
+                    with st.spinner("💭 Conversando con IA..."):
+                        respuesta = ideas_handler.conversar_con_ia(mensaje, contexto)
+                    
+                    st.session_state.ideas_history.append({'role': 'assistant', 'content': respuesta})
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Escribe algo primero")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_ideas_volver_chat", use_container_width=True):
+                st.session_state.ideas_subview = "menu"
+                st.rerun()
     # --- MÓDULO PROFESIONAL ---
     elif st.session_state.current_view == "profesional":
         mostrar_breadcrumbs()
@@ -5389,6 +5431,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
