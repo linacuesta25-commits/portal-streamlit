@@ -2522,8 +2522,64 @@ class IdeasHandler:
             return []
     
     def _guardar_proyectos(self, proyectos):
-        with open(self.PROYECTOS_FILE, "w", encoding="utf-8") as f:
-            json.dump(proyectos, f, indent=2, ensure_ascii=False)
+        """Guarda proyectos en JSON de forma segura"""
+        try:
+            # Asegurar que todo sea serializable
+            proyectos_limpios = []
+            for proyecto in proyectos:
+                proyecto_limpio = {
+                    "id": int(proyecto.get("id", 0)),
+                    "nombre": str(proyecto.get("nombre", "")),
+                    "descripcion": str(proyecto.get("descripcion", "")),
+                    "fecha_creacion": str(proyecto.get("fecha_creacion", "")),
+                    "items": [],
+                    "total_inspiracion": int(proyecto.get("total_inspiracion", 0)),
+                    "total_compras": int(proyecto.get("total_compras", 0)),
+                    "conseguidos": int(proyecto.get("conseguidos", 0)),
+                    "total_gastado": float(proyecto.get("total_gastado", 0.0))
+                }
+                
+                # Limpiar items
+                for item in proyecto.get("items", []):
+                    item_limpio = {
+                        "id": int(item.get("id", 0)),
+                        "tipo": str(item.get("tipo", "")),
+                        "descripcion": str(item.get("descripcion", "")),
+                        "fecha": str(item.get("fecha", "")),
+                        "conseguido": bool(item.get("conseguido", False))
+                    }
+                    
+                    # Agregar precio si existe
+                    if item.get("precio") is not None:
+                        try:
+                            item_limpio["precio"] = float(item["precio"])
+                        except:
+                            item_limpio["precio"] = None
+                    else:
+                        item_limpio["precio"] = None
+                    
+                    # Agregar imagen si existe (solo strings)
+                    if item.get("imagen") and isinstance(item["imagen"], str):
+                        item_limpio["imagen"] = item["imagen"]
+                    else:
+                        item_limpio["imagen"] = None
+                    
+                    # Fecha conseguido
+                    if "fecha_conseguido" in item:
+                        item_limpio["fecha_conseguido"] = str(item["fecha_conseguido"])
+                    
+                    proyecto_limpio["items"].append(item_limpio)
+                
+                proyectos_limpios.append(proyecto_limpio)
+            
+            # Guardar
+            with open(self.PROYECTOS_FILE, "w", encoding="utf-8") as f:
+                json.dump(proyectos_limpios, f, indent=2, ensure_ascii=False)
+                
+        except Exception as e:
+            print(f"❌ Error guardando proyectos: {e}")
+            import traceback
+            traceback.print_exc()
     
     def _imagen_a_base64(self, uploaded_file):
         """Convierte archivo subido a base64"""
@@ -2549,6 +2605,7 @@ class IdeasHandler:
         except Exception as e:
             print(f"Error convirtiendo imagen a base64: {e}")
             return None
+    
     def conversar_con_ia(self, mensaje_usuario, contexto=""):
         """Conversa con IA sobre ideas"""
         if not self.openai_enabled:
@@ -2705,6 +2762,8 @@ Escribe en prosa natural."""
             return nuevo_item
         except Exception as e:
             print(f"Error guardando proyecto: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def eliminar_item(self, proyecto_id, item_id):
@@ -5451,6 +5510,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
