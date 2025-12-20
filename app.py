@@ -2522,15 +2522,32 @@ class IdeasHandler:
             return []
     
     def _guardar_proyectos(self, proyectos):
-        """Guarda proyectos en JSON de forma segura"""
+        """Guarda proyectos en JSON de forma ULTRA segura"""
+        import json
+        
+        def serializar_seguro(obj):
+            """Convierte cualquier objeto a algo serializable"""
+            if obj is None:
+                return None
+            elif isinstance(obj, (str, int, float, bool)):
+                return obj
+            elif isinstance(obj, dict):
+                return {str(k): serializar_seguro(v) for k, v in obj.items()}
+            elif isinstance(obj, (list, tuple)):
+                return [serializar_seguro(item) for item in obj]
+            else:
+                # Si no es ninguno de los tipos anteriores, convertir a string
+                return str(obj)
+        
         try:
-            # Asegurar que todo sea serializable
+            # Limpiar proyectos de forma super segura
             proyectos_limpios = []
+            
             for proyecto in proyectos:
                 proyecto_limpio = {
                     "id": int(proyecto.get("id", 0)),
-                    "nombre": str(proyecto.get("nombre", "")),
-                    "descripcion": str(proyecto.get("descripcion", "")),
+                    "nombre": str(proyecto.get("nombre", ""))[:500],  # Limitar longitud
+                    "descripcion": str(proyecto.get("descripcion", ""))[:1000],
                     "fecha_creacion": str(proyecto.get("fecha_creacion", "")),
                     "items": [],
                     "total_inspiracion": int(proyecto.get("total_inspiracion", 0)),
@@ -2539,47 +2556,90 @@ class IdeasHandler:
                     "total_gastado": float(proyecto.get("total_gastado", 0.0))
                 }
                 
-                # Limpiar items
+                # Procesar items
                 for item in proyecto.get("items", []):
-                    item_limpio = {
-                        "id": int(item.get("id", 0)),
-                        "tipo": str(item.get("tipo", "")),
-                        "descripcion": str(item.get("descripcion", "")),
-                        "fecha": str(item.get("fecha", "")),
-                        "conseguido": bool(item.get("conseguido", False))
-                    }
-                    
-                    # Agregar precio si existe
-                    if item.get("precio") is not None:
-                        try:
-                            item_limpio["precio"] = float(item["precio"])
-                        except:
-                            item_limpio["precio"] = None
-                    else:
-                        item_limpio["precio"] = None
-                    
-                    # Agregar imagen si existe (solo strings)
-                    if item.get("imagen") and isinstance(item["imagen"], str):
-                        item_limpio["imagen"] = item["imagen"]
-                    else:
-                        item_limpio["imagen"] = None
-                    
-                    # Fecha conseguido
-                    if "fecha_conseguido" in item:
-                        item_limpio["fecha_conseguido"] = str(item["fecha_conseguido"])
-                    
-                    proyecto_limpio["items"].append(item_limpio)
+                    try:
+                        item_limpio = {
+                            "id": int(item.get("id", 0)),
+                            "tipo": str(item.get("tipo", ""))[:50],
+                            "descripcion": str(item.get("descripcion", ""))[:1000],
+                            "fecha": str(item.get("fecha", "")),
+                            "conseguido": bool(item.get("conseguido", False)),
+                            "precio": None,
+                            "imagen": None
+                        }
+                        
+                        # Procesar precio
+                        if item.get("precio") is not None:
+                            try:
+                                precio_val = float(item["precio"])
+                                if precio_val > 0:
+                                    item_limpio["precio"] = round(precio_val, 2)
+                            except:
+                                pass
+                        
+                        # Procesar imagen - SOLO si es string y no vacío
+                        if item.get("imagen"):
+                            try:
+                                imagen_val = item["imagen"]
+                                # Verificar que sea string y empiece con data:image
+                                if isinstance(imagen_val, str) and imagen_val.startswith("data:image"):
+                                    # Limitar tamaño (máximo 2MB en base64 ≈ 2.7M caracteres)
+                                    if len(imagen_val) < 3000000:
+                                        item_limpio["imagen"] = imagen_val
+                                    else:
+                                        print(f"⚠️ Imagen demasiado grande, no se guardará")
+                            except Exception as e:
+                                print(f"⚠️ Error procesando imagen: {e}")
+                        
+                        # Fecha conseguido
+                        if "fecha_conseguido" in item:
+                            item_limpio["fecha_conseguido"] = str(item["fecha_conseguido"])
+                        
+                        # Agregar item limpio
+                        proyecto_limpio["items"].append(item_limpio)
+                        
+                    except Exception as e:
+                        print(f"⚠️ Error procesando item individual: {e}")
+                        continue
                 
                 proyectos_limpios.append(proyecto_limpio)
             
+            # Serializar de forma segura
+            proyectos_serializables = serializar_seguro(proyectos_limpios)
+            
             # Guardar
             with open(self.PROYECTOS_FILE, "w", encoding="utf-8") as f:
-                json.dump(proyectos_limpios, f, indent=2, ensure_ascii=False)
+                json.dump(proyectos_serializables, f, indent=2, ensure_ascii=False)
+            
+            print(f"✅ Proyectos guardados exitosamente")
+            return True
                 
         except Exception as e:
-            print(f"❌ Error guardando proyectos: {e}")
+            print(f"❌ ERROR CRÍTICO guardando proyectos: {e}")
             import traceback
             traceback.print_exc()
+            
+            # Intentar guardar versión mínima sin imágenes
+            try:
+                print("🔄 Intentando guardar sin imágenes...")
+                proyectos_sin_imagenes = []
+                for p in proyectos:
+                    p_copia = dict(p)
+                    p_copia["items"] = []
+                    for item in p.get("items", []):
+                        item_copia = dict(item)
+                        item_copia["imagen"] = None  # Eliminar imágenes
+                        p_copia["items"].append(item_copia)
+                    proyectos_sin_imagenes.append(p_copia)
+                
+                with open(self.PROYECTOS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(proyectos_sin_imagenes, f, indent=2, ensure_ascii=False)
+                print("✅ Guardado sin imágenes exitoso")
+                return True
+            except:
+                print("❌ Fallo total al guardar")
+                return False
     
     def _imagen_a_base64(self, uploaded_file):
         """Convierte archivo subido a base64"""
@@ -5510,6 +5570,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
