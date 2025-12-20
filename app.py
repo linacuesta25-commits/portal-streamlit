@@ -2599,7 +2599,8 @@ Escribe en prosa natural."""
             "items": [],
             "total_inspiracion": 0,
             "total_compras": 0,
-            "conseguidos": 0
+            "conseguidos": 0,
+            "total_gastado": 0.0
         }
         
         proyectos.append(nuevo_proyecto)
@@ -2619,41 +2620,6 @@ Escribe en prosa natural."""
         except:
             return None
     
-    def agregar_item(self, proyecto_id, tipo, descripcion, **kwargs):
-        """Agrega item a un proyecto"""
-        proyectos = self._cargar_proyectos()
-        try:
-            pid = int(proyecto_id)
-        except:
-            return None
-        
-        proyecto = next((p for p in proyectos if p["id"] == pid), None)
-        if not proyecto:
-            return None
-        
-        nuevo_item = {
-            "id": len(proyecto['items']) + 1,
-            "tipo": tipo,
-            "descripcion": descripcion,
-            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "conseguido": False
-        }
-        
-        for key, value in kwargs.items():
-            if value:
-                nuevo_item[key] = value
-        
-        proyecto['items'].append(nuevo_item)
-        
-        if tipo == 'inspiracion':
-            proyecto['total_inspiracion'] += 1
-        else:
-            proyecto['total_compras'] += 1
-        
-        self._guardar_proyectos(proyectos)
-        return nuevo_item
-
-    # 🆕 AGREGAR ESTE MÉTODO
     def eliminar_proyecto(self, proyecto_id):
         """Elimina un proyecto completo"""
         try:
@@ -2666,10 +2632,10 @@ Escribe en prosa natural."""
                 return False
             
             # Filtrar (eliminar) el proyecto
-            proyectos = [p for p in proyectos if p["id"] != int(proyecto_id)]
+            proyectos_filtrados = [p for p in proyectos if p["id"] != int(proyecto_id)]
             
             # Guardar
-            self._guardar_proyectos(proyectos)
+            self._guardar_proyectos(proyectos_filtrados)
             
             return True
             
@@ -2677,44 +2643,6 @@ Escribe en prosa natural."""
             print(f"Error eliminando proyecto: {e}")
             return False
     
-    # 🆕 AGREGAR ESTE MÉTODO TAMBIÉN (si no existe)
-    def eliminar_item(self, proyecto_id, item_id):
-        """Elimina un item de un proyecto"""
-        try:
-            proyectos = self._cargar_proyectos()
-            
-            # Buscar el proyecto
-            proyecto = next((p for p in proyectos if p["id"] == int(proyecto_id)), None)
-            
-            if not proyecto:
-                return False
-            
-            # Buscar el item
-            item = next((i for i in proyecto.get('items', []) if i["id"] == int(item_id)), None)
-            
-            if not item:
-                return False
-            
-            # Filtrar (eliminar) el item
-            proyecto['items'] = [i for i in proyecto['items'] if i["id"] != int(item_id)]
-            
-            # Actualizar contadores
-            if item.get('conseguido'):
-                proyecto['conseguidos'] = proyecto.get('conseguidos', 0) - 1
-            
-            if item.get('precio'):
-                proyecto['total_gastado'] = proyecto.get('total_gastado', 0) - item['precio']
-            
-            # Guardar
-            self._guardar_proyectos(proyectos)
-            
-            return True
-            
-        except Exception as e:
-            print(f"Error eliminando item: {e}")
-            return False
-    
-    # 🆕 TAMBIÉN NECESITAS ESTE (manejo de imágenes)
     def agregar_item(self, proyecto_id, tipo, descripcion, **kwargs):
         """Agrega item a un proyecto"""
         proyectos = self._cargar_proyectos()
@@ -2736,7 +2664,7 @@ Escribe en prosa natural."""
         }
         
         # Manejar precio
-        if kwargs.get('precio'):
+        if kwargs.get('precio') and kwargs['precio'] > 0:
             nuevo_item['precio'] = float(kwargs['precio'])
             # Actualizar total gastado si es compra
             if tipo == 'compra':
@@ -2744,12 +2672,15 @@ Escribe en prosa natural."""
         
         # Manejar imagen
         if kwargs.get('imagen_file'):
-            import base64
-            imagen_file = kwargs['imagen_file']
-            # Convertir a base64 para guardar en JSON
-            bytes_data = imagen_file.getvalue()
-            base64_img = base64.b64encode(bytes_data).decode()
-            nuevo_item['imagen'] = f"data:image/png;base64,{base64_img}"
+            try:
+                import base64
+                imagen_file = kwargs['imagen_file']
+                # Convertir a base64 para guardar en JSON
+                bytes_data = imagen_file.getvalue()
+                base64_img = base64.b64encode(bytes_data).decode()
+                nuevo_item['imagen'] = f"data:image/png;base64,{base64_img}"
+            except:
+                pass
         
         proyecto['items'].append(nuevo_item)
         
@@ -2760,6 +2691,99 @@ Escribe en prosa natural."""
         
         self._guardar_proyectos(proyectos)
         return nuevo_item
+    
+    def eliminar_item(self, proyecto_id, item_id):
+        """Elimina un item de un proyecto"""
+        try:
+            proyectos = self._cargar_proyectos()
+            
+            # Buscar el proyecto
+            proyecto = next((p for p in proyectos if p["id"] == int(proyecto_id)), None)
+            
+            if not proyecto:
+                return False
+            
+            # Buscar el item
+            item = next((i for i in proyecto.get('items', []) if i["id"] == int(item_id)), None)
+            
+            if not item:
+                return False
+            
+            # Actualizar contadores ANTES de eliminar
+            if item.get('conseguido'):
+                proyecto['conseguidos'] = max(0, proyecto.get('conseguidos', 0) - 1)
+            
+            if item.get('precio') and item['tipo'] == 'compra':
+                proyecto['total_gastado'] = max(0, proyecto.get('total_gastado', 0) - item['precio'])
+            
+            if item['tipo'] == 'inspiracion':
+                proyecto['total_inspiracion'] = max(0, proyecto.get('total_inspiracion', 0) - 1)
+            else:
+                proyecto['total_compras'] = max(0, proyecto.get('total_compras', 0) - 1)
+            
+            # Filtrar (eliminar) el item
+            proyecto['items'] = [i for i in proyecto['items'] if i["id"] != int(item_id)]
+            
+            # Guardar
+            self._guardar_proyectos(proyectos)
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error eliminando item: {e}")
+            return False
+    
+    def marcar_conseguido(self, proyecto_id, item_id):
+        """Marca un item como conseguido"""
+        proyectos = self._cargar_proyectos()
+        try:
+            pid = int(proyecto_id)
+            iid = int(item_id)
+        except:
+            return False
+        
+        proyecto = next((p for p in proyectos if p["id"] == pid), None)
+        if not proyecto:
+            return False
+        
+        item = next((i for i in proyecto['items'] if i["id"] == iid), None)
+        if not item:
+            return False
+        
+        item['conseguido'] = True
+        item['fecha_conseguido'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        proyecto['conseguidos'] = proyecto.get('conseguidos', 0) + 1
+        
+        self._guardar_proyectos(proyectos)
+        return True
+    
+    def expandir_idea(self, idea_usuario):
+        """Expande una idea con sugerencias de IA"""
+        if not self.openai_enabled:
+            return "La IA no está disponible 💜"
+        
+        prompt = f"""El usuario tiene esta idea: "{idea_usuario}"
+
+Ayúdale a expandirla. Genera:
+1. 3 variaciones interesantes de la idea
+2. 2 preguntas para profundizar
+3. 1 sugerencia práctica para empezar
+
+Máximo 200 palabras. Tono amigable y motivador."""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una amiga creativa que ayuda a expandir ideas de proyectos personales."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=350,
+                temperature=0.8
+            )
+            return response.choices[0].message.content.strip()
+        except:
+            return "No pude procesar la idea 🥺 Intenta de nuevo"
 # =====================================================
 # HANDLER PROFESIONAL CON IA
 # =====================================================
@@ -5362,6 +5386,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
