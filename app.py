@@ -3403,7 +3403,7 @@ def render_spotify_persistente():
     <div id="spotify-fixed">
         <iframe 
             style="border-radius:12px" 
-            src="src="src="https://open.spotify.com/embed/album/3QC8nwNxiwe68Rj96yjgzo?utm_source=generator&theme=0" 
+            src="https://open.spotify.com/embed/album/3QC8nwNxiwe68Rj96yjgzo?utm_source=generator&theme=0"
             width="100%" 
             height="380" 
             frameBorder="0" 
@@ -5570,6 +5570,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
