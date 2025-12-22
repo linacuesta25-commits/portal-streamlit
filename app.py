@@ -3573,7 +3573,59 @@ else:
     # --- MENÚ PRINCIPAL ---
     if st.session_state.current_view == "menu":
         st.markdown("<div class='title-glow'>💜 Acceso Concedido</div>", unsafe_allow_html=True)
-        st.markdown("<p class='subtitle-text'>Bienvenida, Sacerdotisa.</p>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle-text'>Bienvenida, Sacerdotisa.</p>", unsafe_allow_html=True)
+
+# ==================== DASHBOARD AGREGADO ====================
+st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("### 📊 Tu Resumen de Hoy")
+
+col1, col2, col3, col4 = st.columns(4)
+
+# MÉTRICA 1: Gasto promedio diario
+try:
+    stats_fin = finanzas_handler.estadisticas_avanzadas()
+    if stats_fin:
+        gasto_diario = stats_fin.get('promedio_diario', 0)
+        with col1:
+            st.metric("💰 Promedio Diario", f"${gasto_diario:.0f}")
+    else:
+        with col1:
+            st.metric("💰 Promedio Diario", "$0")
+except:
+    with col1:
+        st.metric("💰 Promedio Diario", "$0")
+
+# MÉTRICA 2: Notas importantes
+try:
+    notas = notas_handler._cargar_notas()
+    importantes = [n for n in notas if n.get('importante', False)]
+    with col2:
+        st.metric("⭐ Notas Importantes", len(importantes))
+except:
+    with col2:
+        st.metric("⭐ Notas Importantes", "0")
+
+# MÉTRICA 3: Proyectos activos
+try:
+    proyectos = ideas_handler.listar_proyectos()
+    with col3:
+        st.metric("💡 Proyectos", len(proyectos))
+except:
+    with col3:
+        st.metric("💡 Proyectos", "0")
+
+# MÉTRICA 4: Vacantes activas
+try:
+    vacantes = profesional_handler.listar_vacantes()
+    activas = [v for v in vacantes if v.get('estado') in ['aplicado', 'entrevista']]
+    with col4:
+        st.metric("💼 Vacantes Activas", len(activas))
+except:
+    with col4:
+        st.metric("💼 Vacantes Activas", "0")
+
+st.markdown("<br>", unsafe_allow_html=True)
+# ==================== FIN DASHBOARD ====================
         opciones = [("🌙", "Lo Oculto", "lo_oculto", "oculto-icon"), ("💡", "Ideas", "ideas", "ideas-icon"), 
                     ("📖", "Biblia", "biblia", "biblia-icon"), ("💰", "Finanzas", "finanzas", "finanzas-icon"), 
                     ("📝", "Notas", "notas", "notas-icon"), ("📚", "Libros", "libros", "libros-icon"),
@@ -5570,4 +5622,5 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
