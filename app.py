@@ -3571,7 +3571,7 @@ else:
         st.markdown("<br>", unsafe_allow_html=True)
     
     # --- MENÚ PRINCIPAL ---
-    if st.session_state.current_view == "menu":
+if st.session_state.current_view == "menu":
     st.markdown("<div class='title-glow'>💜 Acceso Concedido</div>", unsafe_allow_html=True)
     st.markdown("<p class='subtitle-text'>Bienvenida, Sacerdotisa.</p>", unsafe_allow_html=True)
     
@@ -5628,6 +5628,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
