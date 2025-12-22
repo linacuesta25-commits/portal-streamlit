@@ -1092,7 +1092,6 @@ class MetasAhorroHandler:
         metas = [m for m in metas if m["id"] != int(meta_id)]
         self._guardar_metas(metas)
         return meta
-        
 class LocalFrasesHandler:
     def __init__(self):
         self.DATA_FOLDER = "data"
@@ -3800,7 +3799,6 @@ else:
                 st.rerun()
 
     # --- MÓDULO FINANZAS ---
-   
     elif st.session_state.current_view == "finanzas":
         mostrar_breadcrumbs()
         st.markdown("<div class='title-glow'>💰 Finanzas</div>", unsafe_allow_html=True)
@@ -3989,23 +3987,23 @@ else:
                 st.session_state.finanzas_subview = "menu"
                 st.rerun()
         elif st.session_state.finanzas_subview == "metas":
-             st.markdown("### 💎 Metas de Ahorro")
+    st.markdown("### 💎 Metas de Ahorro")
     
     metas = metas_ahorro_handler.listar_metas()
     
     if metas:
-             st.success(f"✅ Tienes {len(metas)} meta(s) de ahorro")
+        st.success(f"✅ Tienes {len(metas)} meta(s) de ahorro")
         
-    for meta in metas:
+        for meta in metas:
             progreso = (meta['acumulado'] / meta['objetivo'] * 100) if meta['objetivo'] > 0 else 0
             emoji_estado = "✅" if meta.get('completada') else "🎯"
             
             with st.expander(f"{emoji_estado} {meta['nombre']} - {progreso:.0f}%", expanded=not meta.get('completada')):
-             st.progress(min(progreso / 100, 1.0))
+                st.progress(min(progreso / 100, 1.0))
                 
-                  col1, col2, col3 = st.columns(3)
-                  col1.metric("🎯 Objetivo", f"${meta['objetivo']:.2f}")
-                   col2.metric("💰 Acumulado", f"${meta['acumulado']:.2f}")
+                col1, col2, col3 = st.columns(3)
+                col1.metric("🎯 Objetivo", f"${meta['objetivo']:.2f}")
+                col2.metric("💰 Acumulado", f"${meta['acumulado']:.2f}")
                 falta = max(meta['objetivo'] - meta['acumulado'], 0)
                 col3.metric("📉 Falta", f"${falta:.2f}")
                 
@@ -4074,6 +4072,7 @@ else:
     if st.button("🔙 Volver", key="btn_volver_metas"):
         st.session_state.finanzas_subview = "menu"
         st.rerun()
+        
         elif st.session_state.finanzas_subview == "estadisticas":
             st.markdown("### 📈 Estadísticas Avanzadas")
             
@@ -5719,10 +5718,4 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
-
-
-
-
-
-
 
