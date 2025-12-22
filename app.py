@@ -650,29 +650,59 @@ class LocalNotasHandler:
             "📄 Otros",
         ]
         os.makedirs(self.DATA_FOLDER, exist_ok=True)
-    # Templates de notas
+        # Templates de notas
         self.TEMPLATES = {
             "📋 Reunión": {
-                "campos": ["📅 Fecha", "👥 Participantes", "📝 Temas tratados", "✅ Decisiones", "🎯 Próximos pasos"],
-                "categoria": "💼 Trabajo"
+                "campos": [
+                    "📅 Fecha",
+                    "👥 Participantes",
+                    "📝 Temas tratados",
+                    "✅ Decisiones",
+                    "🎯 Próximos pasos",
+                ],
+                "categoria": "💼 Trabajo",
             },
             "💡 Idea de Negocio": {
-                "campos": ["💭 Nombre de la idea", "🎯 Problema que resuelve", "👤 Cliente objetivo", "💰 Modelo de monetización", "⚡ Primeros pasos"],
-                "categoria": "💡 Ideas"
+                "campos": [
+                    "💭 Nombre de la idea",
+                    "🎯 Problema que resuelve",
+                    "👤 Cliente objetivo",
+                    "💰 Modelo de monetización",
+                    "⚡ Primeros pasos",
+                ],
+                "categoria": "💡 Ideas",
             },
             "📖 Diario Personal": {
-                "campos": ["😊 ¿Cómo me siento?", "📝 ¿Qué pasó hoy?", "🙏 Agradecimientos", "🌟 Mañana quiero..."],
-                "categoria": "❤️ Personal"
+                "campos": [
+                    "😊 ¿Cómo me siento?",
+                    "📝 ¿Qué pasó hoy?",
+                    "🙏 Agradecimientos",
+                    "🌟 Mañana quiero...",
+                ],
+                "categoria": "❤️ Personal",
             },
             "📚 Resumen de Lectura": {
-                "campos": ["📖 Libro", "✍️ Autor", "💭 Ideas principales", "✨ Frases favoritas", "🎯 Aplicaciones prácticas"],
-                "categoria": "📚 Estudio"
+                "campos": [
+                    "📖 Libro",
+                    "✍️ Autor",
+                    "💭 Ideas principales",
+                    "✨ Frases favoritas",
+                    "🎯 Aplicaciones prácticas",
+                ],
+                "categoria": "📚 Estudio",
             },
             "🎯 Plan de Acción": {
-                "campos": ["🎯 Objetivo", "📊 Situación actual", "🚀 Acciones concretas", "📅 Plazos", "📈 Métricas de éxito"],
-                "categoria": "🎯 Metas"
-            }
+                "campos": [
+                    "🎯 Objetivo",
+                    "📊 Situación actual",
+                    "🚀 Acciones concretas",
+                    "📅 Plazos",
+                    "📈 Métricas de éxito",
+                ],
+                "categoria": "🎯 Metas",
+            },
         }
+
     def _cargar_notas(self):
         if not os.path.exists(self.NOTAS_FILE):
             return []
@@ -943,37 +973,39 @@ class LocalNotasHandler:
         texto += f"⏰ Con recordatorio: {con_recordatorio}\n"
         texto += f"🏆 Categoría más usada: {cat_top[0]} ({cat_top[1]})\n"
         return texto
+
     def generar_desde_template(self, nombre_template, respuestas):
         """Genera una nota desde un template con las respuestas del usuario"""
         if nombre_template not in self.TEMPLATES:
             return None
-        
+
         template = self.TEMPLATES[nombre_template]
-        
+
         # Construir el contenido de la nota
         contenido = f"**{nombre_template}**\n\n"
         for i, campo in enumerate(template["campos"]):
             respuesta = respuestas.get(campo, "")
             if respuesta:
                 contenido += f"**{campo}**\n{respuesta}\n\n"
-        
+
         # Crear la nota
         return self.agregar_nota(
             texto=contenido,
             categoria=template["categoria"],
             importante=False,
-            recordatorio=None
+            recordatorio=None,
         )
-    
+
     def obtener_templates(self):
         """Retorna lista de templates disponibles"""
         return list(self.TEMPLATES.keys())
-    
+
     def obtener_campos_template(self, nombre_template):
         """Retorna los campos de un template específico"""
         if nombre_template in self.TEMPLATES:
             return self.TEMPLATES[nombre_template]["campos"]
         return []
+
     def buscar_notas(self, query):
         """Busca notas que contengan la palabra clave"""
         if not query or query.strip() == "":
@@ -1263,75 +1295,153 @@ class LocalLibrosHandler:
         data["reuniones"] = [r for r in data["reuniones"] if r["id"] != reunion_id]
         self._guardar_bookclub(data)
         return True
-    def __init_reto_lectura(self):
-        self.DATA_FOLDER = "data"
-        self.RETO_FILE = os.path.join(self.DATA_FOLDER, "reto_lectura.json")
-    
-    def establecer_reto_anual(self, meta_libros, año=None):
-        if not hasattr(self, 'RETO_FILE'):
-            self.__init_reto_lectura()
-        if año is None:
-            año = datetime.datetime.now().year
-        reto = {"año": año, "meta": int(meta_libros), "libros_completados": [], "fecha_inicio": datetime.datetime.now().strftime("%Y-%m-%d")}
-        with open(self.RETO_FILE, "w", encoding="utf-8") as f:
-            json.dump(reto, f, indent=2, ensure_ascii=False)
-        return reto
-    
-    def agregar_libro_al_reto(self, libro_titulo, autor="", paginas=0):
-        if not hasattr(self, 'RETO_FILE'):
-            self.__init_reto_lectura()
-        if not os.path.exists(self.RETO_FILE):
-            return None, "No hay reto activo."
-        with open(self.RETO_FILE, "r", encoding="utf-8") as f:
-            reto = json.load(f)
-        libro = {"titulo": libro_titulo, "autor": autor, "paginas": int(paginas) if paginas else 0, "fecha_completado": datetime.datetime.now().strftime("%Y-%m-%d")}
-        reto["libros_completados"].append(libro)
-        with open(self.RETO_FILE, "w", encoding="utf-8") as f:
-            json.dump(reto, f, indent=2, ensure_ascii=False)
-        return reto, f"✅ Libro agregado"
-    
-    def ver_progreso_reto(self):
-        if not hasattr(self, 'RETO_FILE'):
-            self.__init_reto_lectura()
-        if not os.path.exists(self.RETO_FILE):
-            return None
-        try:
-            with open(self.RETO_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            return None
-    
-    def eliminar_libro_del_reto(self, indice):
-        if not hasattr(self, 'RETO_FILE'):
-            self.__init_reto_lectura()
-        if not os.path.exists(self.RETO_FILE):
-            return None
-        with open(self.RETO_FILE, "r", encoding="utf-8") as f:
-            reto = json.load(f)
-        if 0 <= indice < len(reto["libros_completados"]):
-            libro_eliminado = reto["libros_completados"].pop(indice)
-            with open(self.RETO_FILE, "w", encoding="utf-8") as f:
-                json.dump(reto, f, indent=2, ensure_ascii=False)
-            return libro_eliminado
-        return None
-    
-    def estadisticas_reto(self):
-        reto = self.ver_progreso_reto()
-        if not reto:
-            return None
-        completados = len(reto["libros_completados"])
-        meta = reto["meta"]
-        progreso = (completados / meta * 100) if meta > 0 else 0
-        total_paginas = sum(libro.get("paginas", 0) for libro in reto["libros_completados"])
-        fecha_inicio = datetime.datetime.strptime(reto["fecha_inicio"], "%Y-%m-%d")
-        dias_transcurridos = (datetime.datetime.now() - fecha_inicio).days
-        if dias_transcurridos > 0:
-            libros_por_dia = completados / dias_transcurridos
-            dias_restantes_año = (datetime.datetime(reto["año"], 12, 31) - datetime.datetime.now()).days
-            proyeccion = completados + (libros_por_dia * dias_restantes_año)
+
+    import datetime  # Asegúrate de tener este import al inicio del archivo
+
+
+# ... (resto de tu código)
+
+if st.session_state.libros_subview == "reto":
+    st.markdown("### 🎯 Reto de Lectura Anual")
+
+    # Todo esto debe estar al mismo nivel de sangría que el st.markdown de arriba
+    reto = libros_handler.ver_progreso_reto()
+
+    if reto:
+        # Mostrar progreso
+        stats = libros_handler.estadisticas_reto()
+
+        st.markdown(f"### 📖 Reto {reto['año']}")
+
+        # Barra de progreso grande
+        progreso = stats["progreso"]
+        st.progress(
+            min(progreso / 100, 1.0),
+            text=f"{stats['completados']} de {stats['meta']} libros ({progreso:.0f}%)",
+        )
+
+        # Métricas
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("📚 Completados", stats["completados"])
+        col2.metric("🎯 Meta", stats["meta"])
+        col3.metric("📄 Páginas", stats["total_paginas"])
+        col4.metric("📊 Proyección", stats["proyeccion"])
+
+        # Mensajes motivacionales
+        if progreso >= 100:
+            st.success("🎉 ¡RETO COMPLETADO! ¡Eres increíble! 🎉")
+            st.balloons()
+        elif progreso >= 75:
+            st.success(
+                f"💪 ¡Casi lo logras! Solo faltan {stats['meta'] - stats['completados']} libros"
+            )
+        elif progreso >= 50:
+            st.info(
+                f"📖 Vas por buen camino. Llevas {stats['completados']} libros leídos"
+            )
+        elif progreso >= 25:
+            st.info(
+                f"🌱 Sigues avanzando. Proyección: {stats['proyeccion']} libros al final del año"
+            )
         else:
-            proyeccion = 0
-        return {"completados": completados, "meta": meta, "progreso": progreso, "total_paginas": total_paginas, "proyeccion": int(proyeccion), "dias_transcurridos": dias_transcurridos}
+            st.info(
+                f"🚀 ¡Arranquemos con fuerza! Aún hay {365 - stats['dias_transcurridos']} días"
+            )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Libros completados
+        if reto["libros_completados"]:
+            st.markdown("### 📚 Libros Completados")
+            for i, libro in enumerate(reversed(reto["libros_completados"])):
+                indice_real = len(reto["libros_completados"]) - 1 - i
+                with st.expander(f"📖 {libro['titulo']}", expanded=False):
+                    if libro.get("autor"):
+                        st.markdown(f"**Autor:** {libro['autor']}")
+                    if libro.get("paginas"):
+                        st.markdown(f"**Páginas:** {libro['paginas']}")
+                    st.markdown(f"**Completado:** {libro['fecha_completado']}")
+
+                    if st.button(
+                        "🗑️ Eliminar", key=f"btn_eliminar_libro_reto_{indice_real}"
+                    ):
+                        libros_handler.eliminar_libro_del_reto(indice_real)
+                        st.success("Libro eliminado del reto")
+                        st.rerun()
+        else:
+            st.info("📭 Aún no has agregado libros al reto. ¡Empieza ahora!")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Agregar libro al reto
+        st.markdown("### ➕ Agregar Libro Completado")
+        col1, col2 = st.columns(2)
+        with col1:
+            titulo_libro = st.text_input("Título del libro:", key="input_titulo_reto")
+            paginas_libro = st.number_input(
+                "Páginas (opcional):", min_value=0, step=50, key="input_paginas_reto"
+            )
+        with col2:
+            autor_libro = st.text_input("Autor (opcional):", key="input_autor_reto")
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button(
+                "✅ Agregar al Reto",
+                use_container_width=True,
+                key="btn_agregar_libro_reto",
+            ):
+                if titulo_libro:
+                    reto_actualizado, mensaje = libros_handler.agregar_libro_al_reto(
+                        titulo_libro, autor_libro, paginas_libro
+                    )
+                    st.success(mensaje)
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Escribe el título del libro")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Configuración
+        with st.expander("⚙️ Configuración del Reto", expanded=False):
+            st.warning("⚠️ Esto eliminará el progreso actual")
+            nueva_meta = st.number_input(
+                "Nueva meta de libros:", min_value=1, value=stats["meta"], step=1
+            )
+            if st.button("🔄 Reiniciar Reto", key="btn_reiniciar_reto"):
+                libros_handler.establecer_reto_anual(nueva_meta)
+                st.success("Reto reiniciado")
+                st.rerun()
+
+    else:
+        # No hay reto activo
+        st.info("📚 No tienes un reto de lectura activo. ¡Crea uno ahora!")
+        st.markdown("### ✨ Crear Reto de Lectura")
+        año_actual = datetime.datetime.now().year
+
+        col1, col2 = st.columns(2)
+        with col1:
+            meta_libros = st.number_input(
+                "¿Cuántos libros quieres leer?",
+                min_value=1,
+                value=12,
+                step=1,
+                key="input_meta_reto",
+            )
+        with col2:
+            st.metric("📅 Año", año_actual)
+
+        if st.button("🎯 Crear Reto", use_container_width=True, key="btn_crear_reto"):
+            libros_handler.establecer_reto_anual(meta_libros, año_actual)
+            st.success(f"✅ Reto de {meta_libros} libros creado para {año_actual}")
+            st.balloons()
+            st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("🔙 Volver", key="btn_volver_reto"):
+        st.session_state.libros_subview = "menu"
+        st.rerun()
+
+
 # =====================================================
 # HANDLER METAS DE AHORRO
 # =====================================================
@@ -1340,7 +1450,7 @@ class MetasAhorroHandler:
         self.DATA_FOLDER = "data"
         self.METAS_FILE = os.path.join(self.DATA_FOLDER, "metas_ahorro.json")
         os.makedirs(self.DATA_FOLDER, exist_ok=True)
-    
+
     def _cargar_metas(self):
         if not os.path.exists(self.METAS_FILE):
             return []
@@ -1349,11 +1459,11 @@ class MetasAhorroHandler:
                 return json.load(f)
         except:
             return []
-    
+
     def _guardar_metas(self, metas):
         with open(self.METAS_FILE, "w", encoding="utf-8") as f:
             json.dump(metas, f, indent=2, ensure_ascii=False)
-    
+
     def crear_meta(self, nombre, monto_objetivo, fecha_limite=None):
         metas = self._cargar_metas()
         nueva = {
@@ -1363,12 +1473,12 @@ class MetasAhorroHandler:
             "acumulado": 0.0,
             "fecha_creacion": datetime.datetime.now().strftime("%Y-%m-%d"),
             "fecha_limite": fecha_limite,
-            "completada": False
+            "completada": False,
         }
         metas.append(nueva)
         self._guardar_metas(metas)
         return nueva
-    
+
     def aportar_a_meta(self, meta_id, monto):
         metas = self._cargar_metas()
         meta = next((m for m in metas if m["id"] == int(meta_id)), None)
@@ -1380,10 +1490,10 @@ class MetasAhorroHandler:
             self._guardar_metas(metas)
             return meta
         return None
-    
+
     def listar_metas(self):
         return self._cargar_metas()
-    
+
     def borrar_meta(self, meta_id):
         metas = self._cargar_metas()
         meta = next((m for m in metas if m["id"] == int(meta_id)), None)
@@ -1392,6 +1502,8 @@ class MetasAhorroHandler:
         metas = [m for m in metas if m["id"] != int(meta_id)]
         self._guardar_metas(metas)
         return meta
+
+
 class LocalFrasesHandler:
     def __init__(self):
         self.DATA_FOLDER = "data"
@@ -3968,10 +4080,21 @@ def get_handlers():
     profesional = ProfesionalHandler(OPENAI_API_KEY)
     # Inicializar handler de metas de ahorro
     metas_ahorro_handler = MetasAhorroHandler()
-   
 
-
-    return fin, not_h, lib, fra, pers, bib, ideas, tarot, astro, nume, profesional, metas_ahorro_handler
+    return (
+        fin,
+        not_h,
+        lib,
+        fra,
+        pers,
+        bib,
+        ideas,
+        tarot,
+        astro,
+        nume,
+        profesional,
+        metas_ahorro_handler,
+    )
 
 
 # Inicializar handlers
@@ -4394,8 +4517,7 @@ if st.session_state.current_view == "finanzas":
         ]
 
         rows_finanzas = [
-            opciones_finanzas[i : i + 3]
-            for i in range(0, len(opciones_finanzas), 3)
+            opciones_finanzas[i : i + 3] for i in range(0, len(opciones_finanzas), 3)
         ]
 
         for row in rows_finanzas:
@@ -4546,7 +4668,6 @@ if st.session_state.current_view == "finanzas":
             st.session_state.finanzas_subview = "menu"
             st.rerun()
 
-
     # --- MÓDULO NOTAS ---
     elif st.session_state.current_view == "notas":
         st.markdown("<div class='title-glow'>📝 Notas</div>", unsafe_allow_html=True)
@@ -4559,8 +4680,9 @@ if st.session_state.current_view == "finanzas":
 
             opciones_notas = [
                 ("➕", "Agregar Nota", "agregar", "notas-icon"),
-                ("📋", "Usar Template", "template", "ideas-icon")
-                ("📘", "Ver Notas", "ver", "libros-icon"),
+                ("📋", "Usar Template", "template", "ideas-icon")(
+                    "📘", "Ver Notas", "ver", "libros-icon"
+                ),
                 ("⭐", "Importantes", "importantes", "tarot-icon"),
                 ("🔍", "Buscar", "buscar", "ideas-icon"),
                 ("📊", "Estadísticas", "stats", "finanzas-icon"),
@@ -4633,39 +4755,48 @@ if st.session_state.current_view == "finanzas":
                 st.rerun()
         elif st.session_state.notas_subview == "template":
             st.markdown("### 📋 Crear Nota con Template")
-            st.markdown("<p style='color:#d8c9ff;'>Usa plantillas predefinidas para notas estructuradas</p>", unsafe_allow_html=True)
-            
+            st.markdown(
+                "<p style='color:#d8c9ff;'>Usa plantillas predefinidas para notas estructuradas</p>",
+                unsafe_allow_html=True,
+            )
+
             templates_disponibles = notas_handler.obtener_templates()
-            
+
             template_seleccionado = st.selectbox(
                 "Elige un template:",
                 ["Ninguno"] + templates_disponibles,
-                key="select_template_nota"
+                key="select_template_nota",
             )
-            
+
             if template_seleccionado != "Ninguno":
                 st.markdown(f"### ✨ {template_seleccionado}")
-                
+
                 campos = notas_handler.obtener_campos_template(template_seleccionado)
                 respuestas = {}
-                
+
                 for campo in campos:
                     respuesta = st.text_area(
                         campo,
                         height=80,
                         key=f"template_campo_{campo}",
-                        placeholder=f"Escribe aquí..."
+                        placeholder=f"Escribe aquí...",
                     )
                     respuestas[campo] = respuesta
-                
+
                 st.markdown("<br>", unsafe_allow_html=True)
-                
+
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("✅ Crear Nota desde Template", use_container_width=True, key="btn_crear_desde_template"):
+                    if st.button(
+                        "✅ Crear Nota desde Template",
+                        use_container_width=True,
+                        key="btn_crear_desde_template",
+                    ):
                         # Verificar que al menos un campo tenga contenido
                         if any(respuestas.values()):
-                            resultado = notas_handler.generar_desde_template(template_seleccionado, respuestas)
+                            resultado = notas_handler.generar_desde_template(
+                                template_seleccionado, respuestas
+                            )
                             if resultado:
                                 st.success(resultado)
                                 st.balloons()
@@ -4675,13 +4806,17 @@ if st.session_state.current_view == "finanzas":
                                 st.error("Error al crear la nota")
                         else:
                             st.warning("⚠️ Completa al menos un campo")
-                
+
                 with col2:
-                    if st.button("🔄 Limpiar Campos", use_container_width=True, key="btn_limpiar_template"):
+                    if st.button(
+                        "🔄 Limpiar Campos",
+                        use_container_width=True,
+                        key="btn_limpiar_template",
+                    ):
                         st.rerun()
             else:
                 st.info("👆 Selecciona un template para comenzar")
-            
+
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("🔙 Volver", key="btn_volver_template"):
                 st.session_state.notas_subview = "menu"
@@ -4893,7 +5028,6 @@ if st.session_state.current_view == "finanzas":
                 ("🎨", "Generar Arte", "arte", "ideas-icon"),
                 ("📖", "Info del Libro", "info", "notas-icon"),
                 ("⭐", "Mis Reseñas", "resenas", "frases-icon"),
-                ("🎯", "Reto Anual", "reto", "ideas-icon"),
                 ("📚", "Book Club", "bookclub", "biblia-icon"),
             ]
 
@@ -5088,100 +5222,7 @@ if st.session_state.current_view == "finanzas":
             if st.button("🔙 Volver", key="btn_volver_resenas"):
                 st.session_state.libros_subview = "menu"
                 st.rerun()
-        
-        elif st.session_state.libros_subview == "reto":
-            st.markdown("### 🎯 Reto de Lectura Anual")
-            reto = libros_handler.ver_progreso_reto()
-            
-            if reto:
-                stats = libros_handler.estadisticas_reto()
-                st.markdown(f"### 📖 Reto {reto['año']}")
-                progreso = stats['progreso']
-                st.progress(min(progreso / 100, 1.0), text=f"{stats['completados']} de {stats['meta']} libros ({progreso:.0f}%)")
-                
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("📚 Completados", stats['completados'])
-                col2.metric("🎯 Meta", stats['meta'])
-                col3.metric("📄 Páginas", stats['total_paginas'])
-                col4.metric("📊 Proyección", stats['proyeccion'])
-                
-                if progreso >= 100:
-                    st.success("🎉 ¡RETO COMPLETADO! ¡Eres increíble! 🎉")
-                    st.balloons()
-                elif progreso >= 75:
-                    st.success(f"💪 ¡Casi lo logras! Solo faltan {stats['meta'] - stats['completados']} libros")
-                elif progreso >= 50:
-                    st.info(f"📖 Vas por buen camino. Llevas {stats['completados']} libros leídos")
-                elif progreso >= 25:
-                    st.info(f"🌱 Sigues avanzando. Proyección: {stats['proyeccion']} libros al final del año")
-                else:
-                    st.info(f"🚀 ¡Arranquemos con fuerza! Aún hay {365 - stats['dias_transcurridos']} días")
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                if reto['libros_completados']:
-                    st.markdown("### 📚 Libros Completados")
-                    for i, libro in enumerate(reversed(reto['libros_completados'])):
-                        indice_real = len(reto['libros_completados']) - 1 - i
-                        with st.expander(f"📖 {libro['titulo']}", expanded=False):
-                            if libro.get('autor'):
-                                st.markdown(f"**Autor:** {libro['autor']}")
-                            if libro.get('paginas'):
-                                st.markdown(f"**Páginas:** {libro['paginas']}")
-                            st.markdown(f"**Completado:** {libro['fecha_completado']}")
-                            if st.button("🗑️ Eliminar", key=f"btn_eliminar_libro_reto_{indice_real}"):
-                                libros_handler.eliminar_libro_del_reto(indice_real)
-                                st.success("Libro eliminado del reto")
-                                st.rerun()
-                else:
-                    st.info("📭 Aún no has agregado libros al reto. ¡Empieza ahora!")
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown("### ➕ Agregar Libro Completado")
-                col1, col2 = st.columns(2)
-                with col1:
-                    titulo_libro = st.text_input("Título del libro:", key="input_titulo_reto")
-                    paginas_libro = st.number_input("Páginas (opcional):", min_value=0, step=50, key="input_paginas_reto")
-                with col2:
-                    autor_libro = st.text_input("Autor (opcional):", key="input_autor_reto")
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    if st.button("✅ Agregar al Reto", use_container_width=True, key="btn_agregar_libro_reto"):
-                        if titulo_libro:
-                            reto_actualizado, mensaje = libros_handler.agregar_libro_al_reto(titulo_libro, autor_libro, paginas_libro)
-                            st.success(mensaje)
-                            st.balloons()
-                            st.rerun()
-                        else:
-                            st.warning("⚠️ Escribe el título del libro")
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                with st.expander("⚙️ Configuración del Reto", expanded=False):
-                    st.warning("⚠️ Esto eliminará el progreso actual")
-                    nueva_meta = st.number_input("Nueva meta de libros:", min_value=1, value=stats['meta'], step=1)
-                    if st.button("🔄 Reiniciar Reto", key="btn_reiniciar_reto"):
-                        libros_handler.establecer_reto_anual(nueva_meta)
-                        st.success("Reto reiniciado")
-                        st.rerun()
-            else:
-                st.info("📚 No tienes un reto de lectura activo. ¡Crea uno ahora!")
-                st.markdown("### ✨ Crear Reto de Lectura")
-                año_actual = datetime.datetime.now().year
-                col1, col2 = st.columns(2)
-                with col1:
-                    meta_libros = st.number_input("¿Cuántos libros quieres leer?", min_value=1, value=12, step=1, key="input_meta_reto")
-                with col2:
-                    st.metric("📅 Año", año_actual)
-                st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("🎯 Crear Reto", use_container_width=True, key="btn_crear_reto"):
-                    libros_handler.establecer_reto_anual(meta_libros, año_actual)
-                    st.success(f"✅ Reto de {meta_libros} libros creado para {año_actual}")
-                    st.balloons()
-                    st.rerun()
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver", key="btn_volver_reto"):
-                st.session_state.libros_subview = "menu"
-                st.rerun()
+
         elif st.session_state.libros_subview == "bookclub":
             st.markdown("### 📚 Book Club")
             st.markdown(
