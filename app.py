@@ -3989,19 +3989,19 @@ else:
                 st.session_state.finanzas_subview = "menu"
                 st.rerun()
         elif st.session_state.finanzas_subview == "metas":
-    st.markdown("### 💎 Metas de Ahorro")
+             st.markdown("### 💎 Metas de Ahorro")
     
     metas = metas_ahorro_handler.listar_metas()
     
     if metas:
-        st.success(f"✅ Tienes {len(metas)} meta(s) de ahorro")
+             st.success(f"✅ Tienes {len(metas)} meta(s) de ahorro")
         
         for meta in metas:
             progreso = (meta['acumulado'] / meta['objetivo'] * 100) if meta['objetivo'] > 0 else 0
             emoji_estado = "✅" if meta.get('completada') else "🎯"
             
             with st.expander(f"{emoji_estado} {meta['nombre']} - {progreso:.0f}%", expanded=not meta.get('completada')):
-                st.progress(min(progreso / 100, 1.0))
+            st.progress(min(progreso / 100, 1.0))
                 
                 col1, col2, col3 = st.columns(3)
                 col1.metric("🎯 Objetivo", f"${meta['objetivo']:.2f}")
@@ -5719,6 +5719,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
