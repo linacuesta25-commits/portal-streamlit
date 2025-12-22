@@ -3996,7 +3996,7 @@ else:
     if metas:
              st.success(f"✅ Tienes {len(metas)} meta(s) de ahorro")
         
-        for meta in metas:
+    for meta in metas:
             progreso = (meta['acumulado'] / meta['objetivo'] * 100) if meta['objetivo'] > 0 else 0
             emoji_estado = "✅" if meta.get('completada') else "🎯"
             
@@ -5719,6 +5719,7 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
 
