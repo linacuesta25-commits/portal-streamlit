@@ -3800,6 +3800,7 @@ else:
                 st.rerun()
 
     # --- MÓDULO FINANZAS ---
+   
     elif st.session_state.current_view == "finanzas":
         mostrar_breadcrumbs()
         st.markdown("<div class='title-glow'>💰 Finanzas</div>", unsafe_allow_html=True)
@@ -3807,15 +3808,15 @@ else:
         if st.session_state.finanzas_subview == "menu":
             st.markdown("<p class='subtitle-text'>Tu centro de control financiero.</p>", unsafe_allow_html=True)
             
-           opciones_finanzas = [
-              ("💸", "Gastos", "gastos", "finanzas-icon"),
-              ("💵", "Ingresos", "ingresos", "ideas-icon"),
-              ("📊", "Reportes", "reportes", "libros-icon"),
-              ("🎯", "Presupuestos", "presupuestos", "tarot-icon"),
-              ("💎", "Metas Ahorro", "metas", "ideas-icon"),
-              ("🏷️", "Categorías", "categorias", "frases-icon"),
-              ("📈", "Estadísticas", "estadisticas", "biblia-icon")
-                ]
+            opciones_finanzas = [
+                ("💸", "Gastos", "gastos", "finanzas-icon"),
+                ("💵", "Ingresos", "ingresos", "ideas-icon"),
+                ("📊", "Reportes", "reportes", "libros-icon"),
+                ("🎯", "Presupuestos", "presupuestos", "tarot-icon"),
+                ("💎", "Metas Ahorro", "metas", "ideas-icon"),
+                ("🏷️", "Categorías", "categorias", "frases-icon"),
+                ("📈", "Estadísticas", "estadisticas", "biblia-icon")
+            ]
             
             rows_finanzas = [opciones_finanzas[i:i+3] for i in range(0, len(opciones_finanzas), 3)]
             for row in rows_finanzas:
@@ -5718,5 +5719,6 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
 
