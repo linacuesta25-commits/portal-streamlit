@@ -4862,7 +4862,7 @@ else:
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("🔙 Volver", key="btn_volver_reto"):
                 st.session_state.libros_subview = "menu"
-                st.rerun()    
+                st.rerun()
            # --- MÓDULO FRASES ---
     elif st.session_state.current_view == "frases":
         st.markdown("<div class='title-glow'>💬 Frases</div>", unsafe_allow_html=True)
