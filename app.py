@@ -2485,107 +2485,194 @@ class AstrologiaHandler:
 # =====================================================
 class NumerologiaHandler:
     def __init__(self):
-        # ... (Mantén tus diccionarios NUMEROS_BASE y NUMEROS_ANGELICALES igual) ...
-        self.NUMEROS_BASE = { # Asegúrate de que estén todos los que ya tenías
-            1: {"nombre": "El Líder", "energia": "Independencia", "luz": "Pionero", "consejo": "Confía en tu visión."},
-            # ... resto de tus números ...
-        }
-
-    def calcular_reduccion(self, numero):
-        """Reduce cualquier número a un dígito o maestro (11, 22)"""
-        while numero > 9 and numero not in (11, 22):
-            numero = sum(int(x) for x in str(numero))
-        return numero
-
-    def calcular_camino_de_vida(self, fecha_str):
-        # (Tu función actual mejorada con el reductor interno)
-        try:
-            fecha = fecha_str.replace("/", "-")
-            dia, mes, anio = map(int, fecha.split("-"))
-            suma = dia + mes + anio
-            resultado = self.calcular_reduccion(suma)
-            return self.NUMEROS_BASE.get(resultado, {"nombre": "Vibración Especial", "consejo": "Sigue tu intuición"})
-        except: return None
-
-    def calcular_ano_personal(self, fecha_nacimiento):
-        """Calcula el año personal (Día + Mes + Año Actual)"""
-        try:
-            fecha = fecha_nacimiento.replace("/", "-")
-            dia, mes, _ = map(int, fecha.split("-"))
-            anio_actual = datetime.datetime.now().year
-            suma = dia + mes + anio_actual
-            numero_anio = self.calcular_reduccion(suma)
-            
-            mensajes_anio = {
-                1: "🚀 Año de NUEVOS COMIENZOS. Tiempo de iniciar proyectos y ser valiente.",
-                2: "🤝 Año de RELACIONES y PACIENCIA. Conexiones importantes y colaboraciones.",
-                3: "🎨 Año de CREATIVIDAD y EXPRESIÓN. Tu voz merece ser escuchada.",
-                4: "🏗️ Año de CONSTRUCCIÓN. Bases sólidas, trabajo duro, disciplina.",
-                5: "✈️ Año de CAMBIO y LIBERTAD. Viajes, aventuras, transformación.",
-                6: "💕 Año de AMOR y RESPONSABILIDAD. Familia, hogar, servicio.",
-                7: "🔮 Año de INTROSPECCIÓN. Sabiduría interna, espiritualidad, descanso.",
-                8: "💰 Año de ABUNDANCIA y PODER. Logros materiales, liderazgo.",
-                9: "🌟 Año de CIERRE y LIBERACIÓN. Soltar, perdonar, completar ciclos.",
-                11: "⚡ Año MAESTRO de ILUMINACIÓN. Intuición elevada, propósito espiritual.",
-                22: "🏛️ Año MAESTRO de MANIFESTACIÓN. Sueños grandes hechos realidad."
+        self.NUMEROS_BASE = {
+            1: {
+                "nombre": "El Líder",
+                "energia": "Independencia, iniciativa, liderazgo",
+                "luz": "Pionero, creativo, valiente",
+                "consejo": "Confía en tu visión única. No temas destacar."
+            },
+            2: {
+                "nombre": "El Diplomático",
+                "energia": "Cooperación, sensibilidad, intuición",
+                "luz": "Empático, pacificador, intuitivo",
+                "consejo": "Tu sensibilidad es un don. Pon límites sanos."
+            },
+            3: {
+                "nombre": "El Creativo",
+                "energia": "Expresión, creatividad, comunicación",
+                "luz": "Artístico, optimista, carismático",
+                "consejo": "Tu luz es contagiosa. No la apagues por otros."
+            },
+            4: {
+                "nombre": "El Constructor",
+                "energia": "Estabilidad, estructura, trabajo",
+                "luz": "Confiable, organizado, práctico",
+                "consejo": "Descansa. El mundo no colapsa si te detienes."
+            },
+            5: {
+                "nombre": "El Aventurero",
+                "energia": "Libertad, cambio, aventura",
+                "luz": "Adaptable, curioso, valiente",
+                "consejo": "El cambio es tu naturaleza, pero crea raíces conscientes."
+            },
+            6: {
+                "nombre": "El Sanador",
+                "energia": "Amor, servicio, responsabilidad",
+                "luz": "Compasivo, protector, consejero",
+                "consejo": "Cuídate a ti primero. No puedes dar desde el vacío."
+            },
+            7: {
+                "nombre": "El Místico",
+                "energia": "Sabiduría, introspección, espiritualidad",
+                "luz": "Sabio, intuitivo, investigador",
+                "consejo": "El mundo necesita tu sabiduría. No te escondas."
+            },
+            8: {
+                "nombre": "El Poderoso",
+                "energia": "Abundancia, poder, autoridad",
+                "luz": "Exitoso, ambicioso, justo",
+                "consejo": "El poder es responsabilidad. Úsalo para elevar."
+            },
+            9: {
+                "nombre": "El Humanitario",
+                "energia": "Compasión universal, finalización",
+                "luz": "Compasivo, sabio, altruista",
+                "consejo": "Has vivido mucho internamente. Comparte tu luz."
+            },
+            11: {
+                "nombre": "El Visionario",
+                "energia": "Intuición elevada, misión espiritual",
+                "luz": "Visionario, inspirador, canal espiritual",
+                "consejo": "Tu sensibilidad es extrema. Ground yourself daily."
+            },
+            22: {
+                "nombre": "El Arquitecto Maestro",
+                "energia": "Manifestación masiva, construcción de legados",
+                "luz": "Constructor de imperios, visionario práctico",
+                "consejo": "Construyes imperios. Recuerda vivir mientras lo haces."
             }
-            
-            return f"""
-🔢 **TU AÑO PERSONAL {anio_actual}**
-
-**Número: {numero_anio}**
-
-{mensajes_anio.get(numero_anio, "Año de transformación y aprendizaje.")}
-
-💫 Este ciclo numerológico te invita a fluir con esta energía durante todo el año.
-"""
-        except:
-            return "❌ Error calculando año personal. Verifica la fecha (DD/MM/AAAA)"
+        }
+        
+        self.NUMEROS_ANGELICALES = {
+            111: "Portal de manifestación abierto. Tus pensamientos se materializan rápido.",
+            222: "Todo se está alineando perfectamente. Confía en el proceso.",
+            333: "Los maestros ascendidos están contigo. Estás protegida divinamente.",
+            444: "Ángeles rodeándote. Estabilidad y protección.",
+            555: "Cambio masivo en camino. Suelta lo viejo.",
+            666: "Reequilibra lo material y espiritual.",
+            777: "Milagros y bendiciones descendiendo. Sincronicidades activadas.",
+            888: "Abundancia infinita fluyendo. Recibe sin culpa.",
+            999: "Ciclo completándose. Suelta con amor.",
+            1111: "Portal maestro abierto. Deseo masivo manifestándose."
+        }
     
-    def calcular_compatibilidad(self, fecha1, fecha2):
-        """Compara dos fechas y devuelve compatibilidad numerológica"""
-        try:
-            # Calcular caminos de vida
-            camino1_data = self.calcular_camino_de_vida(fecha1)
-            camino2_data = self.calcular_camino_de_vida(fecha2)
-            
-            if not camino1_data or not camino2_data:
-                return "❌ Error en las fechas. Usa formato DD/MM/AAAA"
-            
-            # Extraer números (esto es simplificado - ajusta según tu estructura)
-            # Por ahora retornaremos un análisis general
-            
-            compatibilidades_altas = [
-                (1, 3), (1, 5), (2, 6), (2, 8), (3, 5), (3, 6), (4, 8), (5, 7), (6, 9)
-            ]
-            
+    def numerologia_del_dia(self):
+        hoy = datetime.datetime.now()
+        suma = hoy.day + hoy.month + hoy.year
+        
+        while suma > 9 and suma not in (11, 22):
+            suma = sum(int(x) for x in str(suma))
+        
+        if suma in self.NUMEROS_BASE:
+            info = self.NUMEROS_BASE[suma]
             return f"""
-💕 **COMPATIBILIDAD NUMEROLÓGICA**
+🔢✨ **NUMEROLOGÍA DEL DÍA**
 
-**Primera persona:** {camino1_data.get('nombre', 'N/A')}
-**Segunda persona:** {camino2_data.get('nombre', 'N/A')}
+**Número:** {suma} - *{info['nombre']}*
+
+🌟 **Energía del día:**
+{info['energia']}
+
+💫 **Tu luz hoy:**
+{info['luz']}
+
+💛 **Consejo:**
+{info['consejo']}
+"""
+        return f"🔢 Número del día: **{suma}**"
+    
+    def calcular_camino_de_vida(self, fecha_str):
+        try:
+            if "/" in fecha_str:
+                dia, mes, anio = fecha_str.split("/")
+            elif "-" in fecha_str:
+                dia, mes, anio = fecha_str.split("-")
+            else:
+                return "❌ Formato inválido. Usa: DD/MM/AAAA o DD-MM-AAAA"
+            
+            suma = int(dia) + int(mes) + int(anio)
+            
+            while suma > 9 and suma not in (11, 22):
+                suma = sum(int(x) for x in str(suma))
+            
+            if suma in self.NUMEROS_BASE:
+                info = self.NUMEROS_BASE[suma]
+                return f"""
+🔢💫 **TU CAMINO DE VIDA: {suma}**
+*{info['nombre']}*
 
 ━━━━━━━━━━━━━━━━━━━━━
 
-La conexión entre estas dos energías es única y especial. Cada número trae lecciones diferentes a la relación.
+✨ **ENERGÍA:** {info['energia']}
 
-💫 **Consejo:** Las relaciones más profundas no se basan solo en compatibilidad numérica, sino en el crecimiento mutuo y el respeto.
+🌟 **TU LUZ:** {info['luz']}
 
-✨ Ambos tienen regalos que compartir el uno con el otro.
+━━━━━━━━━━━━━━━━━━━━━
+
+💛 **CONSEJO:** {info['consejo']}
 """
-        except Exception as e:
-            return f"❌ Error calculando compatibilidad: {str(e)}"
+            return f"Tu camino de vida es: {suma}"
+        except:
+            return "❌ Formato inválido. Usa: DD/MM/AAAA o DD-MM-AAAA"
+    
+    def significado_numero(self, numero_str):
+        try:
+            numero = int(numero_str)
+        except:
+            return "Por favor escribe un número válido 💛"
+        
+        if numero in self.NUMEROS_ANGELICALES:
+            return f"""
+👼✨ **NÚMERO ANGELICAL: {numero}**
 
-    def ciclos_personales(self, fecha_nacimiento):
-        """Calcula la vibración del mes y día actual"""
-        anio_p = self.calcular_ano_personal(fecha_nacimiento)
-        mes_actual = datetime.datetime.now().month
-        dia_actual = datetime.datetime.now().day
+{self.NUMEROS_ANGELICALES[numero]}
+
+💫 Los ángeles te están enviando un mensaje. Presta atención a las señales.
+"""
         
-        mes_p = self.calcular_reduccion(anio_p + mes_actual)
-        dia_p = self.calcular_reduccion(mes_p + dia_actual)
+        if numero in self.NUMEROS_BASE:
+            info = self.NUMEROS_BASE[numero]
+            return f"""
+🔢✨ **NÚMERO {numero}: {info['nombre']}**
+
+**Energía:** {info['energia']}
+
+**Luz:** {info['luz']}
+
+💛 **Consejo:** {info['consejo']}
+"""
         
-        return {"mes": mes_p, "dia": dia_p}
+        # Reducir número
+        suma = numero
+        while suma > 9 and suma not in (11, 22):
+            suma = sum(int(x) for x in str(suma))
+        
+        if suma in self.NUMEROS_BASE:
+            info = self.NUMEROS_BASE[suma]
+            return f"""
+🔢 **TU NÚMERO {numero}**
+
+Se reduce a: **{suma}** - {info['nombre']}
+
+**Energía:** {info['energia']}
+
+💛 {info['consejo']}
+"""
+        
+        return f"🔢 Número {numero} - Energía especial ✨"
+
+
 # =====================================================
 # HANDLER IDEAS CON IA
 # =====================================================
@@ -5239,8 +5326,6 @@ else:
             opciones_nume = [
                 ("🔢", "Número del Día", "dia", "finanzas-icon"),
                 ("✨", "Camino de Vida", "camino", "ideas-icon"),
-                ("📅", "Año Personal", "ano_personal", "tarot-icon"),
-                ("💕", "Compatibilidad", "compatibilidad_nume", "frases-icon"),
                 ("👼", "Significado", "significado", "tarot-icon"),
                 ("🏠", "Volver", "volver", "libros-icon")
             ]
@@ -5304,22 +5389,7 @@ else:
             if st.button("🔙 Volver", key="btn_nume_volver_signif"):
                 st.session_state.nume_subview = "menu"
                 st.rerun()
-        elif st.session_state.nume_subview == "ano_personal":
-            st.markdown("### 📅 Mi Año Personal")
-            fecha_n = st.text_input("Fecha nacimiento (DD/MM/AAAA):", key="in_ano_p")
-            if st.button("Calcular"):
-                res = numerologia.calcular_ano_personal(fecha_n)
-                st.markdown(f'<div class="result-card">Tu Año Personal es el {res}</div>', unsafe_allow_html=True)
-            if st.button("🔙"): st.session_state.nume_subview = "menu"; st.rerun()
-
-        elif st.session_state.nume_subview == "compatibilidad_nume":
-            st.markdown("### 💕 Compatibilidad")
-            f1 = st.text_input("Tu fecha:", key="c1")
-            f2 = st.text_input("Su fecha:", key="c2")
-            if st.button("Calcular Afinidad"):
-                res = numerologia.calcular_compatibilidad(f1, f2)
-                st.markdown(f'<div class="result-card">{res}</div>', unsafe_allow_html=True)
-            if st.button("🔙"): st.session_state.nume_subview = "menu"; st.rerun()
+    
   
     # --- MÓDULO IDEAS ---
     # --- MÓDULO IDEAS ---
