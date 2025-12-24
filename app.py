@@ -1094,7 +1094,128 @@ class LocalLibrosHandler:
         data['reuniones'] = [r for r in data['reuniones'] if r['id'] != reunion_id]
         self._guardar_bookclub(data)
         return True
-
+    # === RETO DE LECTURA ANUAL ===
+    
+    def __init_reto_lectura(self):
+        """Inicializa archivo de reto de lectura"""
+        self.DATA_FOLDER = "data"
+        self.RETO_FILE = os.path.join(self.DATA_FOLDER, "reto_lectura.json")
+        os.makedirs(self.DATA_FOLDER, exist_ok=True)
+    
+    def _cargar_reto(self):
+        """Carga datos del reto de lectura"""
+        if not hasattr(self, 'RETO_FILE'):
+            self.__init_reto_lectura()
+        if not os.path.exists(self.RETO_FILE):
+            return None
+        try:
+            with open(self.RETO_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return None
+    
+    def _guardar_reto(self, data):
+        """Guarda datos del reto"""
+        if not hasattr(self, 'RETO_FILE'):
+            self.__init_reto_lectura()
+        with open(self.RETO_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    
+    def establecer_reto_anual(self, meta_libros, anio=None):
+        """Establece meta de lectura anual"""
+        if not anio:
+            anio = datetime.datetime.now().year
+        
+        reto = {
+            'anio': anio,
+            'meta_libros': int(meta_libros),
+            'libros_leidos': [],
+            'fecha_creacion': datetime.datetime.now().strftime("%Y-%m-%d")
+        }
+        
+        self._guardar_reto(reto)
+        return True, f"Meta establecida: {meta_libros} libros en {anio}"
+    
+    def agregar_libro_al_reto(self, titulo, autor="", paginas=0):
+        """Agrega un libro completado al reto"""
+        reto = self._cargar_reto()
+        if not reto:
+            return False, "No hay reto activo. Crea uno primero."
+        
+        nuevo_libro = {
+            'id': len(reto['libros_leidos']) + 1,
+            'titulo': titulo,
+            'autor': autor,
+            'paginas': int(paginas) if paginas else 0,
+            'fecha_completado': datetime.datetime.now().strftime("%Y-%m-%d")
+        }
+        
+        reto['libros_leidos'].append(nuevo_libro)
+        self._guardar_reto(reto)
+        
+        return True, f"Libro agregado: {titulo}"
+    
+    def ver_progreso_reto(self):
+        """Ver progreso del reto actual"""
+        reto = self._cargar_reto()
+        if not reto:
+            return None
+        
+        completados = len(reto['libros_leidos'])
+        meta = reto['meta_libros']
+        progreso = (completados / meta * 100) if meta > 0 else 0
+        
+        # Calcular proyección
+        hoy = datetime.datetime.now()
+        dia_del_anio = hoy.timetuple().tm_yday
+        dias_totales = 366 if hoy.year % 4 == 0 else 365
+        
+        if completados > 0:
+            ritmo_actual = completados / dia_del_anio
+            proyeccion = ritmo_actual * dias_totales
+        else:
+            proyeccion = 0
+        
+        return {
+            'anio': reto['anio'],
+            'meta': meta,
+            'completados': completados,
+            'progreso': progreso,
+            'proyeccion': proyeccion,
+            'libros': reto['libros_leidos']
+        }
+    
+    def eliminar_libro_del_reto(self, libro_id):
+        """Elimina un libro del reto"""
+        reto = self._cargar_reto()
+        if not reto:
+            return False
+        
+        reto['libros_leidos'] = [l for l in reto['libros_leidos'] if l['id'] != int(libro_id)]
+        self._guardar_reto(reto)
+        return True
+    
+    def estadisticas_reto(self):
+        """Genera estadísticas del reto"""
+        reto = self._cargar_reto()
+        if not reto or not reto['libros_leidos']:
+            return None
+        
+        total_paginas = sum(l.get('paginas', 0) for l in reto['libros_leidos'])
+        completados = len(reto['libros_leidos'])
+        
+        # Calcular días transcurridos
+        hoy = datetime.datetime.now()
+        inicio_anio = datetime.datetime(hoy.year, 1, 1)
+        dias_transcurridos = (hoy - inicio_anio).days + 1
+        
+        libros_por_dia = completados / dias_transcurridos if dias_transcurridos > 0 else 0
+        
+        return {
+            'total_paginas': total_paginas,
+            'libros_por_dia': libros_por_dia,
+            'completados': completados
+        }
 class LocalFrasesHandler:
     def __init__(self):
         self.DATA_FOLDER = "data"
@@ -4324,6 +4445,7 @@ else:
                 ("🎨", "Generar Arte", "arte", "ideas-icon"),
                 ("📖", "Info del Libro", "info", "notas-icon"),
                 ("⭐", "Mis Reseñas", "resenas", "frases-icon"),
+                ("🎯", "Reto Anual", "reto", "ideas-icon"),
                 ("📚", "Book Club", "bookclub", "biblia-icon")
             ]
             
@@ -4621,7 +4743,126 @@ else:
             if st.button("🔙 Volver", key="btn_volver_bookclub"):
                 st.session_state.libros_subview = "menu"
                 st.rerun()
-        
+    elif st.session_state.libros_subview == "reto":
+            st.markdown("### 🎯 Reto de Lectura Anual")
+            st.markdown("<p style='color:#d8c9ff;'>Establece tu meta y sigue tu progreso lector</p>", unsafe_allow_html=True)
+            
+            progreso_reto = libros_handler.ver_progreso_reto()
+            
+            if progreso_reto:
+                # Mostrar progreso
+                completados = progreso_reto['completados']
+                meta = progreso_reto['meta']
+                porcentaje = progreso_reto['progreso']
+                proyeccion = progreso_reto['proyeccion']
+                
+                # Barra de progreso
+                st.progress(min(porcentaje / 100, 1.0), text=f"{porcentaje:.0f}% completado")
+                
+                # Métricas
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("📚 Completados", completados)
+                col2.metric("🎯 Meta", meta)
+                
+                # Estadísticas
+                stats = libros_handler.estadisticas_reto()
+                if stats:
+                    col3.metric("📖 Páginas", stats['total_paginas'])
+                    col4.metric("📊 Proyección", f"{proyeccion:.0f}")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Mensaje motivacional
+                if porcentaje >= 100:
+                    st.success("🎉 ¡META COMPLETADA! ¡Eres increíble!")
+                elif porcentaje >= 75:
+                    st.success("💪 ¡Vas excelente! Ya casi llegas a tu meta")
+                elif porcentaje >= 50:
+                    st.info("📚 Vas por buen camino. ¡Sigue así!")
+                elif porcentaje >= 25:
+                    st.warning("💛 Buen inicio. ¡No te detengas!")
+                else:
+                    st.info("🌟 ¡Cada libro cuenta! Sigue adelante")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Lista de libros leídos
+                if progreso_reto['libros']:
+                    st.markdown("### 📚 Libros Completados")
+                    for libro in reversed(progreso_reto['libros']):
+                        with st.expander(f"📖 {libro['titulo']}", expanded=False):
+                            if libro.get('autor'):
+                                st.markdown(f"**Autor:** {libro['autor']}")
+                            if libro.get('paginas'):
+                                st.markdown(f"**Páginas:** {libro['paginas']}")
+                            st.caption(f"Completado: {libro['fecha_completado']}")
+                            
+                            if st.button("🗑️ Eliminar", key=f"btn_eliminar_libro_reto_{libro['id']}"):
+                                libros_handler.eliminar_libro_del_reto(libro['id'])
+                                st.success("Libro eliminado del reto")
+                                st.rerun()
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Agregar libro completado
+                st.markdown("### ➕ Agregar Libro Completado")
+                
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    titulo_libro = st.text_input("Título del libro:", key="input_titulo_reto")
+                    autor_libro = st.text_input("Autor (opcional):", key="input_autor_reto")
+                with col2:
+                    paginas_libro = st.number_input("Páginas (opcional):", min_value=0, step=1, key="input_paginas_reto")
+                
+                if st.button("📚 Agregar al Reto", use_container_width=True, key="btn_agregar_libro_reto"):
+                    if titulo_libro:
+                        exito, mensaje = libros_handler.agregar_libro_al_reto(titulo_libro, autor_libro, paginas_libro)
+                        if exito:
+                            st.success(mensaje)
+                            if completados + 1 >= meta:
+                                st.balloons()
+                                st.success("🎉 ¡FELICIDADES! ¡Completaste tu reto de lectura!")
+                            st.rerun()
+                        else:
+                            st.error(mensaje)
+                    else:
+                        st.warning("⚠️ Escribe el título del libro")
+                
+                # Configuración del reto
+                with st.expander("⚙️ Configuración del Reto", expanded=False):
+                    st.warning("⚠️ Esto reiniciará tu progreso actual")
+                    nueva_meta = st.number_input("Nueva meta de libros:", min_value=1, value=meta, step=1, key="input_nueva_meta_reto")
+                    if st.button("🔄 Resetear Reto", key="btn_reset_reto"):
+                        libros_handler.establecer_reto_anual(nueva_meta)
+                        st.success("Reto reseteado")
+                        st.rerun()
+            
+            else:
+                # No hay reto activo - Crear uno
+                st.info("No tienes un reto de lectura activo. ¡Crea uno!")
+                
+                st.markdown("### 🎯 Crear Reto de Lectura")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    meta_libros = st.number_input("¿Cuántos libros quieres leer este año?", min_value=1, value=12, step=1, key="input_meta_inicial")
+                with col2:
+                    anio_reto = st.number_input("Año:", min_value=2024, max_value=2030, value=datetime.datetime.now().year, step=1, key="input_anio_reto")
+                
+                st.markdown(f"<p style='color:#d8c9ff;'>📚 Meta: {meta_libros} libros en {anio_reto}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color:#d8c9ff;'>📊 Eso es aproximadamente {meta_libros/12:.1f} libros por mes</p>", unsafe_allow_html=True)
+                
+                if st.button("🎯 Crear Reto", use_container_width=True, key="btn_crear_reto_inicial"):
+                    exito, mensaje = libros_handler.establecer_reto_anual(meta_libros, anio_reto)
+                    if exito:
+                        st.success(mensaje)
+                        st.balloons()
+                        st.rerun()
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_reto"):
+                st.session_state.libros_subview = "menu"
+                st.rerun()    
            # --- MÓDULO FRASES ---
     elif st.session_state.current_view == "frases":
         st.markdown("<div class='title-glow'>💬 Frases</div>", unsafe_allow_html=True)
