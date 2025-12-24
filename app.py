@@ -4743,7 +4743,7 @@ else:
             if st.button("🔙 Volver", key="btn_volver_bookclub"):
                 st.session_state.libros_subview = "menu"
                 st.rerun()
-    elif st.session_state.libros_subview == "reto":
+        elif st.session_state.libros_subview == "reto":
             st.markdown("### 🎯 Reto de Lectura Anual")
             st.markdown("<p style='color:#d8c9ff;'>Establece tu meta y sigue tu progreso lector</p>", unsafe_allow_html=True)
             
