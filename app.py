@@ -4746,6 +4746,7 @@ else:
         elif st.session_state.libros_subview == "reto":
             st.markdown("### 🎯 Reto de Lectura Anual")
             st.markdown("<p style='color:#d8c9ff;'>Establece tu meta y sigue tu progreso lector</p>", unsafe_allow_html=True)
+            
             progreso_reto = libros_handler.ver_progreso_reto()
             
             if progreso_reto:
