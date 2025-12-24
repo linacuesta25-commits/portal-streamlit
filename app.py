@@ -532,6 +532,68 @@ class LocalFinanzasHandler:
             'dia_actual': dia_actual
         }
 
+class MetasAhorroHandler:
+    def __init__(self):
+        self.DATA_FOLDER = "data"
+        self.METAS_FILE = os.path.join(self.DATA_FOLDER, "metas_ahorro.json")
+        os.makedirs(self.DATA_FOLDER, exist_ok=True)
+    
+    def _cargar_metas(self):
+        if not os.path.exists(self.METAS_FILE):
+            return []
+        try:
+            with open(self.METAS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return []
+    
+    def _guardar_metas(self, metas):
+        with open(self.METAS_FILE, "w", encoding="utf-8") as f:
+            json.dump(metas, f, indent=2, ensure_ascii=False)
+    
+    def crear_meta(self, nombre, monto_objetivo, descripcion=""):
+        metas = self._cargar_metas()
+        nueva = {
+            "id": len(metas) + 1,
+            "nombre": nombre,
+            "monto_objetivo": float(monto_objetivo),
+            "monto_actual": 0.0,
+            "descripcion": descripcion,
+            "fecha_creacion": datetime.datetime.now().strftime("%Y-%m-%d"),
+            "completada": False,
+            "fecha_completada": None
+        }
+        metas.append(nueva)
+        self._guardar_metas(metas)
+        return nueva
+    
+    def aportar_a_meta(self, meta_id, monto):
+        metas = self._cargar_metas()
+        meta = next((m for m in metas if m["id"] == int(meta_id)), None)
+        if not meta:
+            return None
+        
+        meta["monto_actual"] += float(monto)
+        
+        # Verificar si se completó
+        if meta["monto_actual"] >= meta["monto_objetivo"] and not meta["completada"]:
+            meta["completada"] = True
+            meta["fecha_completada"] = datetime.datetime.now().strftime("%Y-%m-%d")
+        
+        self._guardar_metas(metas)
+        return meta
+    
+    def listar_metas(self):
+        return self._cargar_metas()
+    
+    def borrar_meta(self, meta_id):
+        metas = self._cargar_metas()
+        meta = next((m for m in metas if m["id"] == int(meta_id)), None)
+        if not meta:
+            return None
+        metas = [m for m in metas if m["id"] != int(meta_id)]
+        self._guardar_metas(metas)
+        return meta
 
 class LocalNotasHandler:
     def __init__(self):
@@ -3426,7 +3488,7 @@ def get_handlers():
     fra = LocalFrasesHandler()
     pers = GestorPersonalidades()
     bib = RobustBibliaHandler()
-    
+    metas = MetasAhorroHandler()
     # Usar la misma API key que libros y frases
     OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 
@@ -3440,10 +3502,10 @@ def get_handlers():
     # Inicializar handler Profesional
     profesional = ProfesionalHandler(OPENAI_API_KEY)
     
-    return fin, not_h, lib, fra, pers, bib, ideas, tarot, astro, nume, profesional
+    return fin, not_h, lib, fra, pers, bib, ideas, tarot, astro, nume, profesional, metas
 
 # Inicializar handlers
-finanzas_handler, notas_handler, libros_handler, frases_handler, personalidades_handler, biblia_handler, ideas_handler, tarot, astrologia, numerologia, profesional_handler = get_handlers()
+finanzas_handler, notas_handler, libros_handler, frases_handler, personalidades_handler, biblia_handler, ideas_handler, tarot, astrologia, numerologia, profesional_handler, metas_ahorro_handler = get_handlers()
 biblia = biblia_handler
 
 # =====================================================
@@ -3750,6 +3812,7 @@ else:
                 ("💵", "Ingresos", "ingresos", "ideas-icon"),
                 ("📊", "Reportes", "reportes", "libros-icon"),
                 ("🎯", "Presupuestos", "presupuestos", "tarot-icon"),
+                ("💎", "Metas Ahorro", "metas", "ideas-icon"),
                 ("🏷️", "Categorías", "categorias", "frases-icon"),
                 ("📈", "Estadísticas", "estadisticas", "biblia-icon")
             ]
@@ -4001,7 +4064,85 @@ else:
             if st.button("🔙 Volver", key="btn_volver_stats_finanzas"):
                 st.session_state.finanzas_subview = "menu"
                 st.rerun()
-
+        elif st.session_state.finanzas_subview == "metas":
+            st.markdown("### 💎 Metas de Ahorro")
+            
+            # Ver metas existentes
+            metas = metas_ahorro_handler.listar_metas()
+            
+            if metas:
+                st.success(f"✅ Tienes {len(metas)} meta(s) de ahorro")
+                
+                for meta in metas:
+                    progreso = (meta['monto_actual'] / meta['monto_objetivo'] * 100) if meta['monto_objetivo'] > 0 else 0
+                    emoji = "🎉" if meta['completada'] else "💎"
+                    
+                    with st.expander(f"{emoji} {meta['nombre']} - {progreso:.0f}%", expanded=not meta['completada']):
+                        st.markdown(f"**Objetivo:** ${meta['monto_objetivo']:.2f}")
+                        st.markdown(f"**Ahorrado:** ${meta['monto_actual']:.2f}")
+                        st.markdown(f"**Faltan:** ${meta['monto_objetivo'] - meta['monto_actual']:.2f}")
+                        
+                        # Barra de progreso
+                        st.progress(min(progreso / 100, 1.0))
+                        
+                        if meta['completada']:
+                            st.success(f"🎉 ¡Meta completada el {meta['fecha_completada']}!")
+                        else:
+                            # Aportar a la meta
+                            col1, col2 = st.columns([2, 1])
+                            with col1:
+                                monto_aporte = st.number_input(
+                                    "Monto a aportar:",
+                                    min_value=0.0,
+                                    step=0.01,
+                                    key=f"aporte_{meta['id']}"
+                                )
+                            with col2:
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                if st.button("💰 Aportar", key=f"btn_aportar_{meta['id']}", use_container_width=True):
+                                    if monto_aporte > 0:
+                                        meta_actualizada = metas_ahorro_handler.aportar_a_meta(meta['id'], monto_aporte)
+                                        if meta_actualizada['completada']:
+                                            st.balloons()
+                                            st.success("🎉 ¡META COMPLETADA! ¡Felicidades!")
+                                        else:
+                                            st.success(f"✅ Aporte registrado: ${monto_aporte:.2f}")
+                                        st.rerun()
+                        
+                        # Botón eliminar
+                        if st.button("🗑️ Eliminar Meta", key=f"btn_eliminar_meta_{meta['id']}"):
+                            metas_ahorro_handler.borrar_meta(meta['id'])
+                            st.success("Meta eliminada")
+                            st.rerun()
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+            else:
+                st.info("No tienes metas de ahorro aún. ¡Crea la primera!")
+            
+            # Crear nueva meta
+            st.markdown("### ✨ Crear Nueva Meta")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                nombre_meta = st.text_input("Nombre de la meta:", placeholder="Ej: Viaje a Europa", key="input_nombre_meta")
+            with col2:
+                monto_meta = st.number_input("Monto objetivo:", min_value=0.0, step=0.01, key="input_monto_meta")
+            
+            desc_meta = st.text_area("Descripción (opcional):", height=80, key="input_desc_meta")
+            
+            if st.button("💎 Crear Meta", use_container_width=True, key="btn_crear_meta"):
+                if nombre_meta and monto_meta > 0:
+                    metas_ahorro_handler.crear_meta(nombre_meta, monto_meta, desc_meta)
+                    st.success(f"✅ Meta '{nombre_meta}' creada")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Completa nombre y monto objetivo")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_metas"):
+                st.session_state.finanzas_subview = "menu"
+                st.rerun()
     # --- MÓDULO NOTAS ---
     elif st.session_state.current_view == "notas":
         st.markdown("<div class='title-glow'>📝 Notas</div>", unsafe_allow_html=True)
