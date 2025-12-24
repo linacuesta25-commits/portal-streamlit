@@ -2479,7 +2479,48 @@ class AstrologiaHandler:
         for signo, info in self.SIGNOS_ZODIACALES.items():
             texto += f"{info['simbolo']} **{signo.upper()}** - {info['fechas']}\n"
         return texto
-
+    def calendario_lunar_mensual(self):
+        """Genera calendario lunar del mes completo"""
+        hoy = datetime.datetime.now()
+        mes_nombre = hoy.strftime("%B %Y")
+        
+        # Generar fases del mes (simplificado)
+        dias_mes = 30
+        fases_mes = []
+        
+        for dia in range(1, dias_mes + 1):
+            # Calcular fase aproximada
+            dias_desde_nueva = (hoy.day + dia) % 29.5
+            
+            if dias_desde_nueva < 1:
+                fase = "🌑 Luna Nueva"
+                energia = "Nuevos comienzos, intenciones, siembra"
+            elif dias_desde_nueva < 7:
+                fase = "🌒 Creciente"
+                energia = "Acción, construcción, crecimiento"
+            elif dias_desde_nueva < 14:
+                fase = "🌓 Cuarto Creciente"
+                energia = "Decisiones, superar obstáculos"
+            elif dias_desde_nueva < 15:
+                fase = "🌕 Luna Llena"
+                energia = "Culminación, celebración, liberación"
+            elif dias_desde_nueva < 22:
+                fase = "🌖 Menguante"
+                energia = "Compartir, reflexionar, agradecer"
+            else:
+                fase = "🌘 Cuarto Menguante"
+                energia = "Descanso, soltar, introspección"
+            
+            fases_mes.append({
+                'dia': dia,
+                'fase': fase,
+                'energia': energia
+            })
+        
+        return {
+            'mes': mes_nombre,
+            'fases': fases_mes
+        }
 # =====================================================
 # HANDLER NUMEROLOGÍA
 # =====================================================
@@ -5274,6 +5315,7 @@ else:
             opciones_astro = [
                 ("🌟", "Horóscopo Diario", "horoscopo", "libros-icon"),
                 ("🌙", "Fase Lunar", "luna", "tarot-icon"),
+                ("📅", "Calendario Lunar", "calendario", "finanzas-icon"),
                 ("🏠", "Volver", "volver", "ideas-icon")
             ]
             
@@ -5315,7 +5357,45 @@ else:
             if st.button("🔙 Volver", key="btn_astro_volver_luna"):
                 st.session_state.astro_subview = "menu"
                 st.rerun()
-    
+        elif st.session_state.astro_subview == "calendario":
+            st.markdown("### 📅 Calendario Lunar del Mes")
+            st.markdown("<p style='color:#d8c9ff;'>Todas las fases lunares de este mes</p>", unsafe_allow_html=True)
+            
+            calendario = astrologia.calendario_lunar_mensual()
+            
+            st.markdown(f"**🌙 {calendario['mes']}**")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Mostrar en formato de tabla compacta
+            fases_por_semana = [calendario['fases'][i:i+7] for i in range(0, len(calendario['fases']), 7)]
+            
+            for semana in fases_por_semana:
+                cols = st.columns(7)
+                for idx, dia_info in enumerate(semana):
+                    with cols[idx]:
+                        emoji = dia_info['fase'].split()[0]
+                        st.markdown(f"**{dia_info['dia']}**")
+                        st.markdown(emoji)
+                        st.caption(dia_info['fase'].split()[1] if len(dia_info['fase'].split()) > 1 else "")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Leyenda de energías
+            st.markdown("### 🌟 Energías Lunares")
+            
+            fases_unicas = {}
+            for f in calendario['fases']:
+                fase_nombre = f['fase']
+                if fase_nombre not in fases_unicas:
+                    fases_unicas[fase_nombre] = f['energia']
+            
+            for fase, energia in fases_unicas.items():
+                st.markdown(f"**{fase}:** {energia}")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_astro_volver_calendario"):
+                st.session_state.astro_subview = "menu"
+                st.rerun()
     # --- MÓDULO NUMEROLOGÍA ---
     elif st.session_state.current_view == "numerologia":
         st.markdown("<div class='title-glow'>🔢 Numerología</div>", unsafe_allow_html=True)
