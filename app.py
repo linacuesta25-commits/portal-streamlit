@@ -3605,7 +3605,7 @@ def render_spotify_persistente():
 def get_handlers():
     fin = LocalFinanzasHandler()
     not_h = LocalNotasHandler()
-    lib = LocalLibrosHandler()
+    libros_handler = LocalLibrosHandler()
     fra = LocalFrasesHandler()
     pers = GestorPersonalidades()
     bib = RobustBibliaHandler()
@@ -3622,8 +3622,8 @@ def get_handlers():
         
     # Inicializar handler Profesional
     profesional = ProfesionalHandler(OPENAI_API_KEY)
-    
-    return fin, not_h, lib, fra, pers, bib, ideas, tarot, astro, nume, profesional, metas
+
+    return fin, not_h, libros_handler, fra, pers, bib, ideas, tarot, astro, nume, profesional, metas
 
 # Inicializar handlers
 finanzas_handler, notas_handler, libros_handler, frases_handler, personalidades_handler, biblia_handler, ideas_handler, tarot, astrologia, numerologia, profesional_handler, metas_ahorro_handler = get_handlers()
