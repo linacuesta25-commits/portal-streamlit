@@ -6601,7 +6601,32 @@ else:
                 st.session_state.nume_subview = "menu"
                 st.rerun()
         
-
+        elif st.session_state.nume_subview == "compatibilidad":
+            st.markdown("### 💕 Compatibilidad Numerológica")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre la compatibilidad entre dos personas según su numerología</p>", unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Persona 1:**")
+                fecha1 = st.text_input("Fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha1_comp")
+            
+            with col2:
+                st.markdown("**Persona 2:**")
+                fecha2 = st.text_input("Fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha2_comp")
+            
+            if st.button("💕 Analizar Compatibilidad", use_container_width=True, key="btn_comp_numerologia"):
+                if fecha1 and fecha2:
+                    with st.spinner("🔢 Calculando compatibilidad numerológica..."):
+                        resultado = numerologia.compatibilidad_numerologica(fecha1, fecha2)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Ingresa ambas fechas de nacimiento")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_nume_volver_comp"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()
         
     # --- MÓDULO IDEAS ---
     elif st.session_state.current_view == "ideas":
