@@ -2581,6 +2581,68 @@ class AstrologiaHandler:
         for signo, info in self.SIGNOS_ZODIACALES.items():
             texto += f"{info['simbolo']} **{signo.upper()}** - {info['fechas']}\n"
         return texto
+    def compatibilidad_signos(self, signo1, signo2):
+        """Analiza compatibilidad entre dos signos"""
+        signo1 = signo1.lower().strip()
+        signo2 = signo2.lower().strip()
+        
+        normalizaciones = {
+            "geminis": "geminis", "géminis": "geminis",
+            "cancer": "cancer", "cáncer": "cancer",
+            "escorpio": "escorpio", "escorpion": "escorpio"
+        }
+        signo1 = normalizaciones.get(signo1, signo1)
+        signo2 = normalizaciones.get(signo2, signo2)
+        
+        if signo1 not in self.SIGNOS_ZODIACALES or signo2 not in self.SIGNOS_ZODIACALES:
+            return "❌ Uno de los signos no es válido"
+        
+        info1 = self.SIGNOS_ZODIACALES[signo1]
+        info2 = self.SIGNOS_ZODIACALES[signo2]
+        
+        # Compatibilidad por elementos
+        elementos_comp = {
+            ("Fuego", "Fuego"): ("🔥 Alta", "Ambos comparten pasión y energía"),
+            ("Fuego", "Aire"): ("✨ Muy Alta", "El aire aviva el fuego - conexión natural"),
+            ("Fuego", "Tierra"): ("⚡ Media", "Diferencias que pueden complementarse"),
+            ("Fuego", "Agua"): ("💫 Baja-Media", "Requiere esfuerzo y comprensión"),
+            ("Tierra", "Tierra"): ("🌱 Alta", "Comparten valores y estabilidad"),
+            ("Tierra", "Aire"): ("🌪️ Media", "Mundos diferentes pero enriquecedores"),
+            ("Tierra", "Agua"): ("💚 Muy Alta", "Se nutren mutuamente"),
+            ("Aire", "Aire"): ("💨 Alta", "Conexión mental y libertad"),
+            ("Aire", "Agua"): ("🌊 Media-Baja", "Desafíos de comunicación"),
+            ("Agua", "Agua"): ("💧 Muy Alta", "Profunda conexión emocional")
+        }
+        
+        # Obtener compatibilidad (ordenar elementos alfabéticamente para match)
+        elem_pair = tuple(sorted([info1['elemento'], info2['elemento']]))
+        compatibilidad = elementos_comp.get(elem_pair, ("💫 Media", "Conexión única por descubrir"))
+        
+        return f"""
+💫 **COMPATIBILIDAD ASTROLÓGICA**
+
+**{signo1.upper()}** {info1['simbolo']} × **{signo2.upper()}** {info2['simbolo']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🔮 **Nivel de Compatibilidad:** {compatibilidad[0]}
+
+**{signo1.capitalize()}:**
+🌟 Elemento: {info1['elemento']}
+🪐 Planeta regente: {info1['planeta']}
+✨ Fortalezas: {info1['fortalezas']}
+
+**{signo2.capitalize()}:**
+🌟 Elemento: {info2['elemento']}
+🪐 Planeta regente: {info2['planeta']}
+✨ Fortalezas: {info2['fortalezas']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💡 **Dinámica:** {compatibilidad[1]}
+
+💛 Toda relación requiere esfuerzo consciente y amor. Las estrellas guían, pero tú decides.
+"""
 
 # =====================================================
 # HANDLER NUMEROLOGÍA
@@ -5474,6 +5536,7 @@ else:
             opciones_astro = [
                 ("🌟", "Horóscopo Diario", "horoscopo", "libros-icon"),
                 ("🌙", "Fase Lunar", "luna", "tarot-icon"),
+                ("💫", "Compatibilidad", "compatibilidad", "frases-icon"),
                 ("🏠", "Volver", "volver", "ideas-icon")
             ]
            
@@ -5515,7 +5578,28 @@ else:
             if st.button("🔙 Volver", key="btn_astro_volver_luna"):
                 st.session_state.astro_subview = "menu"
                 st.rerun()
-    
+        elif st.session_state.astro_subview == "compatibilidad":
+            st.markdown("### 💫 Compatibilidad de Signos")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre la compatibilidad astrológica entre dos signos</p>", unsafe_allow_html=True)
+            
+            signos = ["Aries", "Tauro", "Géminis", "Cáncer", "Leo", "Virgo", "Libra", "Escorpio", "Sagitario", "Capricornio", "Acuario", "Piscis"]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                signo1 = st.selectbox("Primer signo:", signos, key="select_signo1_comp")
+            
+            with col2:
+                signo2 = st.selectbox("Segundo signo:", signos, index=1, key="select_signo2_comp")
+            
+            if st.button("💫 Analizar Compatibilidad", use_container_width=True, key="btn_compatibilidad_signos"):
+                resultado = astrologia.compatibilidad_signos(signo1, signo2)
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_astro_volver_comp"):
+                st.session_state.astro_subview = "menu"
+                st.rerun()
     # --- MÓDULO NUMEROLOGÍA ---
     elif st.session_state.current_view == "numerologia":
         st.markdown("<div class='title-glow'>🔢 Numerología</div>", unsafe_allow_html=True)
