@@ -6085,7 +6085,9 @@ else:
                 ("⭐", "Mis Reseñas", "resenas", "frases-icon"),
                 ("🎯", "Reto Anual", "reto", "ideas-icon"),
                 ("📚", "Mis Estantes", "estantes", "libros-icon")
-                ("📚", "Book Club", "bookclub", "biblia-icon")
+                ("📚", "Book Club", "bookclub", "biblia-icon"),
+                ("📝", "Otra Opción", "otra", "libros-icon"),
+                ("🏠", "Volver", "volver", "ideas-icon")
             ]
             
             rows_libros = [opciones_libros[i:i+3] for i in range(0, len(opciones_libros), 3)]
