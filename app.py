@@ -2868,8 +2868,8 @@ Las retrogradaciones NO son negativas - son momentos de:
         
         return resultado
        
-        def revolucion_solar(self, fecha_nacimiento, signo):
-          """Análisis de revolución solar - tu nuevo año astrológico"""
+    def revolucion_solar(self, fecha_nacimiento, signo):
+        """Análisis de revolución solar - tu nuevo año astrológico"""
         try:
             nac = datetime.datetime.strptime(fecha_nacimiento, "%Y-%m-%d")
         except:
@@ -2890,14 +2890,18 @@ Las retrogradaciones NO son negativas - son momentos de:
         dias_para_cumple = (proximo_cumple - hoy).days
         
         signo = signo.lower().strip()
+        
+        # NORMALIZAR PRIMERO (antes de verificar)
+        normalizaciones = {
+            "geminis": "geminis", "géminis": "geminis",
+            "cancer": "cancer", "cáncer": "cancer",
+            "escorpio": "escorpio", "escorpion": "escorpio"
+        }
+        signo = normalizaciones.get(signo, signo)
+        
+        # AHORA SÍ verificar
         if signo not in self.SIGNOS_ZODIACALES:
             return "❌ Signo no válido"
-        normalizaciones = {
-        "geminis": "geminis", "géminis": "geminis",
-        "cancer": "cancer", "cáncer": "cancer",
-        "escorpio": "escorpio", "escorpion": "escorpio"
-    }
-        signo = normalizaciones.get(signo, signo)
         
         info_signo = self.SIGNOS_ZODIACALES[signo]
         
@@ -2910,104 +2914,6 @@ Las retrogradaciones NO son negativas - son momentos de:
         elif dias_para_cumple <= 120:
             fase = "INICIO"
             energia = "🌸 Florecimiento"
-            mensaje = "Acabas de comenzar tu nuevo año solar. Energía fresca, nuevos comienzos, momento de plantar semillas para este ciclo."
-            enfoque = "Nuevos proyectos, establecer intenciones, iniciar cambios"
-        elif dias_para_cumple <= 240:
-            fase = "DESARROLLO"
-            energia = "☀️ Crecimiento"
-            mensaje = "Estás en pleno desarrollo de tu año solar. Las semillas plantadas están creciendo. Momento de acción y manifestación."
-            enfoque = "Trabajo constante, construir, materializar tus metas"
-        else:
-            fase = "COSECHA"
-            energia = "🍂 Maduración"
-            mensaje = "Estás en fase de cosecha. Los resultados de tu año se están manifestando. Tiempo de integrar lecciones."
-            enfoque = "Recoger frutos, evaluar logros, integrar aprendizajes"
-        
-        # Predicciones basadas en elemento del signo
-        elem = info_signo['elemento']
-        
-        predicciones = {
-            "Fuego": {
-                "general": "Año de acción, valentía y liderazgo. Tu energía estará en su punto máximo.",
-                "amor": "Pasión intensa. Conocerás gente nueva o reavivarás la chispa existente.",
-                "trabajo": "Oportunidades de liderazgo. Tu iniciativa será recompensada.",
-                "crecimiento": "Desarrollarás más confianza en ti mismo. Momento de brillar.",
-                "desafio": "Controla la impulsividad. No todo requiere acción inmediata."
-            },
-            "Tierra": {
-                "general": "Año de construcción sólida y logros materiales. Estabilidad y crecimiento.",
-                "amor": "Relaciones estables y duraderas. Compromiso y seguridad emocional.",
-                "trabajo": "Crecimiento financiero. Tu trabajo duro será reconocido.",
-                "crecimiento": "Aprenderás el valor de la paciencia y la perseverancia.",
-                "desafio": "No te estanques. Arriésgate a lo nuevo de vez en cuando."
-            },
-            "Aire": {
-                "general": "Año de conexiones, aprendizaje y comunicación. Expansión mental.",
-                "amor": "Conexiones intelectuales profundas. Comunicación abierta en relaciones.",
-                "trabajo": "Networking poderoso. Colaboraciones importantes. Ideas innovadoras.",
-                "crecimiento": "Tu mente se expandirá. Nuevas perspectivas cambiarán tu vida.",
-                "desafio": "Conecta con tus emociones. No todo es lógica."
-            },
-            "Agua": {
-                "general": "Año de profundidad emocional, intuición y sanación. Transformación del alma.",
-                "amor": "Conexiones del alma. Intimidad emocional profunda.",
-                "trabajo": "Tu empatía será tu superpoder. Trabajos creativos o de servicio florecen.",
-                "crecimiento": "Sanarás heridas antiguas. Crecimiento espiritual importante.",
-                "desafio": "Establece límites. No te pierdas en las emociones de otros."
-            }
-        }
-        
-        pred = predicciones[elem]
-        
-        return f"""
-🎂 **TU REVOLUCIÓN SOLAR {hoy.year}-{hoy.year + 1}**
-
-━━━━━━━━━━━━━━━━━━━━━
-
-👤 **Signo:** {signo.upper()} {info_signo['simbolo']}
-🎯 **Edad actual:** {edad_actual} años
-📅 **Próximo cumpleaños:** {proximo_cumple.strftime('%d de %B, %Y')}
-⏰ **Días hasta tu nuevo año:** {dias_para_cumple} días
-
-━━━━━━━━━━━━━━━━━━━━━
-
-🌟 **FASE ACTUAL: {fase}**
-{energia}
-
-{mensaje}
-
-**🎯 Enfoque recomendado:**
-{enfoque}
-
-━━━━━━━━━━━━━━━━━━━━━
-
-📊 **PANORAMA DE TU AÑO SOLAR:**
-
-**🌈 ENERGÍA GENERAL:**
-{pred['general']}
-
-**💕 AMOR Y RELACIONES:**
-{pred['amor']}
-
-**💼 TRABAJO Y CARRERA:**
-{pred['trabajo']}
-
-**✨ CRECIMIENTO PERSONAL:**
-{pred['crecimiento']}
-
-**⚠️ DESAFÍO DEL AÑO:**
-{pred['desafio']}
-
-━━━━━━━━━━━━━━━━━━━━━
-
-💫 **CONSEJO CÓSMICO:**
-
-Como {signo.capitalize()} de elemento {elem}, este año las estrellas te invitan a honrar tu esencia mientras te expandes más allá de tu zona de confort.
-
-🌟 Tu año solar es TU tiempo. Úsalo sabiamente.
-
-💜 ¡Feliz revolución solar! Que este nuevo ciclo traiga bendiciones.
-"""
 # =====================================================
 # HANDLER NUMEROLOGÍA
 # =====================================================
