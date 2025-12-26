@@ -3700,7 +3700,319 @@ Después entrarás en Año Personal {(suma_total % 9) + 1 if suma_total <= 9 els
 """
         
         except Exception as e:
-            return f"❌ Error: {str(e)}"    
+            return f"❌ Error: {str(e)}"
+    # ============================================
+# MÉTODO MAPA DE VIDA - NUMEROLOGÍA
+# ============================================
+# Agregar este método a la clase NumerologiaHandler
+# DESPUÉS del método compatibilidad_numerologica()
+
+def mapa_de_vida(self, fecha_nacimiento):
+    """Detecta números kármicos y calcula el Regalo Divino"""
+    try:
+        # --- 1. PREPARAR FECHA ---
+        fecha_nacimiento = fecha_nacimiento.strip()
+        separador = "/" if "/" in fecha_nacimiento else "-"
+        partes = fecha_nacimiento.split(separador)
+        
+        if len(partes) != 3:
+            return "❌ Formato inválido. Usa DD/MM/AAAA."
+
+        # Ajustar si viene Año primero
+        if len(partes[0]) == 4: 
+            a, m, d = partes
+        else: 
+            d, m, a = partes
+            
+        dia_num = int(d)
+        mes_num = int(m)
+        anio_num = int(a)
+
+        # Validación básica
+        if not (1 <= mes_num <= 12) or not (1 <= dia_num <= 31):
+             return "❌ Fecha incorrecta."
+
+        # --- 2. SIGNIFICADOS ---
+        
+        # Karma (Retos)
+        karmicos_dict = {
+            13: {"nombre": "El Trabajador", "leccion": "Disciplina y esfuerzo.", "trabajo": "Orden y terminar lo que empiezas."},
+            14: {"nombre": "El Buscador", "leccion": "Equilibrio y templanza.", "trabajo": "Moderación y evitar excesos."},
+            16: {"nombre": "El Renacido", "leccion": "Humildad y despertar.", "trabajo": "Soltar el control y el ego."},
+            19: {"nombre": "El Sol", "leccion": "Liderazgo y servicio.", "trabajo": "Ayudar sin imponer."}
+        }
+
+        # Regalo Divino (Dones)
+        regalos_dict = {
+            1: "Liderazgo e Iniciativa",
+            2: "Diplomacia y Unión",
+            3: "Comunicación y Alegría",
+            4: "Orden y Estructura",
+            5: "Adaptabilidad y Magnetismo",
+            6: "Amor y Protección",
+            7: "Sabiduría e Intuición",
+            8: "Poder y Abundancia",
+            9: "Compasión y Servicio",
+            11: "Maestría e Inspiración"
+        }
+
+        # --- 3. CALCULAR RETOS (KARMA) ---
+        karmicos_encontrados = []
+
+        # En Día
+        if dia_num in karmicos_dict:
+            karmicos_encontrados.append(('Tu Día', dia_num))
+
+        # En Misión (Suma Total)
+        suma_total = dia_num + mes_num + sum(int(c) for c in str(anio_num))
+        if suma_total in karmicos_dict:
+            karmicos_encontrados.append(('Tu Misión', suma_total))
+        else:
+            # Reducción extra por si acaso (ej. 49 -> 13)
+            suma_reducida = sum(int(c) for c in str(suma_total))
+            if suma_reducida in karmicos_dict:
+                karmicos_encontrados.append(('Tu Misión', suma_reducida))
+
+        # --- 4. CALCULAR REGALO (DON) ---
+        # Últimos 2 dígitos del año
+        ultimos_dos = str(anio_num)[-2:] 
+        suma_regalo = int(ultimos_dos[0]) + int(ultimos_dos[1])
+        
+        if suma_regalo == 0: suma_regalo = 2 # Ajuste año 2000
+        
+        # Reducir a un dígito (excepto 11)
+        while suma_regalo > 9 and suma_regalo != 11:
+            suma_regalo = sum(int(c) for c in str(suma_regalo))
+
+        texto_regalo = regalos_dict.get(suma_regalo, "Evolución Constante")
+
+        # --- 5. RESULTADO FINAL ---
+        
+        resultado = f"""
+✨ **TU MAPA DE VIDA**
+📅 {fecha_nacimiento}
+━━━━━━━━━━━━━━━━━━━━━
+"""
+
+        # Parte A: Los Retos (Karma)
+        if not karmicos_encontrados:
+            resultado += "✅ **SIN CARGAS DEL PASADO:** Tu camino está libre de deudas kármicas. ¡Avanza ligero!\n"
+        else:
+            resultado += f"⚡ **TIENES {len(karmicos_encontrados)} RETO(S) POR SUPERAR:**\n"
+            for ubicacion, numero in karmicos_encontrados:
+                info = karmicos_dict[numero]
+                resultado += f"   • **{info['nombre']} ({numero})** en {ubicacion}: \n     💡 Aprende: {info['leccion']}\n"
+
+        # Parte B: El Regalo (Dharma)
+        resultado += f"""
+━━━━━━━━━━━━━━━━━━━━━
+🎁 **TU REGALO DIVINO:** Número {suma_regalo}
+🌟 *{texto_regalo}*
+
+Este es tu "superpoder" natural. Úsalo cuando tengas dudas o dificultades.
+━━━━━━━━━━━━━━━━━━━━━
+"""
+        
+        return resultado
+
+    except Exception as e:
+        return f"❌ Algo salió mal: {str(e)}"
+    def ciclos_de_vida(self, fecha_nacimiento):
+        """Calcula los 3 ciclos de vida numerológicos"""
+    try:
+        # Parsear fecha
+        if "/" in fecha_nacimiento:
+            d, m, a = fecha_nacimiento.split("/")
+        elif "-" in fecha_nacimiento:
+            partes = fecha_nacimiento.split("-")
+            if len(partes[0]) == 4:
+                a, m, d = partes
+            else:
+                d, m, a = partes
+        else:
+            return "❌ Formato inválido (Usa DD/MM/AAAA o DD-MM-AAAA)"
+        
+        # Calcular camino de vida para determinar edad de transición
+        suma_camino = int(d) + int(m) + int(a)
+        while suma_camino > 9 and suma_camino not in (11, 22):
+            suma_camino = sum(int(x) for x in str(suma_camino))
+        
+        # Edad de transición entre ciclos (basado en camino de vida)
+        transiciones = {
+            1: (36, 54), 2: (35, 53), 3: (33, 51), 4: (32, 50),
+            5: (31, 49), 6: (30, 48), 7: (29, 47), 8: (28, 46),
+            9: (27, 45), 11: (35, 53), 22: (32, 50)
+        }
+        edad1, edad2 = transiciones.get(suma_camino, (28, 54))
+        
+        # Calcular números de cada ciclo
+        # Primer ciclo: Reducir MES de nacimiento
+        primer_ciclo = int(m)
+        while primer_ciclo > 9:
+            primer_ciclo = sum(int(x) for x in str(primer_ciclo))
+        
+        # Segundo ciclo: Reducir DÍA de nacimiento
+        segundo_ciclo = int(d)
+        while segundo_ciclo > 9:
+            segundo_ciclo = sum(int(x) for x in str(segundo_ciclo))
+        
+        # Tercer ciclo: Reducir AÑO de nacimiento
+        tercer_ciclo = int(a)
+        while tercer_ciclo > 9:
+            tercer_ciclo = sum(int(x) for x in str(tercer_ciclo))
+        
+        # Información detallada de cada número de ciclo
+        significados_ciclos = {
+            1: {
+                "energia": "INDEPENDENCIA Y LIDERAZGO",
+                "descripcion": "Este ciclo te impulsa a descubrir quién eres realmente, a confiar en ti mismo y a tomar el control de tu vida. Es tiempo de iniciar, liderar y ser pionero.",
+                "desafios": "Soledad, miedo a destacar, necesidad de validación externa",
+                "lecciones": "Confiar en tu visión única y atreverte a ser diferente",
+                "mensaje": "Este ciclo te enseña que tienes todo lo que necesitas dentro de ti. No esperes permiso para brillar."
+            },
+            2: {
+                "energia": "COOPERACIÓN Y SENSIBILIDAD",
+                "descripcion": "Este ciclo te enseña el poder de las relaciones, la diplomacia y la intuición. Aprendes que no estás solo y que la colaboración multiplica tu poder.",
+                "desafios": "Codependencia, sensibilidad excesiva, evitar conflictos",
+                "lecciones": "Equilibrar dar y recibir, poner límites sanos",
+                "mensaje": "Tu sensibilidad no es debilidad, es tu superpoder. Úsala con sabiduría."
+            },
+            3: {
+                "energia": "EXPRESIÓN Y CREATIVIDAD",
+                "descripcion": "Este ciclo te impulsa a expresarte, crear y compartir tu luz con el mundo. Es tiempo de alegría, comunicación y autoexpresión sin censura.",
+                "desafios": "Dispersión, superficialidad, miedo al juicio",
+                "lecciones": "Encontrar tu voz única y usarla sin disculpas",
+                "mensaje": "Naciste para crear y comunicar. No silencies tu luz por miedo."
+            },
+            4: {
+                "energia": "CONSTRUCCIÓN Y ESTABILIDAD",
+                "descripcion": "Este ciclo te enseña el valor del trabajo duro, la disciplina y la construcción de bases sólidas. Es tiempo de materializar tus sueños con esfuerzo constante.",
+                "desafios": "Rigidez, exceso de trabajo, resistencia al cambio",
+                "lecciones": "Balance entre trabajo y descanso, flexibilidad",
+                "mensaje": "Estás construyendo tu imperio. Cada día cuenta, pero no olvides vivir."
+            },
+            5: {
+                "energia": "LIBERTAD Y CAMBIO",
+                "descripcion": "Este ciclo te impulsa a explorar, experimentar y abrazar el cambio. Es tiempo de aventura, libertad y descubrimiento constante.",
+                "desafios": "Inestabilidad, evitar compromisos, impulsividad",
+                "lecciones": "Usar la libertad responsablemente, aprender de cada experiencia",
+                "mensaje": "El cambio que temes es exactamente lo que necesitas. Suéltate al flujo."
+            },
+            6: {
+                "energia": "AMOR Y RESPONSABILIDAD",
+                "descripcion": "Este ciclo te enseña sobre el amor incondicional, el cuidado y la creación de hogar. Es tiempo de nutrir, sanar y construir familia.",
+                "desafios": "Codependencia, mártir, descuidar necesidades propias",
+                "lecciones": "Amarte primero para poder amar bien a otros",
+                "mensaje": "Tu amor sana mundos, pero empieza contigo. Llena tu copa primero."
+            },
+            7: {
+                "energia": "SABIDURÍA INTERIOR",
+                "descripcion": "Este ciclo te impulsa hacia adentro, a buscar respuestas en tu interior. Es tiempo de introspección profunda, estudio y conexión espiritual.",
+                "desafios": "Aislamiento, desconexión del mundo, frialdad emocional",
+                "lecciones": "Equilibrar soledad consciente con conexión humana",
+                "mensaje": "Tu sabiduría viene del silencio. Confía en tu voz interior."
+            },
+            8: {
+                "energia": "PODER Y ABUNDANCIA",
+                "descripcion": "Este ciclo te enseña sobre el poder personal, el éxito material y el liderazgo. Es tiempo de manifestar abundancia y reclamar tu autoridad.",
+                "desafios": "Workaholism, apego al dinero, abuso de poder",
+                "lecciones": "Usar el poder para servir, no para dominar",
+                "mensaje": "Mereces el éxito y la abundancia. Úsalos para elevar al mundo."
+            },
+            9: {
+                "energia": "COMPASIÓN UNIVERSAL",
+                "descripcion": "Este ciclo te impulsa hacia el servicio, la compasión y la finalización de karmas. Es tiempo de soltar, perdonar y servir a la humanidad.",
+                "desafios": "Cargar dolor ajeno, dificultad para soltar, mártir",
+                "lecciones": "Compasión con límites sanos, soltar con amor",
+                "mensaje": "Has vivido mucho (en esta vida y otras). Usa tu sabiduría para iluminar."
+            }
+        }
+        
+        # Determinar edad actual y ciclo actual
+        hoy = datetime.datetime.now()
+        nac_dt = datetime.datetime(int(a), int(m), int(d))
+        edad_actual = (hoy - nac_dt).days // 365
+        
+        if edad_actual < edad1:
+            ciclo_actual = "PRIMERO"
+            num_actual = primer_ciclo
+        elif edad_actual < edad2:
+            ciclo_actual = "SEGUNDO"
+            num_actual = segundo_ciclo
+        else:
+            ciclo_actual = "TERCERO"
+            num_actual = tercer_ciclo
+        
+        info1 = significados_ciclos.get(primer_ciclo, significados_ciclos[1])
+        info2 = significados_ciclos.get(segundo_ciclo, significados_ciclos[1])
+        info3 = significados_ciclos.get(tercer_ciclo, significados_ciclos[1])
+        
+        return f"""
+🌀 **TUS 3 CICLOS DE VIDA NUMEROLÓGICOS**
+
+**Tu edad actual:** {edad_actual} años
+**Ciclo en el que estás:** {ciclo_actual}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌱 **PRIMER CICLO: FORMACIÓN** (0 - {edad1} años)
+**Número {primer_ciclo}:** *{info1['energia']}*
+
+{info1['descripcion']}
+
+**Lecciones clave:**
+{info1['lecciones']}
+
+**Desafíos típicos:**
+{info1['desafios']}
+
+💫 {info1['mensaje']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌳 **SEGUNDO CICLO: PRODUCTIVIDAD** ({edad1} - {edad2} años)
+**Número {segundo_ciclo}:** *{info2['energia']}*
+
+{info2['descripcion']}
+
+**Lecciones clave:**
+{info2['lecciones']}
+
+**Desafíos típicos:**
+{info2['desafios']}
+
+💫 {info2['mensaje']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🍂 **TERCER CICLO: COSECHA** ({edad2}+ años)
+**Número {tercer_ciclo}:** *{info3['energia']}*
+
+{info3['descripcion']}
+
+**Lecciones clave:**
+{info3['lecciones']}
+
+**Desafíos típicos:**
+{info3['desafios']}
+
+💫 {info3['mensaje']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💜 **COMPRENDE TUS CICLOS:**
+
+Cada ciclo trae energías diferentes. No luches contra ellas, fluye con ellas. Lo que funcionó en un ciclo puede no funcionar en el siguiente.
+
+Los ciclos son como estaciones del alma: cada una tiene su belleza y propósito.
+
+🌟 Estás en tu ciclo {ciclo_actual}, número {num_actual}. Honra esta energía en tu vida actual.
+"""
+        
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+           
 # =====================================================
 # HANDLER IDEAS CON IA
 # =====================================================
@@ -6521,6 +6833,8 @@ else:
                 ("⭐", "Año Personal", "ano", "ideas-icon"),
                 ("👼", "Significado", "significado", "tarot-icon"),
                 ("💕", "Compatibilidad", "compatibilidad", "frases-icon"),
+                ("🗺️", "Mapa de Vida", "mapa_vida", "oculto-icon"),
+                ("🔄", "Ciclos de Vida", "ciclos_vida", "profesional-icon"),
                 ("🏠", "Volver", "volver", "libros-icon")
             ]
             
@@ -6625,6 +6939,40 @@ else:
             
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("🔙 Volver", key="btn_nume_volver_comp"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()
+        elif st.session_state.nume_subview == "mapa_vida":
+            st.markdown("### 🗺️ Mapa de Vida Numerológico")
+            st.markdown("<p style='color:#d8c9ff;'>Un análisis profundo de tu vida a través de los números</p>", unsafe_allow_html=True)
+            
+            fecha_mapa = st.text_input("Tu fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha_mapa")
+            
+            if st.button("🗺️ Generar Mapa de Vida", use_container_width=True, key="btn_mapa_vida"):
+                if fecha_mapa:
+                    resultado = numerologia.mapa_de_vida(fecha_mapa)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Ingresa tu fecha de nacimiento")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_nume_volver_mapa"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()
+        elif st.session_state.nume_subview == "ciclos_vida":
+            st.markdown("### 🔄 Ciclos de Vida Numerológicos")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre los ciclos importantes en tu vida según la numerología</p>", unsafe_allow_html=True)
+            
+            fecha_ciclos = st.text_input("Tu fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha_ciclos")
+            
+            if st.button("🔄 Calcular Ciclos de Vida", use_container_width=True, key="btn_ciclos_vida"):
+                if fecha_ciclos:
+                    resultado = numerologia.ciclos_de_vida(fecha_ciclos)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Ingresa tu fecha de nacimiento")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_nume_volver_ciclos"):
                 st.session_state.nume_subview = "menu"
                 st.rerun()
         
