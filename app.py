@@ -3330,7 +3330,7 @@ Después entrarás en Año Personal {(suma_total % 9) + 1 if suma_total <= 9 els
         
         except Exception as e:
             return f"❌ Error: {str(e)}"
-        def compatibilidad_numerologica(self, fecha1, fecha2):
+    def compatibilidad_numerologica(self, fecha1, fecha2):
             """Analiza compatibilidad entre dos personas según numerología"""
             try:
                 # Calcular camino de vida de persona 1
