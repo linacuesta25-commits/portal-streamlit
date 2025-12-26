@@ -5292,18 +5292,18 @@ else:
                 st.session_state.tarot_subview = "menu"
                 st.rerun()
         elif st.session_state.tarot_subview == "semana":
-             st.markdown("### 📅 Tirada de la Semana")
-    st.markdown("<p style='color:#d8c9ff;'>Tu panorama para los próximos 7 días</p>", unsafe_allow_html=True)
-    
-    if st.button("🔮 Generar Tirada Semanal", use_container_width=True, key="btn_tirada_semana"):
-        with st.spinner("🌟 Las cartas están revelando tu semana..."):
-            resultado = tarot.tirada_de_la_semana()
-        st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🔙 Volver al Menú", key="btn_tarot_volver_semana", use_container_width=True):
-        st.session_state.tarot_subview = "menu"
-        st.rerun()
+            st.markdown("### 📅 Tirada de la Semana")
+            st.markdown("<p style='color:#d8c9ff;'>Tu panorama para los próximos 7 días</p>", unsafe_allow_html=True)
+            
+            if st.button("🔮 Generar Tirada Semanal", use_container_width=True, key="btn_tirada_semana"):
+                with st.spinner("🌟 Las cartas están revelando tu semana..."):
+                    resultado = tarot.tirada_de_la_semana()
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_tarot_volver_semana", use_container_width=True):
+                st.session_state.tarot_subview = "menu"
+                st.rerun()
     # --- MÓDULO ASTROLOGÍA ---
     elif st.session_state.current_view == "astrologia":
         st.markdown("<div class='title-glow'>⭐ Astrología</div>", unsafe_allow_html=True)
