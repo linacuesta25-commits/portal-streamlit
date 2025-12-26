@@ -3333,24 +3333,23 @@ Después entrarás en Año Personal {(suma_total % 9) + 1 if suma_total <= 9 els
     def compatibilidad_numerologica(self, fecha1, fecha2):
         """Analiza compatibilidad entre dos personas según numerología"""
         try:
-            # --- CALCULAR NÚMERO DE PERSONA 1 ---
+            # Calcular camino de vida de persona 1
             if "/" in fecha1:
                 d1, m1, a1 = fecha1.split("/")
             elif "-" in fecha1:
                 partes = fecha1.split("-")
-                if len(partes[0]) == 4: # Formato YYYY-MM-DD
+                if len(partes[0]) == 4:
                     a1, m1, d1 = partes
                 else:
                     d1, m1, a1 = partes
             else:
-                return "❌ Formato inválido en fecha 1 (Usa DD/MM/AAAA)"
+                return "❌ Formato inválido en fecha 1"
             
             suma1 = int(d1) + int(m1) + int(a1)
-            # Reducir a un dígito, pero conservar 11 y 22
             while suma1 > 9 and suma1 not in (11, 22):
                 suma1 = sum(int(x) for x in str(suma1))
             
-            # --- CALCULAR NÚMERO DE PERSONA 2 ---
+            # Calcular camino de vida de persona 2
             if "/" in fecha2:
                 d2, m2, a2 = fecha2.split("/")
             elif "-" in fecha2:
@@ -3360,84 +3359,197 @@ Después entrarás en Año Personal {(suma_total % 9) + 1 if suma_total <= 9 els
                 else:
                     d2, m2, a2 = partes
             else:
-                return "❌ Formato inválido en fecha 2 (Usa DD/MM/AAAA)"
+                return "❌ Formato inválido en fecha 2"
             
             suma2 = int(d2) + int(m2) + int(a2)
             while suma2 > 9 and suma2 not in (11, 22):
                 suma2 = sum(int(x) for x in str(suma2))
-
-            # --- MATRIZ DE COMPATIBILIDAD (Tu diccionario original) ---
-            # Nota: He recortado el diccionario para el ejemplo, pero tú usa el tuyo completo.
+            
+            # Reducir maestros para buscar en diccionario
+            lookup1 = 2 if suma1 == 11 else (4 if suma1 == 22 else suma1)
+            lookup2 = 2 if suma2 == 11 else (4 if suma2 == 22 else suma2)
+            
+            # Matriz de compatibilidad (COMPLETA)
             compatibilidades = {
-                (1, 1): {"nivel": "🔥 80% - ALTA", "dinamica": "Dos líderes poderosos...", "fortalezas": "Ambición...", "desafios": "Egos...", "consejo": "Definan roles."},
-                # ... (Asegúrate de pegar aquí todo tu diccionario gigante de nuevo) ...
-                (9, 9): {"nivel": "💜 90% - EXCELENTE", "dinamica": "Compasión universal...", "fortalezas": "Amor...", "desafios": "Dolor del mundo...", "consejo": "Busquen luz."}
+                (1, 1): {"nivel": "🔥 80%", "dinamica": "Dos líderes poderosos. Competencia o equipo imparable.", 
+                         "fortalezas": "Ambición compartida, energía intensa", "desafios": "Choque de egos",
+                         "consejo": "Definan roles claros. Compartan el liderazgo."},
+                (1, 2): {"nivel": "💫 70%", "dinamica": "Uno lidera, otro apoya. Balance perfecto si hay respeto.",
+                         "fortalezas": "Complementariedad natural", "desafios": "1 puede dominar",
+                         "consejo": "Valoren sus diferencias como fortalezas."},
+                (1, 3): {"nivel": "✨ 85%", "dinamica": "Energía creativa explosiva. Diversión constante.",
+                         "fortalezas": "Optimismo, creatividad, aventura", "desafios": "Pueden dispersarse",
+                         "consejo": "Agreguen estructura a su caos creativo."},
+                (1, 4): {"nivel": "⚡ 60%", "dinamica": "Choque entre libertad y estructura.",
+                         "fortalezas": "1 aporta visión, 4 ejecución", "desafios": "Ritmos diferentes",
+                         "consejo": "Aprendan del otro. Encuentren punto medio."},
+                (1, 5): {"nivel": "🔥 90%", "dinamica": "Aventura y libertad compartida. Conexión magnética.",
+                         "fortalezas": "Independencia, aventura", "desafios": "Falta de compromiso",
+                         "consejo": "Creen raíces conscientes."},
+                (1, 6): {"nivel": "💛 75%", "dinamica": "1 es independiente, 6 es protector.",
+                         "fortalezas": "6 cuida, 1 lidera", "desafios": "1 necesita espacio",
+                         "consejo": "Negocien espacio y tiempo juntos."},
+                (1, 7): {"nivel": "🌙 65%", "dinamica": "Mundos diferentes. Uno externo, otro interno.",
+                         "fortalezas": "Respeto intelectual", "desafios": "7 necesita soledad",
+                         "consejo": "Respeten profundamente sus diferencias."},
+                (1, 8): {"nivel": "💰 85%", "dinamica": "Poder y ambición compartida. Imperio juntos.",
+                         "fortalezas": "Éxito material, metas compartidas", "desafios": "Competencia",
+                         "consejo": "Construyan juntos, no compitan."},
+                (1, 9): {"nivel": "🌟 70%", "dinamica": "Uno inicia, otro finaliza.",
+                         "fortalezas": "1 aporta energía, 9 sabiduría", "desafios": "Ritmos opuestos",
+                         "consejo": "Aprendan de los ciclos del otro."},
+                (2, 2): {"nivel": "💕 85%", "dinamica": "Sensibilidad compartida.",
+                         "fortalezas": "Empatía profunda, paz", "desafios": "Demasiada sensibilidad",
+                         "consejo": "Túrnense para tomar decisiones."},
+                (2, 3): {"nivel": "🎨 80%", "dinamica": "Creatividad y empatía.",
+                         "fortalezas": "Comunicación, creatividad", "desafios": "Evitan conflictos",
+                         "consejo": "Enfrenten problemas directamente."},
+                (2, 4): {"nivel": "🏡 75%", "dinamica": "Estabilidad perfecta. 2 aporta amor, 4 seguridad.",
+                         "fortalezas": "Hogar sólido, lealtad", "desafios": "2 necesita emoción",
+                         "consejo": "4: Muestra más afecto."},
+                (2, 5): {"nivel": "💫 60%", "dinamica": "Sensibilidad vs libertad.",
+                         "fortalezas": "2 ancla, 5 eleva", "desafios": "5 necesita espacio",
+                         "consejo": "Respeten necesidades opuestas."},
+                (2, 6): {"nivel": "💚 90%", "dinamica": "Amor profundo y cuidado mutuo.",
+                         "fortalezas": "Familia, hogar, amor incondicional", "desafios": "Codependencia",
+                         "consejo": "Mantengan identidad individual."},
+                (2, 7): {"nivel": "🌊 85%", "dinamica": "Profundidad emocional y espiritual.",
+                         "fortalezas": "Conexión mística", "desafios": "Ambos necesitan soledad",
+                         "consejo": "Hablen más de lo necesario."},
+                (2, 8): {"nivel": "⚖️ 65%", "dinamica": "Sensibilidad vs poder.",
+                         "fortalezas": "2 humaniza a 8, 8 empodera a 2", "desafios": "Prioridades opuestas",
+                         "consejo": "Valoren lo que cada uno aporta."},
+                (2, 9): {"nivel": "💜 80%", "dinamica": "Compasión compartida.",
+                         "fortalezas": "Empatía universal", "desafios": "Pueden hundirse en emociones",
+                         "consejo": "Manténganse anclados."},
+                (3, 3): {"nivel": "🎉 85%", "dinamica": "Fiesta constante. Creatividad sin fin.",
+                         "fortalezas": "Diversión, creatividad, optimismo", "desafios": "Falta de seriedad",
+                         "consejo": "Agreguen estructura."},
+                (3, 4): {"nivel": "🔧 60%", "dinamica": "Creatividad vs estructura.",
+                         "fortalezas": "3 inspira, 4 materializa", "desafios": "Frustración mutua",
+                         "consejo": "Respeten tiempos diferentes."},
+                (3, 5): {"nivel": "🎈 90%", "dinamica": "Aventura y diversión máxima.",
+                         "fortalezas": "Cambio constante, alegría", "desafios": "Inestabilidad extrema",
+                         "consejo": "Anclen su amor."},
+                (3, 6): {"nivel": "🌸 75%", "dinamica": "Alegría y responsabilidad.",
+                         "fortalezas": "3 alivia a 6, 6 ancla a 3", "desafios": "6 se frustra con 3",
+                         "consejo": "3: Sé más responsable."},
+                (3, 7): {"nivel": "💭 55%", "dinamica": "Extraversión vs introversión.",
+                         "fortalezas": "3 saca a 7 de su cueva", "desafios": "Necesidades opuestas",
+                         "consejo": "Respeten necesidades de espacio."},
+                (3, 8): {"nivel": "💼 70%", "dinamica": "Creatividad y poder.",
+                         "fortalezas": "3 inspira, 8 ejecuta", "desafios": "8 muy serio para 3",
+                         "consejo": "Balanceen trabajo y diversión."},
+                (3, 9): {"nivel": "🌈 80%", "dinamica": "Creatividad y compasión.",
+                         "fortalezas": "Optimismo, crecimiento", "desafios": "9 carga peso que 3 no entiende",
+                         "consejo": "3: Sé más profundo."},
+                (4, 4): {"nivel": "🏗️ 80%", "dinamica": "Estabilidad absoluta.",
+                         "fortalezas": "Lealtad, trabajo duro", "desafios": "Rutina excesiva",
+                         "consejo": "Agreguen aventura."},
+                (4, 5): {"nivel": "⚡ 50%", "dinamica": "Estructura vs libertad.",
+                         "fortalezas": "4 ancla, 5 libera", "desafios": "Frustración extrema",
+                         "consejo": "Necesitan mucha paciencia."},
+                (4, 6): {"nivel": "💚 85%", "dinamica": "Familia y estabilidad perfecta.",
+                         "fortalezas": "Lealtad, hogar", "desafios": "Rutina excesiva",
+                         "consejo": "Mantengan viva la chispa."},
+                (4, 7): {"nivel": "📚 75%", "dinamica": "Estructura y sabiduría.",
+                         "fortalezas": "Ambos valoran profundidad", "desafios": "Demasiado serios",
+                         "consejo": "Agreguen ligereza."},
+                (4, 8): {"nivel": "💰 90%", "dinamica": "Trabajo y éxito. Imperio material.",
+                         "fortalezas": "Ambición, éxito", "desafios": "Workaholics",
+                         "consejo": "El éxito sin amor está vacío."},
+                (4, 9): {"nivel": "🌍 70%", "dinamica": "Construcción y finalización.",
+                         "fortalezas": "4 construye, 9 da propósito", "desafios": "Ritmos diferentes",
+                         "consejo": "Aprendan de las fases del otro."},
+                (5, 5): {"nivel": "🎢 85%", "dinamica": "Montaña rusa constante.",
+                         "fortalezas": "Libertad, cambio, aventura", "desafios": "Inestabilidad extrema",
+                         "consejo": "Anclen su amor."},
+                (5, 6): {"nivel": "⚖️ 60%", "dinamica": "Libertad vs responsabilidad.",
+                         "fortalezas": "5 libera a 6, 6 ancla a 5", "desafios": "6 necesita compromiso",
+                         "consejo": "Negocien libertad y compromiso."},
+                (5, 7): {"nivel": "🌙 70%", "dinamica": "Libertad externa e interna.",
+                         "fortalezas": "Ambos valoran independencia", "desafios": "Pueden distanciarse",
+                         "consejo": "Hagan tiempo intencional juntos."},
+                (5, 8): {"nivel": "💼 75%", "dinamica": "Libertad y poder.",
+                         "fortalezas": "Ambición, energía", "desafios": "5 resiste control de 8",
+                         "consejo": "Respeten necesidades opuestas."},
+                (5, 9): {"nivel": "🌍 80%", "dinamica": "Libertad y compasión.",
+                         "fortalezas": "Aventura con propósito", "desafios": "Falta de estabilidad",
+                         "consejo": "Construyan algo estable."},
+                (6, 6): {"nivel": "💕 85%", "dinamica": "Amor y cuidado extremo.",
+                         "fortalezas": "Hogar perfecto, amor incondicional", "desafios": "Codependencia severa",
+                         "consejo": "Mantengan vida individual."},
+                (6, 7): {"nivel": "🏡 70%", "dinamica": "Cuidado y profundidad.",
+                         "fortalezas": "6 cuida, 7 profundiza", "desafios": "7 necesita soledad",
+                         "consejo": "6: Respeta su necesidad de soledad."},
+                (6, 8): {"nivel": "💼 75%", "dinamica": "Familia y éxito.",
+                         "fortalezas": "6 humaniza, 8 provee", "desafios": "8 trabaja demasiado",
+                         "consejo": "8: La familia necesita tu presencia."},
+                (6, 9): {"nivel": "💜 90%", "dinamica": "Amor universal y compasión.",
+                         "fortalezas": "Servicio, amor profundo", "desafios": "Pierden identidad cuidando a otros",
+                         "consejo": "Cuídense entre ustedes primero."},
+                (7, 7): {"nivel": "🔮 80%", "dinamica": "Profundidad mística.",
+                         "fortalezas": "Conexión espiritual", "desafios": "Demasiado aislados",
+                         "consejo": "Salgan de su cueva juntos."},
+                (7, 8): {"nivel": "💰 70%", "dinamica": "Sabiduría y poder.",
+                         "fortalezas": "7 asesora, 8 ejecuta", "desafios": "Ambos distantes emocionalmente",
+                         "consejo": "Conecten emocionalmente."},
+                (7, 9): {"nivel": "🌟 85%", "dinamica": "Sabiduría y compasión.",
+                         "fortalezas": "Crecimiento espiritual", "desafios": "Demasiado abstractos",
+                         "consejo": "Anclen su espiritualidad."},
+                (8, 8): {"nivel": "💰 85%", "dinamica": "Poder absoluto. Imperio o guerra.",
+                         "fortalezas": "Éxito masivo, ambición", "desafios": "Competencia destructiva",
+                         "consejo": "El amor es más importante que ganar."},
+                (8, 9): {"nivel": "🌍 75%", "dinamica": "Poder y compasión.",
+                         "fortalezas": "8 materializa visión de 9", "desafios": "Valores diferentes",
+                         "consejo": "Respeten filosofías diferentes."},
+                (9, 9): {"nivel": "💜 90%", "dinamica": "Compasión universal. Almas viejas.",
+                         "fortalezas": "Amor incondicional", "desafios": "Pueden hundirse en dolor",
+                         "consejo": "No carguen más peso del que pueden."}
             }
             
-            # 2. TRUCO PARA LOS NÚMEROS MAESTROS
-            # Tu diccionario solo tiene llaves del 1 al 9. Si sale 11 o 22, fallará.
-            # Para buscar en el diccionario, reducimos temporalmente el 11 a 2 y el 22 a 4.
-            lookup_suma1 = suma1
-            lookup_suma2 = suma2
-
-            if lookup_suma1 == 11: lookup_suma1 = 2
-            if lookup_suma1 == 22: lookup_suma1 = 4
-            if lookup_suma2 == 11: lookup_suma2 = 2
-            if lookup_suma2 == 22: lookup_suma2 = 4
-
-            # Ordenamos para buscar en el diccionario (ej: 1,5 es igual a 5,1)
-            key = tuple(sorted([lookup_suma1, lookup_suma2]))
+            # Obtener compatibilidad
+            key = tuple(sorted([lookup1, lookup2]))
+            comp = compatibilidades.get(key, {
+                "nivel": "💫 Única",
+                "dinamica": "Combinación especial.",
+                "fortalezas": "Por explorar juntos",
+                "desafios": "Los que ustedes decidan enfrentar",
+                "consejo": "Creen su propia historia."
+            })
             
-            # Usamos el diccionario original completo que tú tienes
-            # Si copias y pegas, asegúrate de que 'compatibilidades' tenga todas las parejas
-            comp = compatibilidades.get(key)
+            info1 = self.NUMEROS_BASE.get(suma1, {"nombre": "Especial"})
+            info2 = self.NUMEROS_BASE.get(suma2, {"nombre": "Especial"})
             
-            if not comp:
-                # Fallback si no encuentra la pareja
-                comp = {
-                    "nivel": "💫 Calculando...",
-                    "dinamica": "Compatibilidad basada en reducción de maestros.",
-                    "fortalezas": "Energía de números maestros",
-                    "desafios": "Alta vibración requiere madurez",
-                    "consejo": "Usen su sabiduría superior."
-                }
-            
-            # Obtener nombres (aquí usamos el self.NUMEROS_BASE que arreglamos al inicio)
-            info1 = self.NUMEROS_BASE.get(suma1, {"nombre": "Desconocido"})
-            info2 = self.NUMEROS_BASE.get(suma2, {"nombre": "Desconocido"})
-            
-            resultado = f"""
-    🔢💕 **COMPATIBILIDAD NUMEROLÓGICA**
+            return f"""
+🔢💕 **COMPATIBILIDAD NUMEROLÓGICA**
 
-    👤 **Persona 1:** {fecha1}
-    Camino de Vida: {suma1} - *{info1['nombre']}*
-    
-    👤 **Persona 2:** {fecha2}
-    Camino de Vida: {suma2} - *{info2['nombre']}*
+**Persona 1:** Camino de Vida {suma1} - *{info1['nombre']}*
+**Persona 2:** Camino de Vida {suma2} - *{info2['nombre']}*
 
-    ━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━
 
-    🎯 **COMPATIBILIDAD:** {comp['nivel']}
+🎯 **COMPATIBILIDAD:** {comp['nivel']}
 
-    ━━━━━━━━━━━━━━━━━━━━━
+**💫 DINÁMICA DE LA RELACIÓN:**
+{comp['dinamica']}
 
-    **💫 DINÁMICA:**
-    {comp['dinamica']}
+**✨ FORTALEZAS:**
+{comp['fortalezas']}
 
-    **✨ FORTALEZAS:**
-    {comp['fortalezas']}
+**⚠️ DESAFÍOS:**
+{comp['desafios']}
 
-    **⚠️ DESAFÍOS:**
-    {comp['desafios']}
+**💡 CONSEJO CÓSMICO:**
+{comp['consejo']}
 
-    **💡 CONSEJO:**
-    {comp['consejo']}
-    """
-            return resultado
-            
+━━━━━━━━━━━━━━━━━━━━━
+
+💛 Recuerda: Los números muestran tendencias, pero el amor verdadero trasciende la numerología.
+"""
+        
         except Exception as e:
-            import traceback
-            return f"❌ Error técnico: {str(e)}\n{traceback.format_exc()}"
+            return f"❌ Error: {str(e)}"
 # =====================================================
 # HANDLER IDEAS CON IA
 # =====================================================
