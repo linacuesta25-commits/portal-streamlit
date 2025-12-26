@@ -3138,6 +3138,71 @@ Se reduce a: **{suma}** - {info['nombre']}
 """
         
         return f"🔢 Número {numero} - Energía especial ✨"
+    def ano_personal(self, fecha_nacimiento):
+        """Calcula el año personal numerológico"""
+        try:
+            if "/" in fecha_nacimiento:
+                dia, mes, anio = fecha_nacimiento.split("/")
+            elif "-" in fecha_nacimiento:
+                partes = fecha_nacimiento.split("-")
+                if len(partes[0]) == 4:  # Formato AAAA-MM-DD
+                    anio, mes, dia = partes
+                else:  # Formato DD-MM-AAAA
+                    dia, mes, anio = partes
+            else:
+                return "❌ Formato inválido. Usa: DD/MM/AAAA o DD-MM-AAAA"
+            
+            # Año actual
+            anio_actual = datetime.datetime.now().year
+            
+            # Sumar día + mes + año actual
+            suma = int(dia) + int(mes) + anio_actual
+            
+            # Reducir a un solo dígito (1-9)
+            while suma > 9 and suma not in (11, 22):
+                suma = sum(int(x) for x in str(suma))
+            
+            if suma in self.NUMEROS_BASE:
+                info = self.NUMEROS_BASE[suma]
+                
+                return f"""
+🔢✨ **TU AÑO PERSONAL {anio_actual}: {suma}**
+*{info['nombre']}*
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**ENERGÍA DEL AÑO:**
+{info['energia']}
+
+**TU LUZ ESTE AÑO:**
+{info['luz']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**💫 ENFOQUE PARA {anio_actual}:**
+
+{info['consejo']}
+
+**🎯 QUÉ ESPERAR:**
+
+- **Año 1:** Nuevos comienzos, independencia, liderazgo
+- **Año 2:** Cooperación, relaciones, paciencia
+- **Año 3:** Creatividad, expresión, diversión
+- **Año 4:** Trabajo duro, construcción, estabilidad
+- **Año 5:** Cambios, libertad, aventura
+- **Año 6:** Responsabilidad, familia, servicio
+- **Año 7:** Introspección, espiritualidad, sabiduría
+- **Año 8:** Poder, abundancia, logros materiales
+- **Año 9:** Finalización, cierre de ciclos, transformación
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💛 Este ciclo dura hasta tu cumpleaños de {anio_actual + 1}.
+Después entrarás en Año Personal {(suma % 9) + 1}.
+"""
+            return f"Tu año personal es: {suma}"
+        except:
+            return "❌ Formato inválido. Usa: DD/MM/AAAA o DD-MM-AAAA"
 
 
 # =====================================================
@@ -5957,6 +6022,7 @@ else:
             opciones_nume = [
                 ("🔢", "Número del Día", "dia", "finanzas-icon"),
                 ("✨", "Camino de Vida", "camino", "ideas-icon"),
+                ("⭐", "Año Personal", "ano", "ideas-icon"),
                 ("👼", "Significado", "significado", "tarot-icon"),
                 ("🏠", "Volver", "volver", "libros-icon")
             ]
@@ -6020,7 +6086,23 @@ else:
             if st.button("🔙 Volver", key="btn_nume_volver_signif"):
                 st.session_state.nume_subview = "menu"
                 st.rerun()
+        elif st.session_state.nume_subview == "ano":
+             st.markdown("### ⭐ Tu Año Personal")
+    st.markdown("<p style='color:#d8c9ff;'>Descubre la energía numerológica de tu año actual</p>", unsafe_allow_html=True)
     
+    fecha_ano = st.text_input("Tu fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha_ano")
+    
+    if st.button("🔢 Calcular Mi Año Personal", use_container_width=True, key="btn_calcular_ano"):
+        if fecha_ano:
+            resultado = numerologia.ano_personal(fecha_ano)
+            st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+        else:
+            st.warning("⚠️ Ingresa tu fecha de nacimiento")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("🔙 Volver", key="btn_nume_volver_ano"):
+        st.session_state.nume_subview = "menu"
+        st.rerun()
   
     # --- MÓDULO IDEAS ---
     # --- MÓDULO IDEAS ---
