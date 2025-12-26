@@ -3145,64 +3145,46 @@ Se reduce a: **{suma}** - {info['nombre']}
                 dia, mes, anio = fecha_nacimiento.split("/")
             elif "-" in fecha_nacimiento:
                 partes = fecha_nacimiento.split("-")
-                if len(partes[0]) == 4:  # Formato AAAA-MM-DD
+                if len(partes[0]) == 4: # AAAA-MM-DD
                     anio, mes, dia = partes
-                else:  # Formato DD-MM-AAAA
+                else: # DD-MM-AAAA
                     dia, mes, anio = partes
             else:
                 return "❌ Formato inválido. Usa: DD/MM/AAAA o DD-MM-AAAA"
             
-            # Año actual
             anio_actual = datetime.datetime.now().year
-            
-            # Sumar día + mes + año actual
             suma = int(dia) + int(mes) + anio_actual
             
-            # Reducir a un solo dígito (1-9)
             while suma > 9 and suma not in (11, 22):
                 suma = sum(int(x) for x in str(suma))
             
             if suma in self.NUMEROS_BASE:
                 info = self.NUMEROS_BASE[suma]
-                
                 return f"""
 🔢✨ **TU AÑO PERSONAL {anio_actual}: {suma}**
 *{info['nombre']}*
 
 ━━━━━━━━━━━━━━━━━━━━━
-
-**ENERGÍA DEL AÑO:**
-{info['energia']}
-
-**TU LUZ ESTE AÑO:**
-{info['luz']}
+**ENERGÍA DEL AÑO:** {info['energia']}
+**TU LUZ ESTE AÑO:** {info['luz']}
 
 ━━━━━━━━━━━━━━━━━━━━━
-
-**💫 ENFOQUE PARA {anio_actual}:**
-
-{info['consejo']}
-
 **🎯 QUÉ ESPERAR:**
+- **Año 1:** Nuevos comienzos e independencia.
+- **Año 2:** Relaciones y paciencia.
+- **Año 3:** Creatividad y expresión.
+- **Año 4:** Trabajo y estabilidad.
+- **Año 5:** Cambios y libertad.
+- **Año 6:** Responsabilidad y familia.
+- **Año 7:** Introspección y sabiduría.
+- **Año 8:** Logros materiales.
+- **Año 9:** Cierre de ciclos.
 
-- **Año 1:** Nuevos comienzos, independencia, liderazgo
-- **Año 2:** Cooperación, relaciones, paciencia
-- **Año 3:** Creatividad, expresión, diversión
-- **Año 4:** Trabajo duro, construcción, estabilidad
-- **Año 5:** Cambios, libertad, aventura
-- **Año 6:** Responsabilidad, familia, servicio
-- **Año 7:** Introspección, espiritualidad, sabiduría
-- **Año 8:** Poder, abundancia, logros materiales
-- **Año 9:** Finalización, cierre de ciclos, transformación
-
-━━━━━━━━━━━━━━━━━━━━━
-
-💛 Este ciclo dura hasta tu cumpleaños de {anio_actual + 1}.
-Después entrarás en Año Personal {(suma % 9) + 1}.
+💛 Este ciclo dura hasta tu próximo cumpleaños.
 """
             return f"Tu año personal es: {suma}"
         except:
-            return "❌ Formato inválido. Usa: DD/MM/AAAA o DD-MM-AAAA"
+            return "❌ Error: Verifica el formato de la fecha."
 
 
 # =====================================================
