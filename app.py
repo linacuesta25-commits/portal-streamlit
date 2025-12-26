@@ -2868,8 +2868,8 @@ Las retrogradaciones NO son negativas - son momentos de:
         
         return resultado
        
-    def revolucion_solar(self, fecha_nacimiento, signo):
-        """Análisis de revolución solar - tu nuevo año astrológico"""
+        def revolucion_solar(self, fecha_nacimiento, signo):
+          """Análisis de revolución solar - tu nuevo año astrológico"""
         try:
             nac = datetime.datetime.strptime(fecha_nacimiento, "%Y-%m-%d")
         except:
