@@ -6087,22 +6087,22 @@ else:
                 st.session_state.nume_subview = "menu"
                 st.rerun()
         elif st.session_state.nume_subview == "ano":
-             st.markdown("### ⭐ Tu Año Personal")
-    st.markdown("<p style='color:#d8c9ff;'>Descubre la energía numerológica de tu año actual</p>", unsafe_allow_html=True)
-    
-    fecha_ano = st.text_input("Tu fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha_ano")
-    
-    if st.button("🔢 Calcular Mi Año Personal", use_container_width=True, key="btn_calcular_ano"):
-        if fecha_ano:
-            resultado = numerologia.ano_personal(fecha_ano)
-            st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ Ingresa tu fecha de nacimiento")
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🔙 Volver", key="btn_nume_volver_ano"):
-        st.session_state.nume_subview = "menu"
-        st.rerun()
+            st.markdown("### ⭐ Tu Año Personal")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre la energía numerológica de tu año actual</p>", unsafe_allow_html=True)
+            
+            fecha_ano = st.text_input("Tu fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha_ano")
+            
+            if st.button("🔢 Calcular Mi Año Personal", use_container_width=True, key="btn_calcular_ano"):
+                if fecha_ano:
+                    resultado = numerologia.ano_personal(fecha_ano)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Ingresa tu fecha de nacimiento")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_nume_volver_ano"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()
   
     # --- MÓDULO IDEAS ---
     # --- MÓDULO IDEAS ---
