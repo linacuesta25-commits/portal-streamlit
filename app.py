@@ -5243,25 +5243,30 @@ def get_handlers():
     pers = GestorPersonalidades()
     bib = RobustBibliaHandler()
     metas = MetasAhorroHandler()
-    # Usar la misma API key que libros y frases
-    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-
     
-    # Inicializar handlers de Lo Oculto
+    try:
+        OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+    except:
+        OPENAI_API_KEY = ""
+        st.error("⚠️ No se encontró OPENAI_API_KEY")
+
     tarot = TarotHandler(OPENAI_API_KEY)
     astro = AstrologiaHandler()
     nume = NumerologiaHandler()
-    ideas = IdeasHandler(OPENAI_API_KEY)  # Ideas con IA real
-        
-    # Inicializar handler Profesional
+    ideas = IdeasHandler(OPENAI_API_KEY)
     profesional = ProfesionalHandler(OPENAI_API_KEY)
 
-    return fin, not_h, libros_handler, fra, pers, bib, ideas, tarot, astro, nume, profesional, metas
+    return (fin, not_h, libros_handler, gestor_estantes, fra, 
+            pers, bib, metas, ideas, tarot, astro, nume, profesional)
 
-# Inicializar handlers
-finanzas_handler, notas_handler, libros_handler, gestor_estantes, frases_handler, personalidades_handler, biblia_handler, ideas_handler, tarot, astrologia, numerologia, profesional_handler, metas_ahorro_handler = get_handlers()
-biblia = biblia_handler
+# Desempaquetar con nombres que coincidan con el uso en el código
+(finanzas_handler, notas_handler, libros_handler, gestor_estantes, 
+ frases_handler, personalidades_handler, biblia, metas, 
+ ideas_handler, tarot, astrologia, numerologia, 
+ profesional) = get_handlers()
 
+metas_ahorro_handler = metas
+profesional_handler = profesional
 # =====================================================
 # 6. NAVEGACIÓN PRINCIPAL
 # =====================================================
