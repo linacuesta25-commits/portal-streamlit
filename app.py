@@ -2582,7 +2582,7 @@ class AstrologiaHandler:
             texto += f"{info['simbolo']} **{signo.upper()}** - {info['fechas']}\n"
         return texto
     def compatibilidad_signos(self, signo1, signo2):
-        """Analiza compatibilidad entre dos signos"""
+        """Analiza compatibilidad detallada entre dos signos"""
         signo1 = signo1.lower().strip()
         signo2 = signo2.lower().strip()
         
@@ -2600,48 +2600,145 @@ class AstrologiaHandler:
         info1 = self.SIGNOS_ZODIACALES[signo1]
         info2 = self.SIGNOS_ZODIACALES[signo2]
         
-        # Compatibilidad por elementos
-        elementos_comp = {
-            ("Fuego", "Fuego"): ("🔥 Alta", "Ambos comparten pasión y energía"),
-            ("Fuego", "Aire"): ("✨ Muy Alta", "El aire aviva el fuego - conexión natural"),
-            ("Fuego", "Tierra"): ("⚡ Media", "Diferencias que pueden complementarse"),
-            ("Fuego", "Agua"): ("💫 Baja-Media", "Requiere esfuerzo y comprensión"),
-            ("Tierra", "Tierra"): ("🌱 Alta", "Comparten valores y estabilidad"),
-            ("Tierra", "Aire"): ("🌪️ Media", "Mundos diferentes pero enriquecedores"),
-            ("Tierra", "Agua"): ("💚 Muy Alta", "Se nutren mutuamente"),
-            ("Aire", "Aire"): ("💨 Alta", "Conexión mental y libertad"),
-            ("Aire", "Agua"): ("🌊 Media-Baja", "Desafíos de comunicación"),
-            ("Agua", "Agua"): ("💧 Muy Alta", "Profunda conexión emocional")
+        # Compatibilidad detallada por elementos
+        comp_detallada = {
+            ("Fuego", "Fuego"): {
+                "nivel": "🔥 85% - MUY ALTA",
+                "amor": "Pasión explosiva, química instantánea. Se entienden sin palabras.",
+                "amistad": "Aventuras épicas juntos. Nunca hay un momento aburrido.",
+                "trabajo": "Gran equipo si aprenden a no competir. Energía imparable.",
+                "fortalezas": "Entusiasmo compartido, valentía, espontaneidad, lealtad feroz",
+                "desafios": "Egos chocando, impulsividad, falta de paciencia mutua",
+                "consejo": "Aprendan a ceder el protagonismo. No todo es una competencia."
+            },
+            ("Fuego", "Aire"): {
+                "nivel": "✨ 90% - EXCELENTE",
+                "amor": "El aire aviva el fuego. Conexión mental y física perfecta.",
+                "amistad": "Se inspiran mutuamente. Conversaciones fascinantes sin fin.",
+                "trabajo": "Aire aporta ideas, Fuego las ejecuta. Dúo dinámico.",
+                "fortalezas": "Libertad mutua, crecimiento constante, diversión, innovación",
+                "desafios": "Fuego necesita más compromiso del que Aire da fácilmente",
+                "consejo": "Aire: Da más seguridad emocional. Fuego: Respeta su necesidad de espacio."
+            },
+            ("Fuego", "Tierra"): {
+                "nivel": "⚡ 55% - MEDIA CON ESFUERZO",
+                "amor": "Atracción inicial fuerte, pero mundos muy diferentes.",
+                "amistad": "Se complementan si Fuego aprende estabilidad y Tierra se suelta.",
+                "trabajo": "Fuego innova, Tierra materializa. Pueden ser poderosos.",
+                "fortalezas": "Balance entre sueños y realidad, pasión y estabilidad",
+                "desafios": "Ritmos totalmente opuestos, prioridades diferentes",
+                "consejo": "Tierra: Arriésgate más. Fuego: Aprecia la seguridad que Tierra ofrece."
+            },
+            ("Fuego", "Agua"): {
+                "nivel": "💫 50% - DESAFIANTE PERO TRANSFORMADORA",
+                "amor": "Intensidad emocional extrema. O se salvan mutuamente o se consumen.",
+                "amistad": "Difícil pero enriquecedora. Aprenden mucho del otro.",
+                "trabajo": "Fuego lidera, Agua humaniza. Requiere comunicación constante.",
+                "fortalezas": "Profundidad emocional única, crecimiento transformador",
+                "desafios": "Agua apaga a Fuego, Fuego hierve a Agua. Sensibilidades opuestas.",
+                "consejo": "Respeten profundamente sus diferencias. No intenten cambiarse."
+            },
+            ("Tierra", "Tierra"): {
+                "nivel": "🌱 80% - SÓLIDA Y CONFIABLE",
+                "amor": "Construyen un imperio juntos. Amor práctico pero profundo.",
+                "amistad": "Lealtad absoluta. Se apoyan en todo, siempre presentes.",
+                "trabajo": "Eficiencia máxima. Comparten ética de trabajo y valores.",
+                "fortalezas": "Estabilidad, confianza, metas compartidas, seguridad mutua",
+                "desafios": "Pueden estancarse, rutina excesiva, resistencia al cambio",
+                "consejo": "Salgan de su zona de confort. Agreguen espontaneidad a su vida."
+            },
+            ("Tierra", "Aire"): {
+                "nivel": "🌪️ 60% - COMPLEMENTARIA CON TRABAJO",
+                "amor": "Tierra ancla a Aire, Aire eleva a Tierra. Fascinación mutua.",
+                "amistad": "Aire expande el mundo de Tierra. Tierra da sustancia a ideas de Aire.",
+                "trabajo": "Aire visualiza, Tierra ejecuta. Necesitan comunicación clara.",
+                "fortalezas": "Balance entre ideas y acción, crecimiento intelectual",
+                "desafios": "Tierra frustra la libertad de Aire, Aire es demasiado volátil para Tierra",
+                "consejo": "Tierra: Confía más. Aire: Aterriza tus ideas en la realidad."
+            },
+            ("Tierra", "Agua"): {
+                "nivel": "💚 88% - NUTRICIÓN MUTUA HERMOSA",
+                "amor": "Amor profundo y duradero. Se cuidan como nadie más podría.",
+                "amistad": "Conexión del alma. Entienden el mundo emocional del otro.",
+                "trabajo": "Agua inspira, Tierra materializa. Equipo compasivo y efectivo.",
+                "fortalezas": "Lealtad inquebrantable, empatía, construcción emocional sólida",
+                "desafios": "Pueden estancarse en su zona de confort, exceso de cautela",
+                "consejo": "Anímense mutuamente a tomar riesgos. No teman al cambio."
+            },
+            ("Aire", "Aire"): {
+                "nivel": "💨 85% - CONEXIÓN MENTAL BRILLANTE",
+                "amor": "Mejores amigos primero, amantes después. Comunicación perfecta.",
+                "amistad": "Infinitas conversaciones. Se entienden sin juzgar.",
+                "trabajo": "Tormenta de ideas imparable. Innovación constante.",
+                "fortalezas": "Libertad total, crecimiento intelectual, comprensión mutua",
+                "desafios": "Falta de profundidad emocional, evitan conflictos necesarios",
+                "consejo": "Aprendan a conectar emocionalmente, no solo mentalmente."
+            },
+            ("Aire", "Agua"): {
+                "nivel": "🌊 58% - REQUIERE ESFUERZO CONSCIENTE",
+                "amor": "Aire racionaliza lo que Agua siente. Pueden frustrarse mutuamente.",
+                "amistad": "Interesante pero complicada. Mundos emocionales muy distintos.",
+                "trabajo": "Aire estratega, Agua intuye. Pueden sorprenderse positivamente.",
+                "fortalezas": "Aire aporta objetividad, Agua aporta profundidad emocional",
+                "desafios": "Aire es demasiado distante para Agua, Agua demasiado intenso para Aire",
+                "consejo": "Aire: Siente más, piensa menos. Agua: No tomes todo personal."
+            },
+            ("Agua", "Agua"): {
+                "nivel": "💧 82% - OCÉANO DE EMOCIONES COMPARTIDAS",
+                "amor": "Conexión psíquica. Se entienden sin palabras, amor incondicional.",
+                "amistad": "Almas gemelas. Sanación mutua, comprensión total.",
+                "trabajo": "Altamente intuitivos juntos. Excelentes en áreas creativas o de servicio.",
+                "fortalezas": "Empatía profunda, lealtad, intuición compartida, amor transformador",
+                "desafios": "Demasiada intensidad emocional, pueden hundirse juntos",
+                "consejo": "Establezcan límites sanos. No se pierdan en el otro completamente."
+            }
         }
         
-        # Obtener compatibilidad (ordenar elementos alfabéticamente para match)
+        # Obtener compatibilidad detallada
         elem_pair = tuple(sorted([info1['elemento'], info2['elemento']]))
-        compatibilidad = elementos_comp.get(elem_pair, ("💫 Media", "Conexión única por descubrir"))
+        comp = comp_detallada.get(elem_pair, {
+            "nivel": "💫 Media", "amor": "Conexión única", "amistad": "Interesante",
+            "trabajo": "Funcional", "fortalezas": "Por descubrir", 
+            "desafios": "Requiere comunicación", "consejo": "Conócanse profundamente"
+        })
         
         return f"""
-💫 **COMPATIBILIDAD ASTROLÓGICA**
+💫 **COMPATIBILIDAD ASTROLÓGICA COMPLETA**
 
 **{signo1.upper()}** {info1['simbolo']} × **{signo2.upper()}** {info2['simbolo']}
 
 ━━━━━━━━━━━━━━━━━━━━━
 
-🔮 **Nivel de Compatibilidad:** {compatibilidad[0]}
-
-**{signo1.capitalize()}:**
-🌟 Elemento: {info1['elemento']}
-🪐 Planeta regente: {info1['planeta']}
-✨ Fortalezas: {info1['fortalezas']}
-
-**{signo2.capitalize()}:**
-🌟 Elemento: {info2['elemento']}
-🪐 Planeta regente: {info2['planeta']}
-✨ Fortalezas: {info2['fortalezas']}
+🎯 **COMPATIBILIDAD GENERAL:** {comp['nivel']}
 
 ━━━━━━━━━━━━━━━━━━━━━
 
-💡 **Dinámica:** {compatibilidad[1]}
+**💕 AMOR / ROMANCE:**
+{comp['amor']}
 
-💛 Toda relación requiere esfuerzo consciente y amor. Las estrellas guían, pero tú decides.
+**👥 AMISTAD:**
+{comp['amistad']}
+
+**💼 TRABAJO:**
+{comp['trabajo']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**✨ FORTALEZAS DE ESTA CONEXIÓN:**
+{comp['fortalezas']}
+
+**⚠️ DESAFÍOS POTENCIALES:**
+{comp['desafios']}
+
+**💡 CONSEJO CÓSMICO:**
+{comp['consejo']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌟 **{signo1.capitalize()}:** {info1['elemento']} | {info1['planeta']}
+🌟 **{signo2.capitalize()}:** {info2['elemento']} | {info2['planeta']}
+
+💛 Recuerda: Las estrellas muestran tendencias, pero el amor verdadero trasciende la astrología. ¡Tú tienes el poder final!
 """
 # =====================================================
 # HANDLER NUMEROLOGÍA
