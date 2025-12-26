@@ -6424,6 +6424,7 @@ else:
                 ("✨", "Camino de Vida", "camino", "ideas-icon"),
                 ("⭐", "Año Personal", "ano", "ideas-icon"),
                 ("👼", "Significado", "significado", "tarot-icon"),
+                ("💕", "Compatibilidad", "compatibilidad", "frases-icon"),
                 ("🏠", "Volver", "volver", "libros-icon")
             ]
             
@@ -6503,6 +6504,87 @@ else:
             if st.button("🔙 Volver", key="btn_nume_volver_ano"):
                 st.session_state.nume_subview = "menu"
                 st.rerun()
+        elif st.session_state.nume_subview == "compatibilidad":
+            st.markdown("### 💕 Compatibilidad Numerológica")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre la compatibilidad entre dos personas según sus caminos de vida</p>", unsafe_allow_html=True)
+            
+            # Explicación rápida
+            with st.expander("ℹ️ ¿Cómo funciona?", expanded=False):
+                st.markdown("""
+                La numerología calcula el **Camino de Vida** de cada persona sumando su fecha de nacimiento.
+                
+                Luego analiza cómo estos números interactúan:
+                - **Fortalezas** de la relación
+                - **Desafíos** a enfrentar
+                - **Consejos** para mejorar la conexión
+                
+                💡 **Recuerda:** Son tendencias, no destino. El amor verdadero trasciende los números.
+                """)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Inputs para las dos fechas
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("#### 👤 Persona 1")
+                fecha1 = st.date_input(
+                    "Fecha de nacimiento:",
+                    key="input_fecha1_comp",
+                    help="Selecciona la fecha de nacimiento",
+                    format="DD/MM/YYYY"
+                )
+                st.caption(f"📅 {fecha1.strftime('%d/%m/%Y')}")
+            
+            with col2:
+                st.markdown("#### 👤 Persona 2")
+                fecha2 = st.date_input(
+                    "Fecha de nacimiento:",
+                    key="input_fecha2_comp",
+                    help="Selecciona la fecha de nacimiento",
+                    format="DD/MM/YYYY"
+                )
+                st.caption(f"📅 {fecha2.strftime('%d/%m/%Y')}")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Botón para calcular
+            if st.button("💕 Calcular Compatibilidad", use_container_width=True, key="btn_calc_compatibilidad"):
+                # Convertir fechas a formato string que acepta el método
+                fecha1_str = fecha1.strftime("%d/%m/%Y")
+                fecha2_str = fecha2.strftime("%d/%m/%Y")
+                
+                with st.spinner("🔮 Analizando la compatibilidad cósmica..."):
+                    resultado = numerologia.compatibilidad_numerologica(fecha1_str, fecha2_str)
+                
+                # Mostrar resultado
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            # Ejemplos rápidos
+            st.markdown("<br>", unsafe_allow_html=True)
+            with st.expander("💡 Ver ejemplos de compatibilidad", expanded=False):
+                col_ej1, col_ej2 = st.columns(2)
+                
+                with col_ej1:
+                    st.markdown("**🔥 Alta Compatibilidad:**")
+                    st.caption("• 2 con 6: Amor profundo")
+                    st.caption("• 1 con 5: Aventura compartida")
+                    st.caption("• 3 con 5: Diversión infinita")
+                    st.caption("• 6 con 9: Almas gemelas")
+                
+                with col_ej2:
+                    st.markdown("**⚡ Compatibilidad Desafiante:**")
+                    st.caption("• 4 con 5: Estructura vs Libertad")
+                    st.caption("• 1 con 4: Visión vs Rutina")
+                    st.caption("• 3 con 7: Social vs Solitario")
+                    st.caption("• 2 con 8: Sensible vs Poderoso")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Botón volver
+            if st.button("🔙 Volver", key="btn_nume_volver_compatibilidad"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()       
   
     # --- MÓDULO IDEAS ---
     # --- MÓDULO IDEAS ---
