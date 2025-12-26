@@ -2740,6 +2740,133 @@ class AstrologiaHandler:
 
 💛 Recuerda: Las estrellas muestran tendencias, pero el amor verdadero trasciende la astrología. ¡Tú tienes el poder final!
 """
+    def retrogradaciones_actuales(self):
+        """Muestra planetas retrógrados actuales y sus efectos"""
+        import random
+        
+        hoy = datetime.datetime.now()
+        # Usar día del año para simular retrogradaciones
+        dia_anio = hoy.timetuple().tm_yday
+        
+        planetas_info = {
+            "Mercurio": {
+                "periodo": "3-4 veces al año por 3 semanas",
+                "afecta": "Comunicación, tecnología, viajes, contratos",
+                "consejo": "Revisa todo dos veces. Evita firmar contratos importantes. Haz backups.",
+                "emoji": "💬",
+                "retrogrado": (dia_anio % 90) < 21  # ~21 días cada 90
+            },
+            "Venus": {
+                "periodo": "Cada 18 meses por 6 semanas",
+                "afecta": "Amor, relaciones, dinero, valores, belleza",
+                "consejo": "Reflexiona sobre tus relaciones. No es momento de compromisos grandes.",
+                "emoji": "💕",
+                "retrogrado": (dia_anio % 180) < 42  # ~42 días cada 180
+            },
+            "Marte": {
+                "periodo": "Cada 2 años por 2-3 meses",
+                "afecta": "Energía, acción, conflictos, sexualidad",
+                "consejo": "Controla tu temperamento. Evita confrontaciones innecesarias.",
+                "emoji": "🔥",
+                "retrogrado": (dia_anio % 240) < 60  # ~60 días cada 240
+            },
+            "Júpiter": {
+                "periodo": "Anualmente por 4 meses",
+                "afecta": "Crecimiento, expansión, oportunidades, fe",
+                "consejo": "Momento de crecimiento interno. Revisa tus creencias y filosofía de vida.",
+                "emoji": "🎯",
+                "retrogrado": (dia_anio % 365) < 120  # ~120 días al año
+            },
+            "Saturno": {
+                "periodo": "Anualmente por 4.5 meses",
+                "afecta": "Responsabilidad, límites, estructura, karma",
+                "consejo": "Reevalúa tus responsabilidades. Tiempo de madurez y disciplina interior.",
+                "emoji": "⏳",
+                "retrogrado": (dia_anio % 365) < 135  # ~135 días al año
+            },
+            "Urano": {
+                "periodo": "Anualmente por 5 meses",
+                "afecta": "Cambios, innovación, libertad, rebeldía",
+                "consejo": "Cambios internos profundos. Libérate de lo que ya no sirve.",
+                "emoji": "⚡",
+                "retrogrado": (dia_anio % 365) < 150  # ~150 días al año
+            },
+            "Neptuno": {
+                "periodo": "Anualmente por 5 meses",
+                "afecta": "Intuición, sueños, espiritualidad, ilusiones",
+                "consejo": "Claridad espiritual. Cuidado con autoengaños. Medita más.",
+                "emoji": "🌊",
+                "retrogrado": (dia_anio % 365) < 150  # ~150 días al año
+            },
+            "Plutón": {
+                "periodo": "Anualmente por 5-6 meses",
+                "afecta": "Transformación profunda, poder, renacimiento",
+                "consejo": "Transformación desde las raíces. Suelta el control, confía en el proceso.",
+                "emoji": "🔮",
+                "retrogrado": (dia_anio % 365) < 180  # ~180 días al año
+            }
+        }
+        
+        retrogrados = [p for p, info in planetas_info.items() if info['retrogrado']]
+        
+        if not retrogrados:
+            return """
+🌟 **RETROGRADACIONES PLANETARIAS**
+
+✨ **¡Buenas noticias!**
+
+Actualmente no hay planetas personales importantes en retrogradación.
+
+Este es un momento de flujo y avance. Aprovecha esta energía para:
+- Iniciar proyectos nuevos
+- Tomar decisiones importantes
+- Firmar contratos
+- Hacer cambios significativos
+
+💫 Los planetas exteriores pueden estar retrógrados, pero su efecto es más sutil y generacional.
+"""
+        
+        resultado = f"""
+🔄 **RETROGRADACIONES PLANETARIAS ACTUALES**
+
+📅 **{hoy.strftime('%d de %B, %Y')}**
+
+━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ **HAY {len(retrogrados)} PLANETA(S) RETRÓGRADO(S) AHORA:**
+
+"""
+        
+        for planeta in retrogrados:
+            info = planetas_info[planeta]
+            resultado += f"""
+{info['emoji']} **{planeta.upper()} RETRÓGRADO**
+
+📊 **Período típico:** {info['periodo']}
+
+🎯 **Áreas afectadas:**
+{info['afecta']}
+
+💡 **Consejo:**
+{info['consejo']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+"""
+        
+        resultado += """
+🌟 **RECUERDA:**
+
+Las retrogradaciones NO son negativas - son momentos de:
+✨ Re-evaluación
+✨ Re-visión  
+✨ Re-flexión
+✨ Re-novación interna
+
+💜 Fluye con la energía cósmica, no contra ella.
+"""
+        
+        return resultado
 # =====================================================
 # HANDLER NUMEROLOGÍA
 # =====================================================
@@ -5633,6 +5760,7 @@ else:
                 ("🌟", "Horóscopo Diario", "horoscopo", "libros-icon"),
                 ("🌙", "Fase Lunar", "luna", "tarot-icon"),
                 ("💫", "Compatibilidad", "compatibilidad", "frases-icon"),
+                ("🔄", "Retrogradaciones", "retrogradaciones", "ideas-icon"),
                 ("🏠", "Volver", "volver", "ideas-icon")
             ]
            
@@ -5696,6 +5824,19 @@ else:
             if st.button("🔙 Volver", key="btn_astro_volver_comp"):
                 st.session_state.astro_subview = "menu"
                 st.rerun()
+        elif st.session_state.astro_subview == "retrogradaciones":
+            st.markdown("### 🔄 Retrogradaciones Planetarias")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre qué planetas están retrógrados ahora y cómo te afectan</p>", unsafe_allow_html=True)
+            
+            if st.button("🔮 Ver Retrogradaciones Actuales", use_container_width=True, key="btn_retrogradaciones"):
+                with st.spinner("🌟 Consultando las estrellas..."):
+                    resultado = astrologia.retrogradaciones_actuales()
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_astro_volver_retro"):
+                st.session_state.astro_subview = "menu"
+                st.rerun()        
     # --- MÓDULO NUMEROLOGÍA ---
     elif st.session_state.current_view == "numerologia":
         st.markdown("<div class='title-glow'>🔢 Numerología</div>", unsafe_allow_html=True)
