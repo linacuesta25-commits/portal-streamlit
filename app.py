@@ -6528,37 +6528,40 @@ else:
             
             with col1:
                 st.markdown("#### 👤 Persona 1")
-                fecha1 = st.date_input(
+                # Usar text_input en lugar de date_input para evitar problemas
+                fecha1_input = st.text_input(
                     "Fecha de nacimiento:",
+                    placeholder="DD/MM/AAAA (Ej: 15/08/1990)",
                     key="input_fecha1_comp",
-                    help="Selecciona la fecha de nacimiento",
-                    format="DD/MM/YYYY"
+                    help="Formato: DD/MM/AAAA"
                 )
-                st.caption(f"📅 {fecha1.strftime('%d/%m/%Y')}")
             
             with col2:
                 st.markdown("#### 👤 Persona 2")
-                fecha2 = st.date_input(
+                fecha2_input = st.text_input(
                     "Fecha de nacimiento:",
+                    placeholder="DD/MM/AAAA (Ej: 20/03/1992)",
                     key="input_fecha2_comp",
-                    help="Selecciona la fecha de nacimiento",
-                    format="DD/MM/YYYY"
+                    help="Formato: DD/MM/AAAA"
                 )
-                st.caption(f"📅 {fecha2.strftime('%d/%m/%Y')}")
             
             st.markdown("<br>", unsafe_allow_html=True)
             
             # Botón para calcular
             if st.button("💕 Calcular Compatibilidad", use_container_width=True, key="btn_calc_compatibilidad"):
-                # Convertir fechas a formato string que acepta el método
-                fecha1_str = fecha1.strftime("%d/%m/%Y")
-                fecha2_str = fecha2.strftime("%d/%m/%Y")
-                
-                with st.spinner("🔮 Analizando la compatibilidad cósmica..."):
-                    resultado = numerologia.compatibilidad_numerologica(fecha1_str, fecha2_str)
-                
-                # Mostrar resultado
-                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                # Validar que ambas fechas estén completas
+                if not fecha1_input or not fecha2_input:
+                    st.warning("⚠️ Por favor ingresa ambas fechas")
+                else:
+                    # Validar formato básico
+                    if "/" not in fecha1_input or "/" not in fecha2_input:
+                        st.error("❌ Formato inválido. Usa: DD/MM/AAAA (Ej: 15/08/1990)")
+                    else:
+                        with st.spinner("🔮 Analizando la compatibilidad cósmica..."):
+                            resultado = numerologia.compatibilidad_numerologica(fecha1_input, fecha2_input)
+                        
+                        # Mostrar resultado
+                        st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
             
             # Ejemplos rápidos
             st.markdown("<br>", unsafe_allow_html=True)
@@ -6584,8 +6587,7 @@ else:
             # Botón volver
             if st.button("🔙 Volver", key="btn_nume_volver_compatibilidad"):
                 st.session_state.nume_subview = "menu"
-                st.rerun()       
-  
+                st.rerun()
     # --- MÓDULO IDEAS ---
     # --- MÓDULO IDEAS ---
     elif st.session_state.current_view == "ideas":
