@@ -2643,7 +2643,6 @@ class AstrologiaHandler:
 
 💛 Toda relación requiere esfuerzo consciente y amor. Las estrellas guían, pero tú decides.
 """
-
 # =====================================================
 # HANDLER NUMEROLOGÍA
 # =====================================================
