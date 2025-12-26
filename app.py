@@ -2871,6 +2871,7 @@ Las retrogradaciones NO son negativas - son momentos de:
     def revolucion_solar(self, fecha_nacimiento, signo):
         """Análisis de revolución solar - tu nuevo año astrológico"""
         try:
+            # Convertimos la fecha de nacimiento a objeto datetime para cálculos
             nac = datetime.datetime.strptime(fecha_nacimiento, "%Y-%m-%d")
         except:
             return "❌ Formato de fecha inválido. Usa: AAAA-MM-DD"
@@ -2882,16 +2883,15 @@ Las retrogradaciones NO son negativas - son momentos de:
         if (hoy.month, hoy.day) < (nac.month, nac.day):
             edad_actual -= 1
         
-        # Próximo cumpleaños
+        # Determinar cuándo es el próximo cumpleaños
         proximo_cumple = datetime.datetime(hoy.year, nac.month, nac.day)
         if proximo_cumple < hoy:
             proximo_cumple = datetime.datetime(hoy.year + 1, nac.month, nac.day)
         
         dias_para_cumple = (proximo_cumple - hoy).days
-        
         signo = signo.lower().strip()
         
-        # NORMALIZAR PRIMERO (antes de verificar)
+        # Normalización de signos con tildes
         normalizaciones = {
             "geminis": "geminis", "géminis": "geminis",
             "cancer": "cancer", "cáncer": "cancer",
@@ -2899,21 +2899,58 @@ Las retrogradaciones NO son negativas - son momentos de:
         }
         signo = normalizaciones.get(signo, signo)
         
-        # AHORA SÍ verificar
         if signo not in self.SIGNOS_ZODIACALES:
             return "❌ Signo no válido"
         
         info_signo = self.SIGNOS_ZODIACALES[signo]
         
-        # Determinar fase del ciclo (basado en días hasta cumpleaños)
-        if dias_para_cumple <= 30:
-            fase = "PREPARACIÓN"
-            energia = "🌱 Siembra"
-            mensaje = "Estás en la fase final de tu año actual. Es momento de cerrar ciclos, soltar lo viejo y prepararte para el renacimiento."
-            enfoque = "Reflexión, cierre de ciclos, gratitud por lo vivido"
-        elif dias_para_cumple <= 120:
-            fase = "INICIO"
-            energia = "🌸 Florecimiento"
+        # --- Lógica de Fases del Año Personal ---
+        if dias_para_cumple <= 40:
+            fase = "PREPARACIÓN Y CIERRE"
+            energia = "🌱 Fase de Siembra Interna"
+            mensaje = "Estás en el 'invierno' de tu ciclo personal. Es el momento de soltar lo que ya no sirve y limpiar tu espacio energético para lo nuevo."
+            enfoque = "Introspección, cierre de capítulos pendientes y descanso."
+            
+        elif dias_para_cumple <= 130:
+            fase = "INICIO Y FLORECIMIENTO"
+            energia = "🌸 Fase de Brotes Nuevos"
+            mensaje = "Tu Sol personal se ha renovado recientemente. Tienes luz verde del universo para iniciar proyectos y mostrar tu verdadera esencia."
+            enfoque = "Nuevos comienzos, vitalidad y toma de iniciativa."
+            
+        elif dias_para_cumple <= 250:
+            fase = "ESTABILIZACIÓN"
+            energia = "☀️ Fase de Plenitud Solar"
+            mensaje = "Te encuentras en la mitad de tu año. Las semillas que plantaste ya son visibles. Es momento de nutrir tus proyectos con disciplina."
+            enfoque = "Trabajo constante, salud física y consolidación de metas."
+            
+        else:
+            fase = "COSECHA Y EVALUACIÓN"
+            energia = "🍂 Fase de Frutos"
+            mensaje = "Estás empezando a recoger los resultados de tus acciones pasadas. Observa qué áreas de tu vida han prosperado y cuáles requieren ajustes."
+            enfoque = "Gratitud, compartir logros y análisis de resultados."
+        
+        return f"""
+🎂 **REVOLUCIÓN SOLAR: TU CICLO PERSONAL**
+
+**Signo:** {info_signo['simbolo']} {signo.upper()}
+**Próximo Cumpleaños:** {proximo_cumple.strftime('%d de %B')}
+**Días restantes:** {dias_para_cumple} días
+
+━━━━━━━━━━━━━━━━━━━━━
+
+📊 **ESTADO ACTUAL:** {fase}
+✨ **Energía dominante:** {energia}
+
+🔮 **MENSAJE PARA TI:**
+{mensaje}
+
+💡 **ENFOQUE RECOMENDADO:**
+{enfoque}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💛 **Sabiduría de {signo.capitalize()}:** No olvides conectar con tus fortalezas: {info_signo['fortalezas']}.
+"""
 # =====================================================
 # HANDLER NUMEROLOGÍA
 # =====================================================
