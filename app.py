@@ -6528,21 +6528,20 @@ else:
             
             with col1:
                 st.markdown("#### 👤 Persona 1")
-                # Usar text_input en lugar de date_input para evitar problemas
                 fecha1_input = st.text_input(
                     "Fecha de nacimiento:",
-                    placeholder="DD/MM/AAAA (Ej: 15/08/1990)",
+                    placeholder="DD/MM/AAAA",
                     key="input_fecha1_comp",
-                    help="Formato: DD/MM/AAAA"
+                    help="Formato: DD/MM/AAAA (Ej: 15/08/1990)"
                 )
             
             with col2:
                 st.markdown("#### 👤 Persona 2")
                 fecha2_input = st.text_input(
                     "Fecha de nacimiento:",
-                    placeholder="DD/MM/AAAA (Ej: 20/03/1992)",
+                    placeholder="DD/MM/AAAA",
                     key="input_fecha2_comp",
-                    help="Formato: DD/MM/AAAA"
+                    help="Formato: DD/MM/AAAA (Ej: 20/03/1992)"
                 )
             
             st.markdown("<br>", unsafe_allow_html=True)
@@ -6552,16 +6551,18 @@ else:
                 # Validar que ambas fechas estén completas
                 if not fecha1_input or not fecha2_input:
                     st.warning("⚠️ Por favor ingresa ambas fechas")
+                elif "/" not in fecha1_input or "/" not in fecha2_input:
+                    st.error("❌ Formato inválido. Usa: DD/MM/AAAA")
                 else:
-                    # Validar formato básico
-                    if "/" not in fecha1_input or "/" not in fecha2_input:
-                        st.error("❌ Formato inválido. Usa: DD/MM/AAAA (Ej: 15/08/1990)")
-                    else:
+                    try:
                         with st.spinner("🔮 Analizando la compatibilidad cósmica..."):
                             resultado = numerologia.compatibilidad_numerologica(fecha1_input, fecha2_input)
                         
                         # Mostrar resultado
                         st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
+                        st.caption("Verifica que las fechas estén en formato DD/MM/AAAA")
             
             # Ejemplos rápidos
             st.markdown("<br>", unsafe_allow_html=True)
@@ -6588,7 +6589,6 @@ else:
             if st.button("🔙 Volver", key="btn_nume_volver_compatibilidad"):
                 st.session_state.nume_subview = "menu"
                 st.rerun()
-    # --- MÓDULO IDEAS ---
     # --- MÓDULO IDEAS ---
     elif st.session_state.current_view == "ideas":
         mostrar_breadcrumbs()
