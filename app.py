@@ -3145,35 +3145,191 @@ Se reduce a: **{suma}** - {info['nombre']}
                 dia, mes, anio = fecha_nacimiento.split("/")
             elif "-" in fecha_nacimiento:
                 partes = fecha_nacimiento.split("-")
-                if len(partes[0]) == 4: # Formato AAAA-MM-DD
+                if len(partes[0]) == 4:  # Formato AAAA-MM-DD
                     anio, mes, dia = partes
-                else: # Formato DD-MM-AAAA
+                else:  # Formato DD-MM-AAAA
                     dia, mes, anio = partes
             else:
                 return "❌ Formato inválido. Usa: DD/MM/AAAA o DD-MM-AAAA"
             
+            # Año actual
             anio_actual = datetime.datetime.now().year
-            suma = int(dia) + int(mes) + anio_actual
             
-            while suma > 9 and suma not in (11, 22):
-                suma = sum(int(x) for x in str(suma))
+            # Reducir día a un dígito
+            suma_dia = sum(int(d) for d in str(int(dia)))
+            while suma_dia > 9:
+                suma_dia = sum(int(d) for d in str(suma_dia))
             
-            if suma in self.NUMEROS_BASE:
-                info = self.NUMEROS_BASE[suma]
+            # Reducir mes a un dígito
+            suma_mes = sum(int(m) for m in str(int(mes)))
+            while suma_mes > 9:
+                suma_mes = sum(int(m) for m in str(suma_mes))
+            
+            # Reducir año actual a un dígito
+            suma_anio = sum(int(a) for a in str(anio_actual))
+            while suma_anio > 9:
+                suma_anio = sum(int(a) for a in str(suma_anio))
+            
+            # Sumar todo
+            suma_total = suma_dia + suma_mes + suma_anio
+            
+            # Reducir a número final (1-9, 11, 22)
+            while suma_total > 9 and suma_total not in (11, 22):
+                suma_total = sum(int(x) for x in str(suma_total))
+            
+            # Información detallada por año
+            anos_info = {
+                1: {
+                    "ciclo": "NUEVOS COMIENZOS",
+                    "energia": "Año de siembra, independencia y liderazgo",
+                    "que_hacer": ["Iniciar proyectos nuevos", "Tomar la iniciativa", "Ser valiente", "Confiar en tu visión"],
+                    "evitar": ["Dudar de ti misma", "Esperar por otros", "Quedarte en tu zona de confort"],
+                    "amor": "Nuevas conexiones, atracción magnética, conocerte a ti misma primero",
+                    "trabajo": "Promociones, emprendimientos, liderazgo, nuevos caminos profesionales",
+                    "mensaje": "Este es TU año. El universo te está diciendo: Es hora de brillar."
+                },
+                2: {
+                    "ciclo": "COOPERACIÓN Y PACIENCIA",
+                    "energia": "Año de relaciones, diplomacia y sensibilidad",
+                    "que_hacer": ["Cultivar relaciones", "Escuchar tu intuición", "Ser paciente", "Colaborar"],
+                    "evitar": ["Ser demasiado dependiente", "Perder tu voz", "Apresurarte"],
+                    "amor": "Profundidad emocional, compromiso, sanar relaciones, conexiones del alma",
+                    "trabajo": "Trabajo en equipo, asociaciones, roles de apoyo que brillan",
+                    "mensaje": "No estás perdiendo tiempo. Estás sembrando relaciones que florecerán."
+                },
+                3: {
+                    "ciclo": "EXPRESIÓN CREATIVA",
+                    "energia": "Año de creatividad, comunicación y alegría",
+                    "que_hacer": ["Crear sin filtros", "Expresarte libremente", "Socializar", "Divertirte"],
+                    "evitar": ["Dispersarte demasiado", "Guardar tus ideas", "Aislarte"],
+                    "amor": "Romance, diversión, comunicación abierta, atracción por tu autenticidad",
+                    "trabajo": "Proyectos creativos, hablar en público, escribir, presentar ideas",
+                    "mensaje": "Tu luz es contagiosa. Deja de esconderla."
+                },
+                4: {
+                    "ciclo": "CONSTRUCCIÓN Y DISCIPLINA",
+                    "energia": "Año de trabajo duro, estabilidad y estructura",
+                    "que_hacer": ["Construir bases sólidas", "Ser disciplinada", "Organizarte", "Trabajar constante"],
+                    "evitar": ["Resistir el trabajo necesario", "Buscar atajos", "Desorganización"],
+                    "amor": "Compromiso serio, estabilidad, construir futuro juntos",
+                    "trabajo": "Proyectos de largo plazo, inversiones, construir tu imperio",
+                    "mensaje": "Este año construyes el futuro que quieres. Vale la pena el esfuerzo."
+                },
+                5: {
+                    "ciclo": "CAMBIO Y LIBERTAD",
+                    "energia": "Año de transformación, aventura y movimiento",
+                    "que_hacer": ["Abrazar el cambio", "Viajar", "Probar cosas nuevas", "Ser flexible"],
+                    "evitar": ["Resistir lo nuevo", "Quedarte por miedo", "Rutina excesiva"],
+                    "amor": "Nuevas experiencias, libertad en relaciones, pasión renovada",
+                    "trabajo": "Cambios de carrera, viajes laborales, flexibilidad, nuevas oportunidades",
+                    "mensaje": "El cambio que temes es exactamente lo que necesitas."
+                },
+                6: {
+                    "ciclo": "RESPONSABILIDAD Y SERVICIO",
+                    "energia": "Año de familia, hogar, amor y sanación",
+                    "que_hacer": ["Cuidar a otros (sin perderte)", "Crear hogar", "Sanar relaciones", "Ser compasiva"],
+                    "evitar": ["Sacrificarte hasta agotarte", "Descuidarte a ti misma", "Controlar todo"],
+                    "amor": "Matrimonio, compromiso profundo, familia, amor incondicional",
+                    "trabajo": "Roles de cuidado, consejería, servicio, humanizar tu trabajo",
+                    "mensaje": "Cuida a otros, pero cuídate PRIMERO. No puedes dar desde el vacío."
+                },
+                7: {
+                    "ciclo": "INTROSPECCIÓN Y SABIDURÍA",
+                    "energia": "Año de espiritualidad, análisis profundo y soledad sagrada",
+                    "que_hacer": ["Meditar", "Estudiar", "Conectar contigo", "Buscar respuestas internas"],
+                    "evitar": ["Aislarte por miedo", "Sobreanalizar", "Desconectar del mundo"],
+                    "amor": "Conexiones profundas del alma, menos cantidad pero más calidad",
+                    "trabajo": "Investigación, escritura, roles especializados, consultoría",
+                    "mensaje": "Tu soledad no es tristeza. Es el universo dándote tiempo para despertar."
+                },
+                8: {
+                    "ciclo": "PODER Y ABUNDANCIA",
+                    "energia": "Año de éxito material, autoridad y manifestación",
+                    "que_hacer": ["Ir por lo grande", "Manifestar abundancia", "Liderar con poder", "Invertir"],
+                    "evitar": ["Sabotearte por 'no merecer'", "Abusar del poder", "Obsesionarte con dinero"],
+                    "amor": "Relaciones poderosas, igualdad, respeto mutuo, abundancia compartida",
+                    "trabajo": "Ascensos, negocios grandes, autoridad, recompensas financieras",
+                    "mensaje": "El dinero y el poder NO son malos. Úsalos para elevar."
+                },
+                9: {
+                    "ciclo": "FINALIZACIÓN Y LIBERACIÓN",
+                    "energia": "Año de cierre de ciclos, compasión universal y transformación",
+                    "que_hacer": ["Soltar lo viejo", "Perdonar", "Cerrar capítulos", "Servir al mundo"],
+                    "evitar": ["Aferrarte a lo que murió", "Resistir el final", "Amargura"],
+                    "amor": "Cierres necesarios, dejar ir relaciones tóxicas, amor más sabio",
+                    "trabajo": "Terminar proyectos, transiciones, legados, compartir sabiduría",
+                    "mensaje": "Suelta con amor. Lo que se va hace espacio para lo que viene."
+                },
+                11: {
+                    "ciclo": "ILUMINACIÓN ESPIRITUAL",
+                    "energia": "Año de maestría, intuición elevada y misión del alma",
+                    "que_hacer": ["Confiar en tu intuición", "Ser luz para otros", "Meditar", "Enseñar"],
+                    "evitar": ["Dudar de tus visiones", "Esconder tus dones", "Sobreestimularte"],
+                    "amor": "Conexiones kármicas, almas gemelas, amor espiritual profundo",
+                    "trabajo": "Liderazgo espiritual, guía, inspirar a otros, innovación",
+                    "mensaje": "Tu sensibilidad extrema es tu superpoder. Úsala para iluminar."
+                },
+                22: {
+                    "ciclo": "MAESTRO CONSTRUCTOR",
+                    "energia": "Año de manifestación masiva, construcción de legados",
+                    "que_hacer": ["Construir grandes proyectos", "Materializar sueños", "Pensar en grande", "Dejar huella"],
+                    "evitar": ["Abrumarte por la magnitud", "Dudar de tu capacidad", "Pensar pequeño"],
+                    "amor": "Construir imperio juntos, relaciones transformadoras, amor práctico",
+                    "trabajo": "Proyectos enormes, liderazgo visionario, construir algo duradero",
+                    "mensaje": "Construyes imperios. No olvides vivir mientras lo haces."
+                }
+            }
+            
+            if suma_total in anos_info:
+                info_ano = anos_info[suma_total]
+                info_base = self.NUMEROS_BASE.get(suma_total, {})
+                
                 return f"""
-🔢✨ **TU AÑO PERSONAL {anio_actual}: {suma}**
-*{info['nombre']}*
+🔢✨ **TU AÑO PERSONAL {anio_actual}: {suma_total}**
+*{info_base.get('nombre', 'Número Especial')}*
 
 ━━━━━━━━━━━━━━━━━━━━━
-**ENERGÍA DEL AÑO:** {info['energia']}
-**TU LUZ ESTE AÑO:** {info['luz']}
+
+🌟 **CICLO: {info_ano['ciclo']}**
+
+**ENERGÍA DEL AÑO:**
+{info_ano['energia']}
 
 ━━━━━━━━━━━━━━━━━━━━━
-**💫 ENFOQUE PARA {anio_actual}:** {info['consejo']}
+
+**✅ QUÉ HACER ESTE AÑO:**
+{chr(10).join(f"• {item}" for item in info_ano['que_hacer'])}
+
+**⚠️ QUÉ EVITAR:**
+{chr(10).join(f"• {item}" for item in info_ano['evitar'])}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**💕 AMOR Y RELACIONES:**
+{info_ano['amor']}
+
+**💼 TRABAJO Y CARRERA:**
+{info_ano['trabajo']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**💫 MENSAJE DEL UNIVERSO:**
+
+{info_ano['mensaje']}
+
+**🔮 CÁLCULO:**
+Día {dia} + Mes {mes} + Año {anio_actual} = {suma_total}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💛 Este ciclo dura hasta tu cumpleaños de {anio_actual + 1}.
+Después entrarás en Año Personal {(suma_total % 9) + 1 if suma_total <= 9 else 1}.
 """
-            return f"Tu año personal es: {suma}"
-        except:
-            return "❌ Error: Verifica el formato de la fecha."
+            
+            return f"Tu año personal es: {suma_total}"
+        
+        except Exception as e:
+            return f"❌ Error: {str(e)}"
 
 # =====================================================
 # HANDLER IDEAS CON IA
