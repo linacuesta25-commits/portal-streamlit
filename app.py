@@ -3145,9 +3145,9 @@ Se reduce a: **{suma}** - {info['nombre']}
                 dia, mes, anio = fecha_nacimiento.split("/")
             elif "-" in fecha_nacimiento:
                 partes = fecha_nacimiento.split("-")
-                if len(partes[0]) == 4: # AAAA-MM-DD
+                if len(partes[0]) == 4: # Formato AAAA-MM-DD
                     anio, mes, dia = partes
-                else: # DD-MM-AAAA
+                else: # Formato DD-MM-AAAA
                     dia, mes, anio = partes
             else:
                 return "❌ Formato inválido. Usa: DD/MM/AAAA o DD-MM-AAAA"
@@ -3169,23 +3169,11 @@ Se reduce a: **{suma}** - {info['nombre']}
 **TU LUZ ESTE AÑO:** {info['luz']}
 
 ━━━━━━━━━━━━━━━━━━━━━
-**🎯 QUÉ ESPERAR:**
-- **Año 1:** Nuevos comienzos e independencia.
-- **Año 2:** Relaciones y paciencia.
-- **Año 3:** Creatividad y expresión.
-- **Año 4:** Trabajo y estabilidad.
-- **Año 5:** Cambios y libertad.
-- **Año 6:** Responsabilidad y familia.
-- **Año 7:** Introspección y sabiduría.
-- **Año 8:** Logros materiales.
-- **Año 9:** Cierre de ciclos.
-
-💛 Este ciclo dura hasta tu próximo cumpleaños.
+**💫 ENFOQUE PARA {anio_actual}:** {info['consejo']}
 """
             return f"Tu año personal es: {suma}"
         except:
             return "❌ Error: Verifica el formato de la fecha."
-
 
 # =====================================================
 # HANDLER IDEAS CON IA
