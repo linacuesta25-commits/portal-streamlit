@@ -2946,8 +2946,192 @@ Las retrogradaciones NO son negativas - son momentos de:
 ━━━━━━━━━━━━━━━━━━━━━
 
 💛 **Sabiduría de {signo.capitalize()}:** Recuerda tus fortalezas naturales: {info_signo['fortalezas']}.
+    
+""" 
+    def carta_natal_basica(self, fecha_nacimiento, hora_nacimiento="12:00"):
+        """Genera una carta natal básica con signo solar, lunar aproximado y elementos"""
+        try:
+            # Parsear fecha
+            if "/" in fecha_nacimiento:
+                d, m, a = fecha_nacimiento.split("/")
+            elif "-" in fecha_nacimiento:
+                partes = fecha_nacimiento.split("-")
+                if len(partes[0]) == 4:
+                    a, m, d = partes
+                else:
+                    d, m, a = partes
+            else:
+                return "❌ Formato de fecha inválido"
+            
+            dia = int(d)
+            mes = int(m)
+            anio = int(a)
+            
+            # Parsear hora
+            try:
+                hora, minuto = hora_nacimiento.split(":")
+                hora = int(hora)
+                minuto = int(minuto)
+            except:
+                hora, minuto = 12, 0
+            
+            # Calcular Signo Solar
+            signo_solar = self._calcular_signo_solar(mes, dia)
+            
+            # Calcular Signo Lunar (aproximado)
+            signo_lunar = self._calcular_signo_lunar_aproximado(dia, mes, anio)
+            
+            # Calcular Ascendente (aproximado por hora)
+            ascendente = self._calcular_ascendente_aproximado(signo_solar, hora)
+            
+            # Obtener información de signos
+            info_solar = self.SIGNOS_ZODIACALES.get(signo_solar.lower(), {})
+            info_lunar = self.SIGNOS_ZODIACALES.get(signo_lunar.lower(), {})
+            info_asc = self.SIGNOS_ZODIACALES.get(ascendente.lower(), {})
+            
+            # Analizar elementos dominantes
+            elementos = [
+                info_solar.get('elemento', ''),
+                info_lunar.get('elemento', ''),
+                info_asc.get('elemento', '')
+            ]
+            
+            elemento_dominante = max(set(elementos), key=elementos.count)
+            
+            # Construir resultado
+            resultado = f"""
+🌟 **TU CARTA NATAL BÁSICA**
+
+📅 **Fecha:** {fecha_nacimiento}
+🕐 **Hora:** {hora_nacimiento}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+☀️ **SIGNO SOLAR: {signo_solar.upper()}** {info_solar.get('simbolo', '')}
+*Tu esencia, tu yo consciente*
+
+**Elemento:** {info_solar.get('elemento', '')}
+**Planeta Regente:** {info_solar.get('planeta', '')}
+**Fortalezas:** {info_solar.get('fortalezas', '')}
+
+💡 Tu signo solar representa tu identidad fundamental, tu voluntad y propósito de vida.
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌙 **SIGNO LUNAR: {signo_lunar.upper()}** {info_lunar.get('simbolo', '')}
+*Tus emociones, tu mundo interno*
+
+**Elemento:** {info_lunar.get('elemento', '')}
+**Planeta Regente:** {info_lunar.get('planeta', '')}
+**Fortalezas:** {info_lunar.get('fortalezas', '')}
+
+💡 Tu Luna rige tus emociones, necesidades internas y cómo procesas sentimientos.
+
+━━━━━━━━━━━━━━━━━━━━━
+
+⬆️ **ASCENDENTE: {ascendente.upper()}** {info_asc.get('simbolo', '')}
+*Tu máscara social, primera impresión*
+
+**Elemento:** {info_asc.get('elemento', '')}
+**Planeta Regente:** {info_asc.get('planeta', '')}
+**Fortalezas:** {info_asc.get('fortalezas', '')}
+
+💡 Tu Ascendente es cómo te perciben otros y cómo te presentas al mundo.
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🔥💧🌍💨 **ELEMENTO DOMINANTE: {elemento_dominante.upper()}**
+
+{self._interpretar_elemento_dominante(elemento_dominante)}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💫 **SÍNTESIS:**
+
+Tu combinación {signo_solar}-{signo_lunar}-{ascendente} crea una personalidad única.
+
+• **Sol en {signo_solar}:** Define tu propósito y voluntad
+• **Luna en {signo_lunar}:** Rige tus necesidades emocionales
+• **Ascendente {ascendente}:** Moldea tu expresión externa
+
+Esta es una carta natal simplificada. Para una lectura completa, necesitarías calcular las posiciones de todos los planetas, casas y aspectos con tu hora y lugar exactos de nacimiento.
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌟 Tu mapa estelar es único. Úsalo como guía de autoconocimiento.
 """
-# =====================================================
+            
+            return resultado
+            
+        except Exception as e:
+            return f"❌ Error calculando carta natal: {str(e)}"
+    
+    def _calcular_signo_solar(self, mes, dia):
+        """Calcula el signo solar basado en fecha"""
+        if (mes == 3 and dia >= 21) or (mes == 4 and dia <= 19):
+            return "aries"
+        elif (mes == 4 and dia >= 20) or (mes == 5 and dia <= 20):
+            return "tauro"
+        elif (mes == 5 and dia >= 21) or (mes == 6 and dia <= 20):
+            return "geminis"
+        elif (mes == 6 and dia >= 21) or (mes == 7 and dia <= 22):
+            return "cancer"
+        elif (mes == 7 and dia >= 23) or (mes == 8 and dia <= 22):
+            return "leo"
+        elif (mes == 8 and dia >= 23) or (mes == 9 and dia <= 22):
+            return "virgo"
+        elif (mes == 9 and dia >= 23) or (mes == 10 and dia <= 22):
+            return "libra"
+        elif (mes == 10 and dia >= 23) or (mes == 11 and dia <= 21):
+            return "escorpio"
+        elif (mes == 11 and dia >= 22) or (mes == 12 and dia <= 21):
+            return "sagitario"
+        elif (mes == 12 and dia >= 22) or (mes == 1 and dia <= 19):
+            return "capricornio"
+        elif (mes == 1 and dia >= 20) or (mes == 2 and dia <= 18):
+            return "acuario"
+        else:
+            return "piscis"
+    
+    def _calcular_signo_lunar_aproximado(self, dia, mes, anio):
+        """Calcula el signo lunar de forma aproximada (ciclo de 28 días)"""
+        # Aproximación simple: La luna tarda ~2.5 días en cada signo
+        total_dias = dia + (mes * 30) + (anio % 19) * 20
+        posicion_lunar = (total_dias % 360) // 30
+        
+        signos = ["aries", "tauro", "geminis", "cancer", "leo", "virgo", 
+                 "libra", "escorpio", "sagitario", "capricornio", "acuario", "piscis"]
+        
+        return signos[posicion_lunar % 12]
+    
+    def _calcular_ascendente_aproximado(self, signo_solar, hora):
+        """Calcula ascendente aproximado basado en hora de nacimiento"""
+        # Aproximación: el ascendente cambia aproximadamente cada 2 horas
+        signos = ["aries", "tauro", "geminis", "cancer", "leo", "virgo", 
+                 "libra", "escorpio", "sagitario", "capricornio", "acuario", "piscis"]
+        
+        # Encontrar índice del signo solar
+        indice_solar = next((i for i, s in enumerate(signos) if s == signo_solar.lower()), 0)
+        
+        # El ascendente al amanecer (~6am) suele ser el mismo que el signo solar
+        # Ajustar según hora
+        horas_desde_amanecer = (hora - 6) if hora >= 6 else (hora + 18)
+        casas_avanzadas = horas_desde_amanecer // 2
+        
+        indice_ascendente = (indice_solar + int(casas_avanzadas)) % 12
+        
+        return signos[indice_ascendente]
+    
+    def _interpretar_elemento_dominante(self, elemento):
+        """Interpreta el elemento dominante"""
+        interpretaciones = {
+            "Fuego": "🔥 Tu carta tiene predominio de **FUEGO**. Eres apasionada, intuitiva, enérgica y orientada a la acción. Tu motivación viene de la inspiración y el entusiasmo.",
+            "Tierra": "🌍 Tu carta tiene predominio de **TIERRA**. Eres práctica, confiable, sensorial y orientada a resultados tangibles. Valoras la estabilidad y el trabajo constante.",
+            "Aire": "💨 Tu carta tiene predominio de **AIRE**. Eres mental, comunicativa, social y orientada a ideas. Vives en el mundo del pensamiento y la conexión intelectual.",
+            "Agua": "💧 Tu carta tiene predominio de **AGUA**. Eres emocional, intuitiva, empática y orientada a los sentimientos. Tu mundo interno es profundo y sensible."
+        }
+        
+        return interpretaciones.get(elemento, "Elemento balanceado")
 # HANDLER NUMEROLOGÍA
 # =====================================================
 class NumerologiaHandler:
@@ -6644,6 +6828,7 @@ else:
                 ("💫", "Compatibilidad", "compatibilidad", "frases-icon"),
                 ("🔄", "Retrogradaciones", "retrogradaciones", "ideas-icon"),
                 ("🎂", "Revolución Solar", "revolucion", "libros-icon"),
+                ("🔮", "Carta Natal", "carta_natal", "oculto-icon"), 
                 ("🏠", "Volver", "volver", "ideas-icon")
             ]
            
@@ -6748,7 +6933,46 @@ else:
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("🔙 Volver", key="btn_astro_volver_rev"):
                 st.session_state.astro_subview = "menu"
-                st.rerun()                
+                st.rerun()
+
+        elif st.session_state.astro_subview == "carta_natal":
+            st.markdown("### 🔮 Tu Carta Natal Básica")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre tu Sol, Luna y Ascendente</p>", unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fecha_natal = st.date_input(
+                    "Tu fecha de nacimiento:",
+                    value=datetime.date(1990, 1, 1),
+                    min_value=datetime.date(1900, 1, 1),
+                    max_value=datetime.date.today(),
+                    key="input_fecha_natal"
+                )
+            
+            with col2:
+                hora_natal = st.time_input(
+                    "Hora de nacimiento (aproximada):",
+                    value=datetime.time(12, 0),
+                    key="input_hora_natal",
+                    help="Si no sabes tu hora exacta, usa 12:00"
+                )
+            
+            st.caption("💡 Esta es una carta natal simplificada. Para una lectura completa, se necesitaría tu lugar exacto de nacimiento.")
+            
+            if st.button("🔮 Generar Mi Carta Natal", use_container_width=True, key="btn_carta_natal"):
+                fecha_str = fecha_natal.strftime("%d/%m/%Y")
+                hora_str = hora_natal.strftime("%H:%M")
+                
+                with st.spinner("✨ Calculando las posiciones astrales..."):
+                    resultado = astrologia.carta_natal_basica(fecha_str, hora_str)
+                
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_astro_volver_natal"):
+                st.session_state.astro_subview = "menu"
+                st.rerun()                     
     # --- MÓDULO NUMEROLOGÍA ---
     elif st.session_state.current_view == "numerologia":
         st.markdown("<div class='title-glow'>🔢 Numerología</div>", unsafe_allow_html=True)
