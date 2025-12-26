@@ -5206,7 +5206,7 @@ else:
             opciones_tarot = [
                 ("✨", "Energía del Día", "energia", "tarot-icon"),
                 ("📅", "Tirada de la Semana", "semana", "libros-icon"),
-                ("🃏", "Interpretar Tirada", "interpretar", "ideas-icon")
+                ("🃏", "Interpretar Tirada", "interpretar", "ideas-icon"),
                 ("🔮", "Tirada General", "tres_cartas", "libros-icon"),
                 ("💕", "Tirada de Amor", "amor", "frases-icon"),
                 ("💼", "Tirada de Trabajo", "trabajo", "finanzas-icon"),
