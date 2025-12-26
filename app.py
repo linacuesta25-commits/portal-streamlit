@@ -2096,6 +2096,81 @@ Genera una lectura de amor profunda, compasiva y esperanzadora. Máximo 200 pala
         resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n💜 Usa esta guía para navegar tu semana con conciencia."
         
         return resultado
+    def interpretar_tirada_personal(self, cartas_seleccionadas, pregunta=""):
+        """Interpreta una tirada que el usuario hizo con su propio mazo"""
+        if not cartas_seleccionadas:
+            return "❌ No has seleccionado ninguna carta"
+        
+        if not self.openai_enabled:
+            # Respuesta básica sin IA
+            resultado = "🔮 **TU TIRADA PERSONAL**\n\n"
+            if pregunta:
+                resultado += f"**Pregunta:** _{pregunta}_\n\n"
+            resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            
+            for i, carta_info in enumerate(cartas_seleccionadas, 1):
+                resultado += f"**Carta {i}:** {carta_info['nombre']}"
+                if carta_info['invertida']:
+                    resultado += " (Invertida)"
+                resultado += f"\n_{carta_info['significado']}_\n\n"
+            
+            resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n💜 Confía en tu intuición para interpretar este mensaje."
+            return resultado
+        
+        # Preparar texto de cartas para IA
+        cartas_texto = ""
+        for i, carta_info in enumerate(cartas_seleccionadas, 1):
+            inv = "(Invertida)" if carta_info['invertida'] else ""
+            cartas_texto += f"{i}. {carta_info['nombre']} {inv} - {carta_info['significado']}\n"
+        
+        prompt = f"""Interpreta esta tirada de tarot que la persona hizo con su propio mazo:
+
+{"Pregunta: " + pregunta if pregunta else "Sin pregunta específica"}
+
+Cartas en orden:
+{cartas_texto}
+
+Genera una interpretación profunda que:
+- Conecte las cartas entre sí en una narrativa coherente
+- Sea personalizada y empática
+- Ofrezca guía clara y esperanzadora
+- Respete el orden de las cartas
+- Máximo 250 palabras
+
+Tono: Místico, sabio, compasivo."""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una lectora de tarot experta, sabia y compasiva. Interpretas tiradas con profundidad y claridad."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=400,
+                temperature=0.8
+            )
+            interpretacion = response.choices[0].message.content.strip()
+        except:
+            interpretacion = "Las cartas revelan un mensaje poderoso. Confía en tu intuición para descifrar su significado completo."
+        
+        # Construir respuesta final
+        resultado = "🔮 **INTERPRETACIÓN DE TU TIRADA**\n\n"
+        if pregunta:
+            resultado += f"**Pregunta:** _{pregunta}_\n\n"
+        resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        
+        for i, carta_info in enumerate(cartas_seleccionadas, 1):
+            resultado += f"**{i}.** {carta_info['nombre']}"
+            if carta_info['invertida']:
+                resultado += " (Invertida)"
+            resultado += "\n\n"
+        
+        resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        resultado += f"💫 **LECTURA:**\n\n{interpretacion}\n\n"
+        resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        resultado += "💜 Tu tirada es única. Las cartas hablan a través de tu intuición."
+        
+        return resultado
     def tirada_trabajo_ia(self, pregunta):
         """Tirada profesional con 4 cartas"""
         if not pregunta:
@@ -5131,6 +5206,7 @@ else:
             opciones_tarot = [
                 ("✨", "Energía del Día", "energia", "tarot-icon"),
                 ("📅", "Tirada de la Semana", "semana", "libros-icon"),
+                ("🃏", "Interpretar Tirada", "interpretar", "ideas-icon")
                 ("🔮", "Tirada General", "tres_cartas", "libros-icon"),
                 ("💕", "Tirada de Amor", "amor", "frases-icon"),
                 ("💼", "Tirada de Trabajo", "trabajo", "finanzas-icon"),
@@ -5304,6 +5380,90 @@ else:
             if st.button("🔙 Volver al Menú", key="btn_tarot_volver_semana", use_container_width=True):
                 st.session_state.tarot_subview = "menu"
                 st.rerun()
+        elif st.session_state.tarot_subview == "interpretar":
+            st.markdown("### 🃏 Interpretar Mi Tirada")
+            st.markdown("<p style='color:#d8c9ff;'>Ingresa las cartas de tu tirada física y recibe interpretación de IA</p>", unsafe_allow_html=True)
+            
+            # Pregunta opcional
+            pregunta_tirada = st.text_area(
+                "Tu pregunta (opcional):",
+                height=80,
+                placeholder="Ej: ¿Qué debo saber sobre mi situación actual?",
+                key="input_pregunta_tirada_personal"
+            )
+            
+            st.markdown("### 🎴 Selecciona tus cartas")
+            
+            # Inicializar lista de cartas seleccionadas en session state
+            if 'cartas_personales' not in st.session_state:
+                st.session_state.cartas_personales = []
+            
+            # Agregar carta
+            col1, col2, col3 = st.columns([3, 1, 1])
+            
+            with col1:
+                carta_elegida = st.selectbox(
+                    "Elige una carta:",
+                    list(tarot.MAZO_TAROT.keys()),
+                    key="select_carta_personal"
+                )
+            
+            with col2:
+                invertida = st.checkbox("Invertida", key="check_invertida_personal")
+            
+            with col3:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("➕ Agregar", key="btn_agregar_carta_personal", use_container_width=True):
+                    carta_info = tarot.MAZO_TAROT[carta_elegida]
+                    significado = carta_info["invertida"] if invertida else carta_info["derecha"]
+                    
+                    st.session_state.cartas_personales.append({
+                        'nombre': carta_elegida,
+                        'invertida': invertida,
+                        'significado': significado
+                    })
+                    st.rerun()
+            
+            # Mostrar cartas seleccionadas
+            if st.session_state.cartas_personales:
+                st.markdown("### 📋 Tus Cartas:")
+                
+                for i, carta in enumerate(st.session_state.cartas_personales):
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        inv_text = " (Invertida)" if carta['invertida'] else ""
+                        st.markdown(f"**{i+1}.** 🃏 {carta['nombre']}{inv_text}")
+                    with col2:
+                        if st.button("🗑️", key=f"btn_eliminar_carta_{i}"):
+                            st.session_state.cartas_personales.pop(i)
+                            st.rerun()
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Botones de acción
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if st.button("🔮 Interpretar Tirada", use_container_width=True, key="btn_interpretar_personal"):
+                        with st.spinner("✨ La IA está interpretando tu tirada... (10-15 seg)"):
+                            resultado = tarot.interpretar_tirada_personal(
+                                st.session_state.cartas_personales,
+                                pregunta_tirada
+                            )
+                        st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                
+                with col2:
+                    if st.button("🔄 Limpiar Todo", use_container_width=True, key="btn_limpiar_cartas"):
+                        st.session_state.cartas_personales = []
+                        st.rerun()
+            else:
+                st.info("👆 Agrega al menos una carta para interpretar")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_tarot_volver_interpretar", use_container_width=True):
+                st.session_state.tarot_subview = "menu"
+                st.session_state.cartas_personales = []
+                st.rerun()        
     # --- MÓDULO ASTROLOGÍA ---
     elif st.session_state.current_view == "astrologia":
         st.markdown("<div class='title-glow'>⭐ Astrología</div>", unsafe_allow_html=True)
@@ -5316,7 +5476,7 @@ else:
                 ("🌙", "Fase Lunar", "luna", "tarot-icon"),
                 ("🏠", "Volver", "volver", "ideas-icon")
             ]
-            
+           
             rows_astro = [opciones_astro[i:i+3] for i in range(0, len(opciones_astro), 3)]
             for row in rows_astro:
                 cols = st.columns(3, gap="small")
