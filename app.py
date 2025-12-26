@@ -3139,20 +3139,20 @@ Se reduce a: **{suma}** - {info['nombre']}
         
         return f"🔢 Número {numero} - Energía especial ✨"
     def ano_personal(self, fecha_nacimiento):
-        """Calcula el año personal numerológico"""
+        """Calcula el año personal según la fecha de nacimiento"""
         try:
+            # Parsear fecha
             if "/" in fecha_nacimiento:
                 dia, mes, anio = fecha_nacimiento.split("/")
             elif "-" in fecha_nacimiento:
                 partes = fecha_nacimiento.split("-")
-                if len(partes[0]) == 4:  # Formato AAAA-MM-DD
+                if len(partes[0]) == 4:  # Formato YYYY-MM-DD
                     anio, mes, dia = partes
-                else:  # Formato DD-MM-AAAA
+                else:  # Formato DD-MM-YYYY
                     dia, mes, anio = partes
             else:
-                return "❌ Formato inválido. Usa: DD/MM/AAAA o DD-MM-AAAA"
+                return "❌ Formato inválido (Usa DD/MM/AAAA o DD-MM-AAAA)"
             
-            # Año actual
             anio_actual = datetime.datetime.now().year
             
             # Reducir día a un dígito
@@ -3177,114 +3177,212 @@ Se reduce a: **{suma}** - {info['nombre']}
             while suma_total > 9 and suma_total not in (11, 22):
                 suma_total = sum(int(x) for x in str(suma_total))
             
-            # Información detallada por año
+            # Información completa por año
             anos_info = {
                 1: {
                     "ciclo": "NUEVOS COMIENZOS",
-                    "energia": "Año de siembra, independencia y liderazgo",
-                    "que_hacer": ["Iniciar proyectos nuevos", "Tomar la iniciativa", "Ser valiente", "Confiar en tu visión"],
-                    "evitar": ["Dudar de ti misma", "Esperar por otros", "Quedarte en tu zona de confort"],
-                    "amor": "Nuevas conexiones, atracción magnética, conocerte a ti misma primero",
-                    "trabajo": "Promociones, emprendimientos, liderazgo, nuevos caminos profesionales",
-                    "mensaje": "Este es TU año. El universo te está diciendo: Es hora de brillar."
+                    "energia": "Este es tu año para comenzar de nuevo. Todo lo que inicies ahora tiene el poder de transformar tu vida.",
+                    "que_hacer": [
+                        "Iniciar proyectos nuevos que has estado postergando",
+                        "Tomar la iniciativa en todas las áreas de tu vida",
+                        "Ser valiente y atreverte a lo desconocido",
+                        "Confiar en tu visión y capacidad de liderazgo"
+                    ],
+                    "evitar": [
+                        "Dudar de ti mismo o esperar el momento perfecto",
+                        "Depender de otros para que tomen decisiones por ti",
+                        "Quedarte en tu zona de confort por miedo"
+                    ],
+                    "amor": "Nuevas conexiones románticas están en camino. Si estás en pareja, es momento de renovar el compromiso. Tu energía magnética atrae.",
+                    "trabajo": "Oportunidades de promoción, emprendimiento o cambio de carrera. Tu liderazgo será reconocido. Es tu momento de brillar.",
+                    "mensaje": "Este es TU año. El universo te está diciendo: Es hora de brillar. No esperes permiso, no busques validación externa. Tú eres el comienzo de algo grande."
                 },
                 2: {
                     "ciclo": "COOPERACIÓN Y PACIENCIA",
-                    "energia": "Año de relaciones, diplomacia y sensibilidad",
-                    "que_hacer": ["Cultivar relaciones", "Escuchar tu intuición", "Ser paciente", "Colaborar"],
-                    "evitar": ["Ser demasiado dependiente", "Perder tu voz", "Apresurarte"],
-                    "amor": "Profundidad emocional, compromiso, sanar relaciones, conexiones del alma",
-                    "trabajo": "Trabajo en equipo, asociaciones, roles de apoyo que brillan",
-                    "mensaje": "No estás perdiendo tiempo. Estás sembrando relaciones que florecerán."
+                    "energia": "Año de cultivar relaciones, trabajar en equipo y confiar en el proceso. Tu sensibilidad es tu superpoder.",
+                    "que_hacer": [
+                        "Fortalecer tus relaciones personales y profesionales",
+                        "Practicar la paciencia y confiar en el timing divino",
+                        "Escuchar tu intuición profundamente",
+                        "Colaborar en lugar de competir"
+                    ],
+                    "evitar": [
+                        "Forzar resultados o apurar procesos naturales",
+                        "Descuidar tus necesidades por complacer a otros",
+                        "Ignorar tu voz interior por seguir a la multitud"
+                    ],
+                    "amor": "Profundización emocional. Es tiempo de construir intimidad real, vulnerabilidad y confianza. Las relaciones superficiales se filtrarán naturalmente.",
+                    "trabajo": "Trabajo en equipo y colaboraciones. Tu diplomacia y habilidad para mediar serán clave. No es tu año para liderar, sino para apoyar.",
+                    "mensaje": "Tu paciencia no es debilidad, es sabiduría. Estás sembrando ahora lo que cosecharás después. Confía en el proceso, aunque no veas resultados inmediatos."
                 },
                 3: {
-                    "ciclo": "EXPRESIÓN CREATIVA",
-                    "energia": "Año de creatividad, comunicación y alegría",
-                    "que_hacer": ["Crear sin filtros", "Expresarte libremente", "Socializar", "Divertirte"],
-                    "evitar": ["Dispersarte demasiado", "Guardar tus ideas", "Aislarte"],
-                    "amor": "Romance, diversión, comunicación abierta, atracción por tu autenticidad",
-                    "trabajo": "Proyectos creativos, hablar en público, escribir, presentar ideas",
-                    "mensaje": "Tu luz es contagiosa. Deja de esconderla."
+                    "ciclo": "CREATIVIDAD Y EXPRESIÓN",
+                    "energia": "¡Es tu año para brillar creativamente! Comunicación, arte, alegría y autoexpresión son tu enfoque.",
+                    "que_hacer": [
+                        "Expresarte creativamente sin censura",
+                        "Socializar, conectar y expandir tu red",
+                        "Explorar nuevos hobbies artísticos o creativos",
+                        "Compartir tu voz y talentos con el mundo"
+                    ],
+                    "evitar": [
+                        "Silenciar tu voz por miedo al juicio",
+                        "Aislarte o esconder tus dones",
+                        "Tomarte todo demasiado en serio, necesitas ligereza"
+                    ],
+                    "amor": "Diversión, risas y romance ligero. Nuevas conexiones a través de eventos sociales. Si estás en pareja, traigan más alegría y espontaneidad.",
+                    "trabajo": "Proyectos creativos, comunicación, marketing, redes sociales. Tu carisma abre puertas. Es tiempo de vender tu visión con entusiasmo.",
+                    "mensaje": "Tu alegría es contagiosa y el mundo la necesita. No te disculpes por brillar, por reír alto, por ser 'demasiado'. Eres exactamente suficiente."
                 },
                 4: {
-                    "ciclo": "CONSTRUCCIÓN Y DISCIPLINA",
-                    "energia": "Año de trabajo duro, estabilidad y estructura",
-                    "que_hacer": ["Construir bases sólidas", "Ser disciplinada", "Organizarte", "Trabajar constante"],
-                    "evitar": ["Resistir el trabajo necesario", "Buscar atajos", "Desorganización"],
-                    "amor": "Compromiso serio, estabilidad, construir futuro juntos",
-                    "trabajo": "Proyectos de largo plazo, inversiones, construir tu imperio",
-                    "mensaje": "Este año construyes el futuro que quieres. Vale la pena el esfuerzo."
+                    "ciclo": "CONSTRUCCIÓN Y ESTABILIDAD",
+                    "energia": "Año de trabajo duro, disciplina y construir bases sólidas. Lo que construyas ahora durará décadas.",
+                    "que_hacer": [
+                        "Crear rutinas y estructuras que te sirvan",
+                        "Trabajar con disciplina hacia metas a largo plazo",
+                        "Invertir en tu salud, finanzas y educación",
+                        "Construir tu 'imperio' paso a paso"
+                    ],
+                    "evitar": [
+                        "Buscar atajos o resultados instantáneos",
+                        "Descuidar tu salud por trabajar en exceso",
+                        "Resistirte al trabajo duro necesario"
+                    ],
+                    "amor": "Compromiso serio, construir un hogar juntos, planear el futuro. Es año de solidificar, no de experimentar. Estabilidad sobre pasión.",
+                    "trabajo": "Trabajo intenso pero resultados tangibles. Construyes tu reputación profesional. Promociones vienen por mérito, no por suerte. Persiste.",
+                    "mensaje": "Cada día que trabajas en silencio, estás construyendo tu legado. Confía en el proceso lento. Los cimientos fuertes no se construyen rápido."
                 },
                 5: {
                     "ciclo": "CAMBIO Y LIBERTAD",
-                    "energia": "Año de transformación, aventura y movimiento",
-                    "que_hacer": ["Abrazar el cambio", "Viajar", "Probar cosas nuevas", "Ser flexible"],
-                    "evitar": ["Resistir lo nuevo", "Quedarte por miedo", "Rutina excesiva"],
-                    "amor": "Nuevas experiencias, libertad en relaciones, pasión renovada",
-                    "trabajo": "Cambios de carrera, viajes laborales, flexibilidad, nuevas oportunidades",
-                    "mensaje": "El cambio que temes es exactamente lo que necesitas."
+                    "energia": "¡Año de aventura, cambio y libertad! Todo lo que ha estado estancado finalmente se mueve. Abraza lo inesperado.",
+                    "que_hacer": [
+                        "Abrazar el cambio en lugar de resistirlo",
+                        "Viajar, explorar nuevos lugares y culturas",
+                        "Probar cosas nuevas fuera de tu zona de confort",
+                        "Ser flexible y adaptarte rápidamente"
+                    ],
+                    "evitar": [
+                        "Resistir lo nuevo por apego a lo conocido",
+                        "Quedarte en situaciones por miedo al cambio",
+                        "Caer en rutinas excesivas o aburrimiento"
+                    ],
+                    "amor": "Nuevas experiencias en el amor, quizás relaciones inesperadas. Si estás en pareja, viajen juntos, rompan la rutina. Necesitas libertad.",
+                    "trabajo": "Cambios de carrera, nuevas oportunidades, viajes de negocios. Tu versatilidad es tu mayor activo. No te ates a lo seguro, arriesga.",
+                    "mensaje": "El cambio que temes es exactamente lo que necesitas. Suelta el control. La vida te está llevando hacia algo mejor, confía en el viaje."
                 },
                 6: {
-                    "ciclo": "RESPONSABILIDAD Y SERVICIO",
-                    "energia": "Año de familia, hogar, amor y sanación",
-                    "que_hacer": ["Cuidar a otros (sin perderte)", "Crear hogar", "Sanar relaciones", "Ser compasiva"],
-                    "evitar": ["Sacrificarte hasta agotarte", "Descuidarte a ti misma", "Controlar todo"],
-                    "amor": "Matrimonio, compromiso profundo, familia, amor incondicional",
-                    "trabajo": "Roles de cuidado, consejería, servicio, humanizar tu trabajo",
-                    "mensaje": "Cuida a otros, pero cuídate PRIMERO. No puedes dar desde el vacío."
+                    "ciclo": "RESPONSABILIDAD Y AMOR",
+                    "energia": "Año de familia, hogar, relaciones y servicio. Te llamarán a ser pilar de apoyo para otros. Tu corazón se expande.",
+                    "que_hacer": [
+                        "Nutrir tus relaciones más cercanas",
+                        "Crear un hogar hermoso y acogedor",
+                        "Servir a tu comunidad desde el amor",
+                        "Sanar relaciones familiares o de pareja"
+                    ],
+                    "evitar": [
+                        "Sacrificarte hasta el punto de agotamiento",
+                        "Descuidar tus propias necesidades por cuidar a otros",
+                        "Cargar con responsabilidades que no te corresponden"
+                    ],
+                    "amor": "Compromiso profundo, matrimonio, hijos, construir familia. Tu capacidad de amar incondicionalmente se expande. Das y recibes amor puro.",
+                    "trabajo": "Roles de cuidado, educación, sanación, consejería. Tu empatía es tu fortaleza profesional. Trabajos que impactan vidas directamente.",
+                    "mensaje": "Tu amor sana mundos. Pero recuerda: no puedes servir desde un vaso vacío. Cuídate primero para poder cuidar a otros desde la plenitud."
                 },
                 7: {
-                    "ciclo": "INTROSPECCIÓN Y SABIDURÍA",
-                    "energia": "Año de espiritualidad, análisis profundo y soledad sagrada",
-                    "que_hacer": ["Meditar", "Estudiar", "Conectar contigo", "Buscar respuestas internas"],
-                    "evitar": ["Aislarte por miedo", "Sobreanalizar", "Desconectar del mundo"],
-                    "amor": "Conexiones profundas del alma, menos cantidad pero más calidad",
-                    "trabajo": "Investigación, escritura, roles especializados, consultoría",
-                    "mensaje": "Tu soledad no es tristeza. Es el universo dándote tiempo para despertar."
+                    "ciclo": "INTROSPECCIÓN Y ESPIRITUALIDAD",
+                    "energia": "Año de retiro interno, búsqueda espiritual y profundización. No es año de acción externa, sino de sabiduría interna.",
+                    "que_hacer": [
+                        "Dedicar tiempo a la meditación y reflexión",
+                        "Estudiar temas espirituales o filosóficos profundos",
+                        "Confiar en tu intuición sobre la lógica",
+                        "Buscar soledad consciente para reconectarte"
+                    ],
+                    "evitar": [
+                        "Forzarte a socializar cuando necesitas soledad",
+                        "Ignorar tu voz interior por presión externa",
+                        "Llenar tu vida de ruido y distracciones"
+                    ],
+                    "amor": "Conexiones profundas del alma sobre romance superficial. Puede ser año de soledad necesaria o de conocer a alguien espiritualmente afín.",
+                    "trabajo": "Trabajo interno, investigación, escritura, estudios. No es año de grandes lanzamientos, sino de preparación silenciosa. Confía en el proceso.",
+                    "mensaje": "No todos te entenderán este año, y está bien. Estás en un viaje interno que pocos comprenden. Tu soledad no es aislamiento, es iniciación."
                 },
                 8: {
                     "ciclo": "PODER Y ABUNDANCIA",
-                    "energia": "Año de éxito material, autoridad y manifestación",
-                    "que_hacer": ["Ir por lo grande", "Manifestar abundancia", "Liderar con poder", "Invertir"],
-                    "evitar": ["Sabotearte por 'no merecer'", "Abusar del poder", "Obsesionarte con dinero"],
-                    "amor": "Relaciones poderosas, igualdad, respeto mutuo, abundancia compartida",
-                    "trabajo": "Ascensos, negocios grandes, autoridad, recompensas financieras",
-                    "mensaje": "El dinero y el poder NO son malos. Úsalos para elevar."
+                    "energia": "¡Año de manifestación material y poder personal! Todo tu trabajo previo se materializa. Es tiempo de recibir recompensas.",
+                    "que_hacer": [
+                        "Reclamar tu poder personal sin disculpas",
+                        "Negociar por lo que mereces (dinero, respeto, reconocimiento)",
+                        "Invertir inteligentemente en tu futuro",
+                        "Liderar con autoridad y confianza"
+                    ],
+                    "evitar": [
+                        "Abusar de tu poder o manipular a otros",
+                        "Volverte workaholic y descuidar tu alma",
+                        "Conformarte con menos de lo que mereces"
+                    ],
+                    "amor": "Relaciones de poder equilibrado. Atraes pareja exitosa y ambiciosa. Si estás en pareja, construyen imperio juntos. Respeto mutuo es clave.",
+                    "trabajo": "Promociones importantes, aumentos de salario, reconocimiento público. Tu liderazgo y ética de trabajo son recompensados. Cosechas lo sembrado.",
+                    "mensaje": "Mereces el éxito que llega. No lo minimices ni te disculpes por tu abundancia. Usa tu poder para elevar a otros, no para dominarlos."
                 },
                 9: {
                     "ciclo": "FINALIZACIÓN Y LIBERACIÓN",
-                    "energia": "Año de cierre de ciclos, compasión universal y transformación",
-                    "que_hacer": ["Soltar lo viejo", "Perdonar", "Cerrar capítulos", "Servir al mundo"],
-                    "evitar": ["Aferrarte a lo que murió", "Resistir el final", "Amargura"],
-                    "amor": "Cierres necesarios, dejar ir relaciones tóxicas, amor más sabio",
-                    "trabajo": "Terminar proyectos, transiciones, legados, compartir sabiduría",
-                    "mensaje": "Suelta con amor. Lo que se va hace espacio para lo que viene."
+                    "energia": "Año de cierres, finales y soltar. Lo que ya no te sirve se cae. Confía en los finales, son sagrados y necesarios.",
+                    "que_hacer": [
+                        "Soltar conscientemente lo que ya cumplió su propósito",
+                        "Perdonar profundamente (a ti y a otros)",
+                        "Cerrar capítulos con gratitud, no amargura",
+                        "Servir al mundo desde tu sabiduría acumulada"
+                    ],
+                    "evitar": [
+                        "Aferrarte a relaciones, trabajos o situaciones muertas",
+                        "Resistir los finales naturales por miedo",
+                        "Cargar resentimiento en lugar de liberar con amor"
+                    ],
+                    "amor": "Cierres de relaciones tóxicas necesarios. Si estás en pareja sana, profundizan desde sabiduría. Amor más maduro y compasivo.",
+                    "trabajo": "Terminar proyectos largos, transiciones de carrera, jubilaciones. No inicies cosas nuevas aún, finaliza lo pendiente con excelencia.",
+                    "mensaje": "Suelta con amor. Lo que se va hace espacio para lo nuevo. Cada final es un comienzo disfrazado. Confía en la muerte necesaria de ciclos."
                 },
                 11: {
                     "ciclo": "ILUMINACIÓN ESPIRITUAL",
-                    "energia": "Año de maestría, intuición elevada y misión del alma",
-                    "que_hacer": ["Confiar en tu intuición", "Ser luz para otros", "Meditar", "Enseñar"],
-                    "evitar": ["Dudar de tus visiones", "Esconder tus dones", "Sobreestimularte"],
-                    "amor": "Conexiones kármicas, almas gemelas, amor espiritual profundo",
-                    "trabajo": "Liderazgo espiritual, guía, inspirar a otros, innovación",
-                    "mensaje": "Tu sensibilidad extrema es tu superpoder. Úsala para iluminar."
+                    "energia": "Año maestro de intuición elevada, misión espiritual y liderazgo inspirador. Eres canal de luz para otros.",
+                    "que_hacer": [
+                        "Confiar PROFUNDAMENTE en tu intuición",
+                        "Compartir tu luz y enseñanzas con el mundo",
+                        "Meditar y conectar con tu guía espiritual",
+                        "Ser ejemplo vivo de tus valores más altos"
+                    ],
+                    "evitar": [
+                        "Dudar de tus visiones o percepciones extrasensoriales",
+                        "Esconder tus dones espirituales por miedo al juicio",
+                        "Sobreestimularte, necesitas mucha paz"
+                    ],
+                    "amor": "Conexiones kármicas profundas, encuentros de almas gemelas. Relaciones que elevan tu vibración. Amor espiritual y trascendente.",
+                    "trabajo": "Liderazgo espiritual, enseñanza, sanación, guía. Inspiras a otros con tu presencia. Tu trabajo tiene propósito superior, no solo dinero.",
+                    "mensaje": "Tu sensibilidad extrema no es debilidad, es tu superpoder. Viniste a iluminar, no a encajar. Brilla sin disculpas, el mundo necesita tu luz."
                 },
                 22: {
                     "ciclo": "MAESTRO CONSTRUCTOR",
-                    "energia": "Año de manifestación masiva, construcción de legados",
-                    "que_hacer": ["Construir grandes proyectos", "Materializar sueños", "Pensar en grande", "Dejar huella"],
-                    "evitar": ["Abrumarte por la magnitud", "Dudar de tu capacidad", "Pensar pequeño"],
-                    "amor": "Construir imperio juntos, relaciones transformadoras, amor práctico",
-                    "trabajo": "Proyectos enormes, liderazgo visionario, construir algo duradero",
-                    "mensaje": "Construyes imperios. No olvides vivir mientras lo haces."
+                    "energia": "Año maestro de manifestación material a gran escala. Construyes legados que trascienden tu vida. Poder máximo.",
+                    "que_hacer": [
+                        "Pensar en GRANDE, sin límites mentales",
+                        "Construir proyectos que sirvan a la humanidad",
+                        "Combinar espiritualidad con acción práctica",
+                        "Liderar con visión y ejecución impecable"
+                    ],
+                    "evitar": [
+                        "Abrumarte por la magnitud de tu misión",
+                        "Dudar de tu capacidad de materializar lo enorme",
+                        "Pensar pequeño por miedo o inseguridad"
+                    ],
+                    "amor": "Pareja que construye imperio contigo. Relaciones que transforman el mundo juntos. Amor como combustible para tu misión.",
+                    "trabajo": "Proyectos enormes, liderazgo visionario, construcción de imperios. Dejas legado duradero. Piensas en décadas, no en años.",
+                    "mensaje": "Naciste para construir imperios. No te asuste la grandeza de tu visión, es tu destino. Pero recuerda vivir mientras construyes."
                 }
             }
             
-            if suma_total in anos_info:
-                info_ano = anos_info[suma_total]
-                info_base = self.NUMEROS_BASE.get(suma_total, {})
-                
-                return f"""
+            info_base = self.NUMEROS_BASE.get(suma_total, {"nombre": "Número Especial"})
+            info_ano = anos_info.get(suma_total, anos_info[1])
+            
+            return f"""
 🔢✨ **TU AÑO PERSONAL {anio_actual}: {suma_total}**
 *{info_base.get('nombre', 'Número Especial')}*
 
@@ -3325,8 +3423,6 @@ Día {dia} + Mes {mes} + Año {anio_actual} = {suma_total}
 💛 Este ciclo dura hasta tu cumpleaños de {anio_actual + 1}.
 Después entrarás en Año Personal {(suma_total % 9) + 1 if suma_total <= 9 else 1}.
 """
-            
-            return f"Tu año personal es: {suma_total}"
         
         except Exception as e:
             return f"❌ Error: {str(e)}"
@@ -3369,143 +3465,196 @@ Después entrarás en Año Personal {(suma_total % 9) + 1 if suma_total <= 9 els
             lookup1 = 2 if suma1 == 11 else (4 if suma1 == 22 else suma1)
             lookup2 = 2 if suma2 == 11 else (4 if suma2 == 22 else suma2)
             
-            # Matriz de compatibilidad (COMPLETA)
+            # Matriz de compatibilidad COMPLETA
             compatibilidades = {
-                (1, 1): {"nivel": "🔥 80%", "dinamica": "Dos líderes poderosos. Competencia o equipo imparable.", 
-                         "fortalezas": "Ambición compartida, energía intensa", "desafios": "Choque de egos",
+                (1, 1): {"nivel": "🔥 80% - ALTA", "dinamica": "Dos líderes poderosos. Competencia o equipo imparable.", 
+                         "fortalezas": "Ambición compartida, energía intensa, respeto mutuo",
+                         "desafios": "Choque de egos, necesidad de liderar ambos",
                          "consejo": "Definan roles claros. Compartan el liderazgo."},
-                (1, 2): {"nivel": "💫 70%", "dinamica": "Uno lidera, otro apoya. Balance perfecto si hay respeto.",
-                         "fortalezas": "Complementariedad natural", "desafios": "1 puede dominar",
+                (1, 2): {"nivel": "💫 70% - BUENA", "dinamica": "Uno lidera, otro apoya. Balance perfecto si hay respeto.",
+                         "fortalezas": "Complementariedad natural, balance acción-sensibilidad",
+                         "desafios": "1 puede dominar, 2 puede sentirse opacado",
                          "consejo": "Valoren sus diferencias como fortalezas."},
-                (1, 3): {"nivel": "✨ 85%", "dinamica": "Energía creativa explosiva. Diversión constante.",
-                         "fortalezas": "Optimismo, creatividad, aventura", "desafios": "Pueden dispersarse",
+                (1, 3): {"nivel": "✨ 85% - MUY ALTA", "dinamica": "Energía creativa explosiva. Diversión y acción constante.",
+                         "fortalezas": "Optimismo, creatividad, aventura compartida",
+                         "desafios": "Pueden dispersarse, falta de practicidad",
                          "consejo": "Agreguen estructura a su caos creativo."},
-                (1, 4): {"nivel": "⚡ 60%", "dinamica": "Choque entre libertad y estructura.",
-                         "fortalezas": "1 aporta visión, 4 ejecución", "desafios": "Ritmos diferentes",
+                (1, 4): {"nivel": "⚡ 60% - MEDIA", "dinamica": "Choque entre libertad y estructura. Requiere trabajo.",
+                         "fortalezas": "1 aporta visión, 4 aporta ejecución",
+                         "desafios": "Ritmos muy diferentes, frustración mutua",
                          "consejo": "Aprendan del otro. Encuentren punto medio."},
-                (1, 5): {"nivel": "🔥 90%", "dinamica": "Aventura y libertad compartida. Conexión magnética.",
-                         "fortalezas": "Independencia, aventura", "desafios": "Falta de compromiso",
-                         "consejo": "Creen raíces conscientes."},
-                (1, 6): {"nivel": "💛 75%", "dinamica": "1 es independiente, 6 es protector.",
-                         "fortalezas": "6 cuida, 1 lidera", "desafios": "1 necesita espacio",
-                         "consejo": "Negocien espacio y tiempo juntos."},
-                (1, 7): {"nivel": "🌙 65%", "dinamica": "Mundos diferentes. Uno externo, otro interno.",
-                         "fortalezas": "Respeto intelectual", "desafios": "7 necesita soledad",
+                (1, 5): {"nivel": "🔥 90% - EXCELENTE", "dinamica": "Aventura y libertad compartida. Conexión magnética.",
+                         "fortalezas": "Independencia, aventura, cambio constante",
+                         "desafios": "Falta de compromiso, inestabilidad",
+                         "consejo": "Creen raíces conscientes en medio de la aventura."},
+                (1, 6): {"nivel": "💛 75% - ALTA", "dinamica": "1 es independiente, 6 es protector. Balance si hay respeto.",
+                         "fortalezas": "6 cuida, 1 lidera. Familia sólida.",
+                         "desafios": "1 necesita espacio, 6 necesita cercanía",
+                         "consejo": "Negocien espacio personal y tiempo juntos."},
+                (1, 7): {"nivel": "🌙 65% - MEDIA CON ESFUERZO", "dinamica": "Mundos diferentes. Uno externo, otro interno.",
+                         "fortalezas": "Respeto intelectual, crecimiento mutuo",
+                         "desafios": "7 necesita soledad que 1 no entiende",
                          "consejo": "Respeten profundamente sus diferencias."},
-                (1, 8): {"nivel": "💰 85%", "dinamica": "Poder y ambición compartida. Imperio juntos.",
-                         "fortalezas": "Éxito material, metas compartidas", "desafios": "Competencia",
+                (1, 8): {"nivel": "💰 85% - MUY ALTA", "dinamica": "Poder y ambición compartida. Imperio juntos.",
+                         "fortalezas": "Éxito material, metas compartidas, poder",
+                         "desafios": "Competencia, workaholics, conflictos de poder",
                          "consejo": "Construyan juntos, no compitan."},
-                (1, 9): {"nivel": "🌟 70%", "dinamica": "Uno inicia, otro finaliza.",
-                         "fortalezas": "1 aporta energía, 9 sabiduría", "desafios": "Ritmos opuestos",
+                (1, 9): {"nivel": "🌟 70% - BUENA", "dinamica": "Uno inicia, otro finaliza. Ciclos complementarios.",
+                         "fortalezas": "1 aporta energía, 9 aporta sabiduría",
+                         "desafios": "9 suelta, 1 agarra. Ritmos opuestos.",
                          "consejo": "Aprendan de los ciclos del otro."},
-                (2, 2): {"nivel": "💕 85%", "dinamica": "Sensibilidad compartida.",
-                         "fortalezas": "Empatía profunda, paz", "desafios": "Demasiada sensibilidad",
-                         "consejo": "Túrnense para tomar decisiones."},
-                (2, 3): {"nivel": "🎨 80%", "dinamica": "Creatividad y empatía.",
-                         "fortalezas": "Comunicación, creatividad", "desafios": "Evitan conflictos",
-                         "consejo": "Enfrenten problemas directamente."},
-                (2, 4): {"nivel": "🏡 75%", "dinamica": "Estabilidad perfecta. 2 aporta amor, 4 seguridad.",
-                         "fortalezas": "Hogar sólido, lealtad", "desafios": "2 necesita emoción",
-                         "consejo": "4: Muestra más afecto."},
-                (2, 5): {"nivel": "💫 60%", "dinamica": "Sensibilidad vs libertad.",
-                         "fortalezas": "2 ancla, 5 eleva", "desafios": "5 necesita espacio",
-                         "consejo": "Respeten necesidades opuestas."},
-                (2, 6): {"nivel": "💚 90%", "dinamica": "Amor profundo y cuidado mutuo.",
-                         "fortalezas": "Familia, hogar, amor incondicional", "desafios": "Codependencia",
-                         "consejo": "Mantengan identidad individual."},
-                (2, 7): {"nivel": "🌊 85%", "dinamica": "Profundidad emocional y espiritual.",
-                         "fortalezas": "Conexión mística", "desafios": "Ambos necesitan soledad",
-                         "consejo": "Hablen más de lo necesario."},
-                (2, 8): {"nivel": "⚖️ 65%", "dinamica": "Sensibilidad vs poder.",
-                         "fortalezas": "2 humaniza a 8, 8 empodera a 2", "desafios": "Prioridades opuestas",
+                
+                (2, 2): {"nivel": "💕 85% - MUY ALTA", "dinamica": "Sensibilidad compartida. Se entienden sin palabras.",
+                         "fortalezas": "Empatía profunda, paz, intuición compartida",
+                         "desafios": "Demasiada sensibilidad, falta de acción",
+                         "consejo": "Necesitan alguien que tome decisiones. Túrnense."},
+                (2, 3): {"nivel": "🎨 80% - ALTA", "dinamica": "Creatividad y empatía. Conexión hermosa y ligera.",
+                         "fortalezas": "Comunicación, creatividad, alegría",
+                         "desafios": "Falta de practicidad, evitan conflictos",
+                         "consejo": "Enfrenten problemas en lugar de evitarlos."},
+                (2, 4): {"nivel": "🏡 75% - ALTA", "dinamica": "Estabilidad perfecta. 2 aporta amor, 4 seguridad.",
+                         "fortalezas": "Hogar sólido, lealtad, construcción conjunta",
+                         "desafios": "2 necesita emoción que 4 no da fácil",
+                         "consejo": "4: Muestra más afecto. 2: Valora la estabilidad."},
+                (2, 5): {"nivel": "💫 60% - MEDIA", "dinamica": "Sensibilidad vs libertad. Difícil pero enriquecedor.",
+                         "fortalezas": "2 ancla, 5 eleva. Balance posible.",
+                         "desafios": "5 necesita espacio, 2 necesita cercanía",
+                         "consejo": "Respeten necesidades opuestas con amor."},
+                (2, 6): {"nivel": "💚 90% - EXCELENTE", "dinamica": "Amor profundo y cuidado mutuo. Conexión del alma.",
+                         "fortalezas": "Familia, hogar, amor incondicional, empatía",
+                         "desafios": "Codependencia, pueden perderse en el otro",
+                         "consejo": "Mantengan identidad individual. Límites sanos."},
+                (2, 7): {"nivel": "🌊 85% - MUY ALTA", "dinamica": "Profundidad emocional y espiritual única.",
+                         "fortalezas": "Conexión mística, intuición compartida",
+                         "desafios": "Ambos necesitan soledad, comunicación limitada",
+                         "consejo": "Hablen más de lo que creen necesario."},
+                (2, 8): {"nivel": "⚖️ 65% - MEDIA CON ESFUERZO", "dinamica": "Sensibilidad vs poder. Mundos muy distintos.",
+                         "fortalezas": "2 humaniza a 8, 8 empodera a 2",
+                         "desafios": "Prioridades opuestas, falta de comprensión",
                          "consejo": "Valoren lo que cada uno aporta."},
-                (2, 9): {"nivel": "💜 80%", "dinamica": "Compasión compartida.",
-                         "fortalezas": "Empatía universal", "desafios": "Pueden hundirse en emociones",
-                         "consejo": "Manténganse anclados."},
-                (3, 3): {"nivel": "🎉 85%", "dinamica": "Fiesta constante. Creatividad sin fin.",
-                         "fortalezas": "Diversión, creatividad, optimismo", "desafios": "Falta de seriedad",
-                         "consejo": "Agreguen estructura."},
-                (3, 4): {"nivel": "🔧 60%", "dinamica": "Creatividad vs estructura.",
-                         "fortalezas": "3 inspira, 4 materializa", "desafios": "Frustración mutua",
-                         "consejo": "Respeten tiempos diferentes."},
-                (3, 5): {"nivel": "🎈 90%", "dinamica": "Aventura y diversión máxima.",
-                         "fortalezas": "Cambio constante, alegría", "desafios": "Inestabilidad extrema",
-                         "consejo": "Anclen su amor."},
-                (3, 6): {"nivel": "🌸 75%", "dinamica": "Alegría y responsabilidad.",
-                         "fortalezas": "3 alivia a 6, 6 ancla a 3", "desafios": "6 se frustra con 3",
-                         "consejo": "3: Sé más responsable."},
-                (3, 7): {"nivel": "💭 55%", "dinamica": "Extraversión vs introversión.",
-                         "fortalezas": "3 saca a 7 de su cueva", "desafios": "Necesidades opuestas",
-                         "consejo": "Respeten necesidades de espacio."},
-                (3, 8): {"nivel": "💼 70%", "dinamica": "Creatividad y poder.",
-                         "fortalezas": "3 inspira, 8 ejecuta", "desafios": "8 muy serio para 3",
-                         "consejo": "Balanceen trabajo y diversión."},
-                (3, 9): {"nivel": "🌈 80%", "dinamica": "Creatividad y compasión.",
-                         "fortalezas": "Optimismo, crecimiento", "desafios": "9 carga peso que 3 no entiende",
-                         "consejo": "3: Sé más profundo."},
-                (4, 4): {"nivel": "🏗️ 80%", "dinamica": "Estabilidad absoluta.",
-                         "fortalezas": "Lealtad, trabajo duro", "desafios": "Rutina excesiva",
-                         "consejo": "Agreguen aventura."},
-                (4, 5): {"nivel": "⚡ 50%", "dinamica": "Estructura vs libertad.",
-                         "fortalezas": "4 ancla, 5 libera", "desafios": "Frustración extrema",
-                         "consejo": "Necesitan mucha paciencia."},
-                (4, 6): {"nivel": "💚 85%", "dinamica": "Familia y estabilidad perfecta.",
-                         "fortalezas": "Lealtad, hogar", "desafios": "Rutina excesiva",
-                         "consejo": "Mantengan viva la chispa."},
-                (4, 7): {"nivel": "📚 75%", "dinamica": "Estructura y sabiduría.",
-                         "fortalezas": "Ambos valoran profundidad", "desafios": "Demasiado serios",
-                         "consejo": "Agreguen ligereza."},
-                (4, 8): {"nivel": "💰 90%", "dinamica": "Trabajo y éxito. Imperio material.",
-                         "fortalezas": "Ambición, éxito", "desafios": "Workaholics",
-                         "consejo": "El éxito sin amor está vacío."},
-                (4, 9): {"nivel": "🌍 70%", "dinamica": "Construcción y finalización.",
-                         "fortalezas": "4 construye, 9 da propósito", "desafios": "Ritmos diferentes",
+                (2, 9): {"nivel": "💜 80% - ALTA", "dinamica": "Compasión compartida. Sanación mutua hermosa.",
+                         "fortalezas": "Empatía universal, crecimiento espiritual",
+                         "desafios": "Pueden hundirse en emociones juntos",
+                         "consejo": "Manténganse anclados. Busquen luz juntos."},
+                
+                (3, 3): {"nivel": "🎉 85% - MUY ALTA", "dinamica": "Fiesta constante. Creatividad y alegría sin fin.",
+                         "fortalezas": "Diversión, creatividad, optimismo, ligereza",
+                         "desafios": "Falta de seriedad, irresponsabilidad, dispersión",
+                         "consejo": "Agreguen estructura antes de que todo colapse."},
+                (3, 4): {"nivel": "🔧 60% - MEDIA", "dinamica": "Creatividad caótica vs estructura rígida.",
+                         "fortalezas": "3 inspira, 4 materializa. Pueden ser poderosos.",
+                         "desafios": "Frustración mutua constante, ritmos opuestos",
+                         "consejo": "Respeten tiempos diferentes. Paciencia."},
+                (3, 5): {"nivel": "🎈 90% - EXCELENTE", "dinamica": "Aventura, libertad y diversión máxima.",
+                         "fortalezas": "Cambio constante, alegría, espontaneidad",
+                         "desafios": "Inestabilidad extrema, falta de compromiso",
+                         "consejo": "Anclen su amor en algo sólido."},
+                (3, 6): {"nivel": "🌸 75% - ALTA", "dinamica": "Alegría y responsabilidad. Balance hermoso.",
+                         "fortalezas": "3 alivia a 6, 6 ancla a 3. Familia feliz.",
+                         "desafios": "6 se frustra con ligereza de 3",
+                         "consejo": "3: Sé más responsable. 6: Relájate más."},
+                (3, 7): {"nivel": "💭 55% - MEDIA BAJA", "dinamica": "Extraversión vs introversión. Muy diferentes.",
+                         "fortalezas": "3 saca a 7 de su cueva, 7 da profundidad a 3",
+                         "desafios": "Necesidades sociales opuestas",
+                         "consejo": "Respeten necesidades de espacio/compañía."},
+                (3, 8): {"nivel": "💼 70% - BUENA", "dinamica": "Creatividad y poder. Pueden construir algo grande.",
+                         "fortalezas": "3 inspira, 8 ejecuta. Negocios creativos.",
+                         "desafios": "8 muy serio para 3, 3 muy ligero para 8",
+                         "consejo": "Aprendan a balancear trabajo y diversión."},
+                (3, 9): {"nivel": "🌈 80% - ALTA", "dinamica": "Creatividad y compasión. Conexión hermosa.",
+                         "fortalezas": "Optimismo, crecimiento, humanidad",
+                         "desafios": "9 carga peso que 3 no entiende",
+                         "consejo": "3: Sé más profundo. 9: Sé más ligero."},
+                
+                (4, 4): {"nivel": "🏗️ 80% - ALTA", "dinamica": "Estabilidad absoluta. Construyen imperio juntos.",
+                         "fortalezas": "Lealtad, trabajo duro, metas compartidas",
+                         "desafios": "Rutina excesiva, rigidez, falta de espontaneidad",
+                         "consejo": "Agreguen aventura o se estancarán."},
+                (4, 5): {"nivel": "⚡ 50% - BAJA", "dinamica": "Estructura vs libertad. Conflicto constante.",
+                         "fortalezas": "4 ancla, 5 libera. Pueden balancearse.",
+                         "desafios": "Frustración mutua extrema, incomprensión",
+                         "consejo": "Necesitan mucha paciencia y compromiso."},
+                (4, 6): {"nivel": "💚 85% - MUY ALTA", "dinamica": "Familia y estabilidad perfecta. Hogar sólido.",
+                         "fortalezas": "Lealtad, hogar, responsabilidad compartida",
+                         "desafios": "Rutina excesiva, falta de pasión",
+                         "consejo": "Mantengan viva la chispa romántica."},
+                (4, 7): {"nivel": "📚 75% - ALTA", "dinamica": "Estructura y sabiduría. Respeto profundo.",
+                         "fortalezas": "Ambos valoran profundidad y calidad",
+                         "desafios": "Pueden ser demasiado serios juntos",
+                         "consejo": "Agreguen ligereza y diversión."},
+                (4, 8): {"nivel": "💰 90% - EXCELENTE", "dinamica": "Trabajo y éxito. Imperio material garantizado.",
+                         "fortalezas": "Ambición, éxito, construcción de legado",
+                         "desafios": "Workaholics, descuidan relación por trabajo",
+                         "consejo": "El éxito sin amor está vacío. Equilibren."},
+                (4, 9): {"nivel": "🌍 70% - BUENA", "dinamica": "Construcción y finalización. Ciclos complementarios.",
+                         "fortalezas": "4 construye, 9 da propósito profundo",
+                         "desafios": "9 suelta, 4 agarra. Ritmos diferentes.",
                          "consejo": "Aprendan de las fases del otro."},
-                (5, 5): {"nivel": "🎢 85%", "dinamica": "Montaña rusa constante.",
-                         "fortalezas": "Libertad, cambio, aventura", "desafios": "Inestabilidad extrema",
-                         "consejo": "Anclen su amor."},
-                (5, 6): {"nivel": "⚖️ 60%", "dinamica": "Libertad vs responsabilidad.",
-                         "fortalezas": "5 libera a 6, 6 ancla a 5", "desafios": "6 necesita compromiso",
-                         "consejo": "Negocien libertad y compromiso."},
-                (5, 7): {"nivel": "🌙 70%", "dinamica": "Libertad externa e interna.",
-                         "fortalezas": "Ambos valoran independencia", "desafios": "Pueden distanciarse",
+                
+                (5, 5): {"nivel": "🎢 85% - MUY ALTA", "dinamica": "Montaña rusa constante. Aventura sin fin.",
+                         "fortalezas": "Libertad, cambio, aventura, pasión",
+                         "desafios": "Inestabilidad extrema, falta de compromiso",
+                         "consejo": "Anclen su amor o se perderán."},
+                (5, 6): {"nivel": "⚖️ 60% - MEDIA", "dinamica": "Libertad vs responsabilidad. Choque de valores.",
+                         "fortalezas": "5 libera a 6, 6 ancla a 5. Balance posible.",
+                         "desafios": "6 necesita compromiso, 5 necesita espacio",
+                         "consejo": "Negocien libertad y compromiso conscientemente."},
+                (5, 7): {"nivel": "🌙 70% - BUENA", "dinamica": "Libertad externa e interna. Respeto mutuo.",
+                         "fortalezas": "Ambos valoran independencia y crecimiento",
+                         "desafios": "Pueden distanciarse demasiado",
                          "consejo": "Hagan tiempo intencional juntos."},
-                (5, 8): {"nivel": "💼 75%", "dinamica": "Libertad y poder.",
-                         "fortalezas": "Ambición, energía", "desafios": "5 resiste control de 8",
-                         "consejo": "Respeten necesidades opuestas."},
-                (5, 9): {"nivel": "🌍 80%", "dinamica": "Libertad y compasión.",
-                         "fortalezas": "Aventura con propósito", "desafios": "Falta de estabilidad",
-                         "consejo": "Construyan algo estable."},
-                (6, 6): {"nivel": "💕 85%", "dinamica": "Amor y cuidado extremo.",
-                         "fortalezas": "Hogar perfecto, amor incondicional", "desafios": "Codependencia severa",
-                         "consejo": "Mantengan vida individual."},
-                (6, 7): {"nivel": "🏡 70%", "dinamica": "Cuidado y profundidad.",
-                         "fortalezas": "6 cuida, 7 profundiza", "desafios": "7 necesita soledad",
+                (5, 8): {"nivel": "💼 75% - ALTA", "dinamica": "Libertad y poder. Relación intensa y desafiante.",
+                         "fortalezas": "Ambición, energía, capacidad de cambio",
+                         "desafios": "5 resiste control de 8, 8 necesita estabilidad",
+                         "consejo": "Respeten necesidades opuestas con amor."},
+                (5, 9): {"nivel": "🌍 80% - ALTA", "dinamica": "Libertad y compasión. Viajes y crecimiento.",
+                         "fortalezas": "Aventura con propósito, humanitarismo",
+                         "desafios": "Falta de estabilidad material",
+                         "consejo": "Construyan algo estable entre tanto viaje."},
+                
+                (6, 6): {"nivel": "💕 85% - MUY ALTA", "dinamica": "Amor y cuidado mutuo extremo. Familia hermosa.",
+                         "fortalezas": "Hogar perfecto, amor incondicional, lealtad",
+                         "desafios": "Codependencia severa, pierden identidad",
+                         "consejo": "Mantengan vida individual. Límites sanos."},
+                (6, 7): {"nivel": "🏡 70% - BUENA", "dinamica": "Cuidado y profundidad. Conexión tranquila.",
+                         "fortalezas": "6 cuida, 7 profundiza. Hogar paz",
+                         "desafios": "7 necesita más soledad de la que 6 da",
                          "consejo": "6: Respeta su necesidad de soledad."},
-                (6, 8): {"nivel": "💼 75%", "dinamica": "Familia y éxito.",
-                         "fortalezas": "6 humaniza, 8 provee", "desafios": "8 trabaja demasiado",
-                         "consejo": "8: La familia necesita tu presencia."},
-                (6, 9): {"nivel": "💜 90%", "dinamica": "Amor universal y compasión.",
-                         "fortalezas": "Servicio, amor profundo", "desafios": "Pierden identidad cuidando a otros",
+                (6, 8): {"nivel": "💼 75% - ALTA", "dinamica": "Familia y éxito. Construyen legado juntos.",
+                         "fortalezas": "6 humaniza, 8 provee. Balance perfecto.",
+                         "desafios": "8 trabaja demasiado, 6 se siente solo",
+                         "consejo": "8: La familia necesita tu presencia, no solo dinero."},
+                (6, 9): {"nivel": "💜 90% - EXCELENTE", "dinamica": "Amor universal y compasión. Almas gemelas.",
+                         "fortalezas": "Servicio, amor profundo, familia y humanidad",
+                         "desafios": "Pueden perderse cuidando a todos menos a ellos",
                          "consejo": "Cuídense entre ustedes primero."},
-                (7, 7): {"nivel": "🔮 80%", "dinamica": "Profundidad mística.",
-                         "fortalezas": "Conexión espiritual", "desafios": "Demasiado aislados",
-                         "consejo": "Salgan de su cueva juntos."},
-                (7, 8): {"nivel": "💰 70%", "dinamica": "Sabiduría y poder.",
-                         "fortalezas": "7 asesora, 8 ejecuta", "desafios": "Ambos distantes emocionalmente",
-                         "consejo": "Conecten emocionalmente."},
-                (7, 9): {"nivel": "🌟 85%", "dinamica": "Sabiduría y compasión.",
-                         "fortalezas": "Crecimiento espiritual", "desafios": "Demasiado abstractos",
-                         "consejo": "Anclen su espiritualidad."},
-                (8, 8): {"nivel": "💰 85%", "dinamica": "Poder absoluto. Imperio o guerra.",
-                         "fortalezas": "Éxito masivo, ambición", "desafios": "Competencia destructiva",
+                
+                (7, 7): {"nivel": "🔮 80% - ALTA", "dinamica": "Profundidad mística. Silencio compartido sagrado.",
+                         "fortalezas": "Conexión espiritual, comprensión sin palabras",
+                         "desafios": "Demasiado aislados del mundo, falta comunicación",
+                         "consejo": "Salgan de su cueva juntos a veces."},
+                (7, 8): {"nivel": "💰 70% - BUENA", "dinamica": "Sabiduría y poder. Respeto intelectual profundo.",
+                         "fortalezas": "7 asesora, 8 ejecuta. Negocios sabios.",
+                         "desafios": "Ambos pueden ser distantes emocionalmente",
+                         "consejo": "Conecten emocionalmente, no solo mentalmente."},
+                (7, 9): {"nivel": "🌟 85% - MUY ALTA", "dinamica": "Sabiduría y compasión. Maestros espirituales.",
+                         "fortalezas": "Crecimiento espiritual, propósito profundo",
+                         "desafios": "Pueden vivir demasiado en lo abstracto",
+                         "consejo": "Anclen su espiritualidad en lo terrenal."},
+                
+                (8, 8): {"nivel": "💰 85% - MUY ALTA", "dinamica": "Poder absoluto. Imperio o guerra.",
+                         "fortalezas": "Éxito masivo, ambición compartida, logros",
+                         "desafios": "Competencia destructiva, falta de ternura",
                          "consejo": "El amor es más importante que ganar."},
-                (8, 9): {"nivel": "🌍 75%", "dinamica": "Poder y compasión.",
-                         "fortalezas": "8 materializa visión de 9", "desafios": "Valores diferentes",
-                         "consejo": "Respeten filosofías diferentes."},
-                (9, 9): {"nivel": "💜 90%", "dinamica": "Compasión universal. Almas viejas.",
-                         "fortalezas": "Amor incondicional", "desafios": "Pueden hundirse en dolor",
-                         "consejo": "No carguen más peso del que pueden."}
+                (8, 9): {"nivel": "🌍 75% - ALTA", "dinamica": "Poder y compasión. Balance material-espiritual.",
+                         "fortalezas": "8 materializa visión de 9, 9 humaniza a 8",
+                         "desafios": "Valores diferentes, uno suelta y otro agarra",
+                         "consejo": "Respeten filosofías de vida diferentes."},
+                
+                (9, 9): {"nivel": "💜 90% - EXCELENTE", "dinamica": "Compasión universal. Almas viejas juntas.",
+                         "fortalezas": "Amor incondicional, propósito compartido, sabiduría",
+                         "desafios": "Pueden hundirse en dolor del mundo juntos",
+                         "consejo": "No carguen más peso del que pueden. Busquen luz."}
             }
             
             # Obtener compatibilidad
@@ -3531,6 +3680,8 @@ Después entrarás en Año Personal {(suma_total % 9) + 1 if suma_total <= 9 els
 
 🎯 **COMPATIBILIDAD:** {comp['nivel']}
 
+━━━━━━━━━━━━━━━━━━━━━
+
 **💫 DINÁMICA DE LA RELACIÓN:**
 {comp['dinamica']}
 
@@ -3549,7 +3700,7 @@ Después entrarás en Año Personal {(suma_total % 9) + 1 if suma_total <= 9 els
 """
         
         except Exception as e:
-            return f"❌ Error: {str(e)}"
+            return f"❌ Error: {str(e)}"    
 # =====================================================
 # HANDLER IDEAS CON IA
 # =====================================================
