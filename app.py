@@ -2871,19 +2871,19 @@ Las retrogradaciones NO son negativas - son momentos de:
     def revolucion_solar(self, fecha_nacimiento, signo):
         """Análisis de revolución solar - tu nuevo año astrológico"""
         try:
-            # Convertimos la fecha de nacimiento a objeto datetime para cálculos
+            # Se convierte la fecha de nacimiento a objeto datetime para cálculos [cite: 427]
             nac = datetime.datetime.strptime(fecha_nacimiento, "%Y-%m-%d")
         except:
             return "❌ Formato de fecha inválido. Usa: AAAA-MM-DD"
         
         hoy = datetime.datetime.now()
         
-        # Calcular edad y próximo cumpleaños
+        # Se calcula la edad y el próximo cumpleaños [cite: 428]
         edad_actual = hoy.year - nac.year
         if (hoy.month, hoy.day) < (nac.month, nac.day):
             edad_actual -= 1
         
-        # Determinar cuándo es el próximo cumpleaños
+        # Determinación de cuándo es el próximo cumpleaños [cite: 428]
         proximo_cumple = datetime.datetime(hoy.year, nac.month, nac.day)
         if proximo_cumple < hoy:
             proximo_cumple = datetime.datetime(hoy.year + 1, nac.month, nac.day)
@@ -2891,7 +2891,7 @@ Las retrogradaciones NO son negativas - son momentos de:
         dias_para_cumple = (proximo_cumple - hoy).days
         signo = signo.lower().strip()
         
-        # Normalización de signos con tildes
+        # Normalización de signos para manejar tildes y variaciones [cite: 429]
         normalizaciones = {
             "geminis": "geminis", "géminis": "geminis",
             "cancer": "cancer", "cáncer": "cancer",
@@ -2904,44 +2904,40 @@ Las retrogradaciones NO son negativas - son momentos de:
         
         info_signo = self.SIGNOS_ZODIACALES[signo]
         
-        # --- Lógica de Fases del Año Personal ---
-        if dias_para_cumple <= 40:
-            fase = "PREPARACIÓN Y CIERRE"
-            energia = "🌱 Fase de Siembra Interna"
-            mensaje = "Estás en el 'invierno' de tu ciclo personal. Es el momento de soltar lo que ya no sirve y limpiar tu espacio energético para lo nuevo."
-            enfoque = "Introspección, cierre de capítulos pendientes y descanso."
-            
-        elif dias_para_cumple <= 130:
-            fase = "INICIO Y FLORECIMIENTO"
-            energia = "🌸 Fase de Brotes Nuevos"
-            mensaje = "Tu Sol personal se ha renovado recientemente. Tienes luz verde del universo para iniciar proyectos y mostrar tu verdadera esencia."
-            enfoque = "Nuevos comienzos, vitalidad y toma de iniciativa."
-            
-        elif dias_para_cumple <= 250:
+        # --- Lógica de Fases del Ciclo Anual ---
+        if dias_para_cumple <= 30:
+            fase = "PREPARACIÓN"
+            energia = "🌱 Siembra Interna"
+            mensaje = "Te encuentras en la fase final de tu ciclo actual. Es momento de soltar lo viejo y prepararte para tu renacimiento."
+            enfoque = "Cierre de ciclos, reflexión y gratitud."
+        elif dias_para_cumple <= 120:
+            fase = "INICIO"
+            energia = "🌸 Florecimiento"
+            mensaje = "Tu ciclo acaba de renovarse. Tienes la energía fresca para sembrar nuevas intenciones y proyectos."
+            enfoque = "Acción, nuevos comienzos y vitalidad."
+        elif dias_para_cumple <= 240:
             fase = "ESTABILIZACIÓN"
-            energia = "☀️ Fase de Plenitud Solar"
-            mensaje = "Te encuentras en la mitad de tu año. Las semillas que plantaste ya son visibles. Es momento de nutrir tus proyectos con disciplina."
-            enfoque = "Trabajo constante, salud física y consolidación de metas."
-            
+            energia = "☀️ Plenitud"
+            mensaje = "Estás en el centro de tu año personal. Es el momento de nutrir lo que iniciaste para que crezca con fuerza."
+            enfoque = "Constancia, trabajo y consolidación."
         else:
-            fase = "COSECHA Y EVALUACIÓN"
-            energia = "🍂 Fase de Frutos"
-            mensaje = "Estás empezando a recoger los resultados de tus acciones pasadas. Observa qué áreas de tu vida han prosperado y cuáles requieren ajustes."
-            enfoque = "Gratitud, compartir logros y análisis de resultados."
+            fase = "COSECHA"
+            energia = "🍂 Evaluación"
+            mensaje = "Empiezas a ver los frutos de tus esfuerzos anuales. Evalúa qué áreas han prosperado y cuáles necesitan ajustes."
+            enfoque = "Resultados, compartir y maduración."
         
         return f"""
-🎂 **REVOLUCIÓN SOLAR: TU CICLO PERSONAL**
+🎂 **REVOLUCIÓN SOLAR: TU AÑO PERSONAL**
 
 **Signo:** {info_signo['simbolo']} {signo.upper()}
-**Próximo Cumpleaños:** {proximo_cumple.strftime('%d de %B')}
-**Días restantes:** {dias_para_cumple} días
+**Próximo Cumpleaños:** {proximo_cumple.strftime('%d de %B')} ({dias_para_cumple} días)
 
 ━━━━━━━━━━━━━━━━━━━━━
 
-📊 **ESTADO ACTUAL:** {fase}
-✨ **Energía dominante:** {energia}
+📊 **FASE ACTUAL:** {fase}
+{energia}
 
-🔮 **MENSAJE PARA TI:**
+✨ **MENSAJE CÓSMICO:**
 {mensaje}
 
 💡 **ENFOQUE RECOMENDADO:**
@@ -2949,7 +2945,7 @@ Las retrogradaciones NO son negativas - son momentos de:
 
 ━━━━━━━━━━━━━━━━━━━━━
 
-💛 **Sabiduría de {signo.capitalize()}:** No olvides conectar con tus fortalezas: {info_signo['fortalezas']}.
+💛 **Sabiduría de {signo.capitalize()}:** Recuerda tus fortalezas naturales: {info_signo['fortalezas']}.
 """
 # =====================================================
 # HANDLER NUMEROLOGÍA
