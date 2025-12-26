@@ -1987,6 +1987,7 @@ _{carta['significado']}_
         
         if not self.openai_enabled:
             return f"""
+
 💕 **TIRADA DE AMOR**
 
 **Pregunta:** _{pregunta}_
@@ -2068,7 +2069,33 @@ Genera una lectura de amor profunda, compasiva y esperanzadora. Máximo 200 pala
 
 💜 El amor es un viaje, no un destino. Honra tu corazón.
 """
-    
+    def tirada_de_la_semana(self):
+        """Tirada de 7 cartas para los próximos 7 días"""
+        dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+        cartas_semana = []
+        
+        for dia in dias_semana:
+            carta = self._seleccionar_carta()
+            cartas_semana.append({
+                'dia': dia,
+                'carta': carta
+            })
+        
+        # Construir mensaje
+        resultado = "📅 **TIRADA DE LA SEMANA**\n\n"
+        
+        for item in cartas_semana:
+            emoji_dia = {"Lunes": "🌟", "Martes": "🔥", "Miércoles": "💫", "Jueves": "✨", "Viernes": "🎉", "Sábado": "🌙", "Domingo": "☀️"}
+            
+            resultado += f"{emoji_dia.get(item['dia'], '📆')} **{item['dia']}**\n"
+            resultado += f"🃏 {item['carta']['nombre']}"
+            if item['carta']['invertida']:
+                resultado += " (Invertida)"
+            resultado += f"\n_{item['carta']['significado']}_\n\n"
+        
+        resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n💜 Usa esta guía para navegar tu semana con conciencia."
+        
+        return resultado
     def tirada_trabajo_ia(self, pregunta):
         """Tirada profesional con 4 cartas"""
         if not pregunta:
@@ -5103,6 +5130,7 @@ else:
             
             opciones_tarot = [
                 ("✨", "Energía del Día", "energia", "tarot-icon"),
+                ("📅", "Tirada de la Semana", "semana", "libros-icon"),
                 ("🔮", "Tirada General", "tres_cartas", "libros-icon"),
                 ("💕", "Tirada de Amor", "amor", "frases-icon"),
                 ("💼", "Tirada de Trabajo", "trabajo", "finanzas-icon"),
@@ -5263,7 +5291,19 @@ else:
             if st.button("🔙 Volver al Menú", key="btn_tarot_volver_historial", use_container_width=True):
                 st.session_state.tarot_subview = "menu"
                 st.rerun()
+        elif st.session_state.tarot_subview == "semana":
+             st.markdown("### 📅 Tirada de la Semana")
+    st.markdown("<p style='color:#d8c9ff;'>Tu panorama para los próximos 7 días</p>", unsafe_allow_html=True)
     
+    if st.button("🔮 Generar Tirada Semanal", use_container_width=True, key="btn_tirada_semana"):
+        with st.spinner("🌟 Las cartas están revelando tu semana..."):
+            resultado = tarot.tirada_de_la_semana()
+        st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("🔙 Volver al Menú", key="btn_tarot_volver_semana", use_container_width=True):
+        st.session_state.tarot_subview = "menu"
+        st.rerun()
     # --- MÓDULO ASTROLOGÍA ---
     elif st.session_state.current_view == "astrologia":
         st.markdown("<div class='title-glow'>⭐ Astrología</div>", unsafe_allow_html=True)
