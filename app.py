@@ -2892,6 +2892,12 @@ Las retrogradaciones NO son negativas - son momentos de:
         signo = signo.lower().strip()
         if signo not in self.SIGNOS_ZODIACALES:
             return "❌ Signo no válido"
+        normalizaciones = {
+        "geminis": "geminis", "géminis": "geminis",
+        "cancer": "cancer", "cáncer": "cancer",
+        "escorpio": "escorpio", "escorpion": "escorpio"
+    }
+        signo = normalizaciones.get(signo, signo)
         
         info_signo = self.SIGNOS_ZODIACALES[signo]
         
