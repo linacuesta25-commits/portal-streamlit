@@ -2867,6 +2867,140 @@ Las retrogradaciones NO son negativas - son momentos de:
 """
         
         return resultado
+    def revolucion_solar(self, fecha_nacimiento, signo):
+        """Análisis de revolución solar - tu nuevo año astrológico"""
+        try:
+            nac = datetime.datetime.strptime(fecha_nacimiento, "%Y-%m-%d")
+        except:
+            return "❌ Formato de fecha inválido. Usa: AAAA-MM-DD"
+        
+        hoy = datetime.datetime.now()
+        
+        # Calcular edad y próximo cumpleaños
+        edad_actual = hoy.year - nac.year
+        if (hoy.month, hoy.day) < (nac.month, nac.day):
+            edad_actual -= 1
+        
+        # Próximo cumpleaños
+        proximo_cumple = datetime.datetime(hoy.year, nac.month, nac.day)
+        if proximo_cumple < hoy:
+            proximo_cumple = datetime.datetime(hoy.year + 1, nac.month, nac.day)
+        
+        dias_para_cumple = (proximo_cumple - hoy).days
+        
+        signo = signo.lower().strip()
+        if signo not in self.SIGNOS_ZODIACALES:
+            return "❌ Signo no válido"
+        
+        info_signo = self.SIGNOS_ZODIACALES[signo]
+        
+        # Determinar fase del ciclo (basado en días hasta cumpleaños)
+        if dias_para_cumple <= 30:
+            fase = "PREPARACIÓN"
+            energia = "🌱 Siembra"
+            mensaje = "Estás en la fase final de tu año actual. Es momento de cerrar ciclos, soltar lo viejo y prepararte para el renacimiento."
+            enfoque = "Reflexión, cierre de ciclos, gratitud por lo vivido"
+        elif dias_para_cumple <= 120:
+            fase = "INICIO"
+            energia = "🌸 Florecimiento"
+            mensaje = "Acabas de comenzar tu nuevo año solar. Energía fresca, nuevos comienzos, momento de plantar semillas para este ciclo."
+            enfoque = "Nuevos proyectos, establecer intenciones, iniciar cambios"
+        elif dias_para_cumple <= 240:
+            fase = "DESARROLLO"
+            energia = "☀️ Crecimiento"
+            mensaje = "Estás en pleno desarrollo de tu año solar. Las semillas plantadas están creciendo. Momento de acción y manifestación."
+            enfoque = "Trabajo constante, construir, materializar tus metas"
+        else:
+            fase = "COSECHA"
+            energia = "🍂 Maduración"
+            mensaje = "Estás en fase de cosecha. Los resultados de tu año se están manifestando. Tiempo de integrar lecciones."
+            enfoque = "Recoger frutos, evaluar logros, integrar aprendizajes"
+        
+        # Predicciones basadas en elemento del signo
+        elem = info_signo['elemento']
+        
+        predicciones = {
+            "Fuego": {
+                "general": "Año de acción, valentía y liderazgo. Tu energía estará en su punto máximo.",
+                "amor": "Pasión intensa. Conocerás gente nueva o reavivarás la chispa existente.",
+                "trabajo": "Oportunidades de liderazgo. Tu iniciativa será recompensada.",
+                "crecimiento": "Desarrollarás más confianza en ti mismo. Momento de brillar.",
+                "desafio": "Controla la impulsividad. No todo requiere acción inmediata."
+            },
+            "Tierra": {
+                "general": "Año de construcción sólida y logros materiales. Estabilidad y crecimiento.",
+                "amor": "Relaciones estables y duraderas. Compromiso y seguridad emocional.",
+                "trabajo": "Crecimiento financiero. Tu trabajo duro será reconocido.",
+                "crecimiento": "Aprenderás el valor de la paciencia y la perseverancia.",
+                "desafio": "No te estanques. Arriésgate a lo nuevo de vez en cuando."
+            },
+            "Aire": {
+                "general": "Año de conexiones, aprendizaje y comunicación. Expansión mental.",
+                "amor": "Conexiones intelectuales profundas. Comunicación abierta en relaciones.",
+                "trabajo": "Networking poderoso. Colaboraciones importantes. Ideas innovadoras.",
+                "crecimiento": "Tu mente se expandirá. Nuevas perspectivas cambiarán tu vida.",
+                "desafio": "Conecta con tus emociones. No todo es lógica."
+            },
+            "Agua": {
+                "general": "Año de profundidad emocional, intuición y sanación. Transformación del alma.",
+                "amor": "Conexiones del alma. Intimidad emocional profunda.",
+                "trabajo": "Tu empatía será tu superpoder. Trabajos creativos o de servicio florecen.",
+                "crecimiento": "Sanarás heridas antiguas. Crecimiento espiritual importante.",
+                "desafio": "Establece límites. No te pierdas en las emociones de otros."
+            }
+        }
+        
+        pred = predicciones[elem]
+        
+        return f"""
+🎂 **TU REVOLUCIÓN SOLAR {hoy.year}-{hoy.year + 1}**
+
+━━━━━━━━━━━━━━━━━━━━━
+
+👤 **Signo:** {signo.upper()} {info_signo['simbolo']}
+🎯 **Edad actual:** {edad_actual} años
+📅 **Próximo cumpleaños:** {proximo_cumple.strftime('%d de %B, %Y')}
+⏰ **Días hasta tu nuevo año:** {dias_para_cumple} días
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌟 **FASE ACTUAL: {fase}**
+{energia}
+
+{mensaje}
+
+**🎯 Enfoque recomendado:**
+{enfoque}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+📊 **PANORAMA DE TU AÑO SOLAR:**
+
+**🌈 ENERGÍA GENERAL:**
+{pred['general']}
+
+**💕 AMOR Y RELACIONES:**
+{pred['amor']}
+
+**💼 TRABAJO Y CARRERA:**
+{pred['trabajo']}
+
+**✨ CRECIMIENTO PERSONAL:**
+{pred['crecimiento']}
+
+**⚠️ DESAFÍO DEL AÑO:**
+{pred['desafio']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💫 **CONSEJO CÓSMICO:**
+
+Como {signo.capitalize()} de elemento {elem}, este año las estrellas te invitan a honrar tu esencia mientras te expandes más allá de tu zona de confort.
+
+🌟 Tu año solar es TU tiempo. Úsalo sabiamente.
+
+💜 ¡Feliz revolución solar! Que este nuevo ciclo traiga bendiciones.
+"""
 # =====================================================
 # HANDLER NUMEROLOGÍA
 # =====================================================
@@ -5761,6 +5895,7 @@ else:
                 ("🌙", "Fase Lunar", "luna", "tarot-icon"),
                 ("💫", "Compatibilidad", "compatibilidad", "frases-icon"),
                 ("🔄", "Retrogradaciones", "retrogradaciones", "ideas-icon"),
+                ("🎂", "Revolución Solar", "revolucion", "libros-icon"),
                 ("🏠", "Volver", "volver", "ideas-icon")
             ]
            
@@ -5836,7 +5971,36 @@ else:
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("🔙 Volver", key="btn_astro_volver_retro"):
                 st.session_state.astro_subview = "menu"
-                st.rerun()        
+                st.rerun()
+        elif st.session_state.astro_subview == "revolucion":
+            st.markdown("### 🎂 Revolución Solar")
+            st.markdown("<p style='color:#d8c9ff;'>Tu nuevo año astrológico - energías y predicciones para tu ciclo personal</p>", unsafe_allow_html=True)
+            
+            signos = ["Aries", "Tauro", "Géminis", "Cáncer", "Leo", "Virgo", "Libra", "Escorpio", "Sagitario", "Capricornio", "Acuario", "Piscis"]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fecha_nac = st.date_input(
+                    "Tu fecha de nacimiento:",
+                    value=datetime.date(1990, 1, 1),
+                    min_value=datetime.date(1900, 1, 1),
+                    max_value=datetime.date.today(),
+                    key="input_fecha_revolucion"
+                )
+            
+            with col2:
+                signo_rev = st.selectbox("Tu signo:", signos, key="select_signo_revolucion")
+            
+            if st.button("🌟 Ver Mi Revolución Solar", use_container_width=True, key="btn_revolucion_solar"):
+                fecha_str = fecha_nac.strftime("%Y-%m-%d")
+                resultado = astrologia.revolucion_solar(fecha_str, signo_rev)
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_astro_volver_rev"):
+                st.session_state.astro_subview = "menu"
+                st.rerun()                
     # --- MÓDULO NUMEROLOGÍA ---
     elif st.session_state.current_view == "numerologia":
         st.markdown("<div class='title-glow'>🔢 Numerología</div>", unsafe_allow_html=True)
