@@ -6081,13 +6081,11 @@ else:
             opciones_libros = [
                 ("🔍", "Buscar Libro", "buscar", "libros-icon"),
                 ("🎨", "Generar Arte", "arte", "ideas-icon"),
-                ("📖", "Info del Libro", "info", "notas-icon"),
                 ("⭐", "Mis Reseñas", "resenas", "frases-icon"),
                 ("🎯", "Reto Anual", "reto", "ideas-icon"),
                 ("📚", "Mis Estantes", "estantes", "libros-icon"),
                 ("📚", "Book Club", "bookclub", "biblia-icon"),
-                ("📝", "Otra Opción", "otra", "libros-icon"),
-                ("🏠", "Volver", "volver", "ideas-icon")
+            
             ]
             
             rows_libros = [opciones_libros[i:i+3] for i in range(0, len(opciones_libros), 3)]
@@ -6169,15 +6167,6 @@ else:
                 st.session_state.libros_subview = "menu"
                 st.session_state.libros_imagen = None
                 st.rerun()
-        
-        elif st.session_state.libros_subview == "info":
-            st.markdown("### 📖 Información del Libro")
-            st.info("✨ Usa la opción 'Buscar Libro' para obtener información detallada")
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver", key="btn_volver_info"):
-                st.session_state.libros_subview = "menu"
-                st.rerun()
-        
         elif st.session_state.libros_subview == "resenas":
             st.markdown("### ⭐ Mis Reseñas de Libros")
             
@@ -6762,11 +6751,7 @@ else:
                         st.progress(porc_leidos / 100)
                         st.caption(f"{porc_leidos:.1f}%")
             
-            # Botón volver
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver al Menú", key="btn_libros_volver_estantes"):
-                st.session_state.libros_subview = "menu"
-                st.rerun()
+           
 
            # --- MÓDULO FRASES ---
     elif st.session_state.current_view == "frases":
@@ -8141,5 +8126,4 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
-
 
