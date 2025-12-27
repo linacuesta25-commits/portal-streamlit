@@ -6751,12 +6751,270 @@ else:
                         st.progress(porc_leidos / 100)
                         st.caption(f"{porc_leidos:.1f}%")
             
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        if st.button("🔙 Volver", key="btn_volver_estantes"):
-                            st.session_state.libros_subview = "menu"
+    elif st.session_state.libros_subview == "estantes":
+            st.markdown("### 📚 Mis Estantes de Libros")
+            st.markdown("<p style='color:#d8c9ff;'>Organiza tu biblioteca personal</p>", unsafe_allow_html=True)
+            
+            # Tabs para las diferentes funciones
+            tab1, tab2, tab3, tab4 = st.tabs(["📖 Ver Estantes", "➕ Agregar Libro", "🔄 Mover Libro", "📊 Estadísticas"])
+            
+            # ==================== TAB 1: VER ESTANTES ====================
+            with tab1:
+                st.markdown("#### 📖 Tus Estantes")
+                
+                estantes = gestor_estantes.ver_estantes()
+                
+                # Estante: Por Leer
+                with st.expander("📚 **Por Leer** - " + str(len(estantes['por_leer'])) + " libros", expanded=True):
+                    if estantes['por_leer']:
+                        for libro in estantes['por_leer']:
+                            col1, col2, col3 = st.columns([3, 2, 1])
+                            with col1:
+                                st.markdown(f"**{libro['titulo']}**")
+                                if libro.get('autor'):
+                                    st.caption(f"✍️ {libro['autor']}")
+                            with col2:
+                                st.caption(f"📅 Agregado: {libro['fecha_agregado']}")
+                            with col3:
+                                if st.button("🗑️", key=f"del_porleer_{libro['id']}", help="Eliminar"):
+                                    exito, msg = gestor_estantes.eliminar_libro_de_estante(libro['titulo'])
+                                    if exito:
+                                        st.success(msg)
+                                        st.rerun()
+                            st.markdown("---")
+                    else:
+                        st.info("🔍 No hay libros en este estante")
+                
+                # Estante: Leyendo
+                with st.expander("📖 **Leyendo Ahora** - " + str(len(estantes['leyendo'])) + " libros", expanded=True):
+                    if estantes['leyendo']:
+                        for libro in estantes['leyendo']:
+                            col1, col2, col3 = st.columns([3, 2, 1])
+                            with col1:
+                                st.markdown(f"**{libro['titulo']}**")
+                                if libro.get('autor'):
+                                    st.caption(f"✍️ {libro['autor']}")
+                            with col2:
+                                if libro.get('fecha_inicio'):
+                                    st.caption(f"▶️ Inicio: {libro['fecha_inicio']}")
+                            with col3:
+                                if st.button("🗑️", key=f"del_leyendo_{libro['id']}", help="Eliminar"):
+                                    exito, msg = gestor_estantes.eliminar_libro_de_estante(libro['titulo'])
+                                    if exito:
+                                        st.success(msg)
+                                        st.rerun()
+                            st.markdown("---")
+                    else:
+                        st.info("🔍 No hay libros en este estante")
+                
+                # Estante: Leídos
+                with st.expander("✅ **Leídos** - " + str(len(estantes['leidos'])) + " libros", expanded=False):
+                    if estantes['leidos']:
+                        for libro in estantes['leidos']:
+                            col1, col2, col3 = st.columns([3, 2, 1])
+                            with col1:
+                                st.markdown(f"**{libro['titulo']}**")
+                                if libro.get('autor'):
+                                    st.caption(f"✍️ {libro['autor']}")
+                            with col2:
+                                if libro.get('fecha_finalizado'):
+                                    st.caption(f"✓ Finalizado: {libro['fecha_finalizado']}")
+                            with col3:
+                                if st.button("🗑️", key=f"del_leidos_{libro['id']}", help="Eliminar"):
+                                    exito, msg = gestor_estantes.eliminar_libro_de_estante(libro['titulo'])
+                                    if exito:
+                                        st.success(msg)
+                                        st.rerun()
+                            st.markdown("---")
+                    else:
+                        st.info("🔍 No hay libros en este estante")
+            
+            # ==================== TAB 2: AGREGAR LIBRO ====================
+            with tab2:
+                st.markdown("#### ➕ Agregar Nuevo Libro")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    nuevo_titulo = st.text_input("📖 Título del libro:", key="input_nuevo_titulo")
+                    nuevo_autor = st.text_input("✍️ Autor (opcional):", key="input_nuevo_autor")
+                
+                with col2:
+                    nuevo_estante = st.selectbox(
+                        "📚 ¿A qué estante agregar?",
+                        options=[
+                            ("por_leer", "📚 Por Leer"),
+                            ("leyendo", "📖 Leyendo Ahora"),
+                            ("leidos", "✅ Leídos")
+                        ],
+                        format_func=lambda x: x[1],
+                        key="select_nuevo_estante"
+                    )
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                if st.button("➕ Agregar Libro", use_container_width=True, key="btn_agregar_libro"):
+                    if nuevo_titulo.strip():
+                        exito, msg = gestor_estantes.agregar_libro_a_estante(
+                            nuevo_estante[0],
+                            nuevo_titulo,
+                            nuevo_autor
+                        )
+                        
+                        if exito:
+                            st.success(f"✅ {msg}")
+                            st.balloons()
                             st.rerun()
-
-           # --- MÓDULO FRASES ---
+                        else:
+                            st.error(f"❌ {msg}")
+                    else:
+                        st.warning("⚠️ Por favor, ingresa el título del libro")
+            
+            # ==================== TAB 3: MOVER LIBRO ====================
+            with tab3:
+                st.markdown("#### 🔄 Mover Libro entre Estantes")
+                
+                estantes = gestor_estantes.ver_estantes()
+                
+                # Crear lista de todos los libros con su estante actual
+                todos_libros = []
+                for estante_nombre, libros in estantes.items():
+                    for libro in libros:
+                        estante_display = {
+                            'por_leer': '📚 Por Leer',
+                            'leyendo': '📖 Leyendo',
+                            'leidos': '✅ Leídos'
+                        }[estante_nombre]
+                        
+                        todos_libros.append({
+                            'titulo': libro['titulo'],
+                            'autor': libro.get('autor', ''),
+                            'estante_actual': estante_nombre,
+                            'estante_display': estante_display,
+                            'display': f"{libro['titulo']} ({estante_display})"
+                        })
+                
+                if todos_libros:
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        libro_seleccionado = st.selectbox(
+                            "📖 Selecciona el libro:",
+                            options=todos_libros,
+                            format_func=lambda x: x['display'],
+                            key="select_libro_mover"
+                        )
+                    
+                    with col2:
+                        # Opciones de destino (excluyendo el estante actual)
+                        opciones_destino = [
+                            ("por_leer", "📚 Por Leer"),
+                            ("leyendo", "📖 Leyendo Ahora"),
+                            ("leidos", "✅ Leídos")
+                        ]
+                        
+                        opciones_filtradas = [
+                            opt for opt in opciones_destino 
+                            if opt[0] != libro_seleccionado['estante_actual']
+                        ]
+                        
+                        estante_destino = st.selectbox(
+                            "📚 Mover a:",
+                            options=opciones_filtradas,
+                            format_func=lambda x: x[1],
+                            key="select_estante_destino"
+                        )
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    
+                    if st.button("🔄 Mover Libro", use_container_width=True, key="btn_mover_libro"):
+                        exito, msg = gestor_estantes.mover_libro_entre_estantes(
+                            libro_seleccionado['titulo'],
+                            estante_destino[0]
+                        )
+                        
+                        if exito:
+                            st.success(f"✅ {msg}")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {msg}")
+                else:
+                    st.info("📚 No hay libros en tus estantes todavía. ¡Agrega algunos primero!")
+            
+            # ==================== TAB 4: ESTADÍSTICAS ====================
+            with tab4:
+                st.markdown("#### 📊 Estadísticas de Lectura")
+                
+                stats = gestor_estantes.estadisticas_estantes()
+                
+                # Métricas principales
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("📚 Por Leer", stats['por_leer'])
+                
+                with col2:
+                    st.metric("📖 Leyendo", stats['leyendo'])
+                
+                with col3:
+                    st.metric("✅ Leídos", stats['leidos'])
+                
+                with col4:
+                    st.metric("📊 Total", stats['total'])
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Estadística del año
+                st.markdown("### 🎯 Lectura Este Año")
+                col1, col2 = st.columns([1, 2])
+                
+                with col1:
+                    st.metric(
+                        "Libros leídos en 2024",
+                        stats['leidos_este_anio'],
+                        delta=None
+                    )
+                
+                with col2:
+                    if stats['leidos_este_anio'] > 0:
+                        progreso_anual = min(100, (stats['leidos_este_anio'] / 12) * 100)
+                        st.progress(progreso_anual / 100)
+                        st.caption(f"📈 Meta sugerida: 12 libros/año ({progreso_anual:.1f}% completado)")
+                    else:
+                        st.info("Aún no has terminado ningún libro este año. ¡Empieza uno!")
+                
+                # Distribución visual
+                if stats['total'] > 0:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.markdown("### 📊 Distribución de Libros")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    porc_por_leer = (stats['por_leer'] / stats['total']) * 100
+                    porc_leyendo = (stats['leyendo'] / stats['total']) * 100
+                    porc_leidos = (stats['leidos'] / stats['total']) * 100
+                    
+                    with col1:
+                        st.markdown(f"**📚 Por Leer**")
+                        st.progress(porc_por_leer / 100)
+                        st.caption(f"{porc_por_leer:.1f}%")
+                    
+                    with col2:
+                        st.markdown(f"**📖 Leyendo**")
+                        st.progress(porc_leyendo / 100)
+                        st.caption(f"{porc_leyendo:.1f}%")
+                    
+                    with col3:
+                        st.markdown(f"**✅ Leídos**")
+                        st.progress(porc_leidos / 100)
+                        st.caption(f"{porc_leidos:.1f}%")
+            
+            # Botón volver (fuera de todos los tabs)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_estantes"):
+                st.session_state.libros_subview = "menu"
+                st.rerun()  
+# --- MÓDULO FRASES ---
     elif st.session_state.current_view == "frases":
         st.markdown("<div class='title-glow'>💬 Frases</div>", unsafe_allow_html=True)
         
