@@ -6751,7 +6751,10 @@ else:
                         st.progress(porc_leidos / 100)
                         st.caption(f"{porc_leidos:.1f}%")
             
-           
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        if st.button("🔙 Volver", key="btn_volver_estantes"):
+                            st.session_state.libros_subview = "menu"
+                            st.rerun()
 
            # --- MÓDULO FRASES ---
     elif st.session_state.current_view == "frases":
