@@ -6084,7 +6084,7 @@ else:
                 ("📖", "Info del Libro", "info", "notas-icon"),
                 ("⭐", "Mis Reseñas", "resenas", "frases-icon"),
                 ("🎯", "Reto Anual", "reto", "ideas-icon"),
-                ("📚", "Mis Estantes", "estantes", "libros-icon")
+                ("📚", "Mis Estantes", "estantes", "libros-icon"),
                 ("📚", "Book Club", "bookclub", "biblia-icon"),
                 ("📝", "Otra Opción", "otra", "libros-icon"),
                 ("🏠", "Volver", "volver", "ideas-icon")
@@ -8141,4 +8141,5 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+
 
