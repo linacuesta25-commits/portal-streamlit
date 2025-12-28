@@ -833,7 +833,6 @@ class LocalNotasHandler:
 class LocalLibrosHandler:
     def __init__(self):
         self.GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes?q="
-        self.GOOGLE_BOOKS_API_KEY = "AIzaSyCuw-pxGSkC2MvdVwXIXAuCooAyAAQhtr0"
         self.OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
         self.openai_client = None
         self.openai_enabled = False
@@ -1437,6 +1436,80 @@ if __name__ == "__main__":
     
     # 3. Ver estadísticas
     print(gestor.estadisticas_estantes())
+
+    def randomizer_libros(self, descripcion):
+        """Genera 3 sugerencias de libros con IA + portadas"""
+        try:
+            from openai import OpenAI
+            import base64
+            import requests
+            from io import BytesIO
+            
+            client = OpenAI(api_key=self.OPENAI_API_KEY)
+            
+            # 1. Generar sugerencias con GPT
+            prompt = f"""Eres un experto librero. El usuario quiere leer algo así: "{descripcion}"
+
+Sugiere exactamente 3 LIBROS REALES (que existan) que encajen perfectamente con esa descripción.
+
+Para cada libro, responde SOLO en este formato JSON:
+{{
+  "libros": [
+    {{
+      "titulo": "Título exacto del libro",
+      "autor": "Nombre del autor",
+      "descripcion": "Por qué este libro encaja (máximo 2 líneas)",
+      "descripcion_portada": "Descripción visual de la portada original del libro para generar imagen"
+    }}
+  ]
+}}
+
+IMPORTANTE: 
+- Solo libros REALES que existan
+- Variedad (no 3 libros del mismo autor)
+- Descripción de portada debe ser fiel a la portada real del libro"""
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.8,
+                response_format={"type": "json_object"}
+            )
+            
+            import json
+            sugerencias = json.loads(response.choices[0].message.content)
+            libros = sugerencias.get("libros", [])
+            
+            if not libros or len(libros) < 3:
+                return None, "No pude generar sugerencias. Intenta con otra descripción."
+            
+            # 2. Generar portadas con DALL-E
+            imagenes = []
+            for libro in libros[:3]:
+                try:
+                    prompt_imagen = f"Book cover design: {libro['titulo']} by {libro['autor']}. {libro.get('descripcion_portada', 'Professional book cover design, clean and artistic')}"
+                    
+                    img_response = client.images.generate(
+                        model="dall-e-3",
+                        prompt=prompt_imagen,
+                        size="1024x1024",
+                        quality="standard",
+                        n=1
+                    )
+                    
+                    # Descargar la imagen
+                    img_url = img_response.data[0].url
+                    img_data = requests.get(img_url).content
+                    imagenes.append(img_data)
+                    
+                except Exception as e:
+                    print(f"Error generando imagen: {e}")
+                    imagenes.append(None)
+            
+            return libros[:3], imagenes
+            
+        except Exception as e:
+            return None, f"Error: {str(e)}"
 
 class LocalFrasesHandler:
     def __init__(self):
@@ -6469,7 +6542,7 @@ else:
             st.markdown("<p class='subtitle-text'>Tu biblioteca personal y generador de arte.</p>", unsafe_allow_html=True)
             
             opciones_libros = [
-                ("🔍", "Buscar Libro", "buscar", "libros-icon"),
+                ("🎲", "Randomizer", "randomizer", "libros-icon"),
                 ("🎨", "Generar Arte", "arte", "ideas-icon"),
                 ("⭐", "Mis Reseñas", "resenas", "frases-icon"),
                 ("🎯", "Reto Anual", "reto", "ideas-icon"),
@@ -6495,17 +6568,75 @@ else:
                 st.session_state.current_view = "menu"
                 st.rerun()
         
-        elif st.session_state.libros_subview == "buscar":
-            st.markdown("### 🔍 Buscar Libro")
-            titulo_buscar = st.text_input("Título o autor:", placeholder="Ej: Cien años de soledad", key="input_buscar_libro")
-            if st.button("📖 Buscar", use_container_width=True, key="btn_buscar_libro"):
-                if titulo_buscar:
-                    res = libros_handler.buscar_libro(titulo_buscar)
-                    st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
-                else:
-                    st.warning("⚠️ Escribe un título primero")
+        elif st.session_state.libros_subview == "randomizer":
+            st.markdown("### 🎲 Randomizer")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre tu próxima lectura perfecta</p>", unsafe_allow_html=True)
+            
+            st.markdown("#### ✨ ¿Qué te gustaría leer?")
+            descripcion = st.text_area(
+                "Describe el tipo de libro que buscas:",
+                placeholder="Ej: Una novela de fantasía oscura con una protagonista fuerte, magia y misterio",
+                height=100,
+                key="input_randomizer"
+            )
+            
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                generar = st.button("🎲 Generar Sugerencias", use_container_width=True, key="btn_generar_random")
+            with col2:
+                if st.button("🔄 Otra Ronda", use_container_width=True, key="btn_otra_ronda"):
+                    st.rerun()
+            
+            if generar and descripcion.strip():
+                with st.spinner("🔮 Generando tus sugerencias mágicas..."):
+                    libros, imagenes = libros_handler.randomizer_libros(descripcion)
+                    
+                    if libros:
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        st.markdown("### 📚 Tus 3 Sugerencias:")
+                        st.markdown("---")
+                        
+                        # Mostrar en 3 columnas
+                        cols = st.columns(3)
+                        
+                        for i, (libro, imagen) in enumerate(zip(libros, imagenes)):
+                            with cols[i]:
+                                # Portada
+                                if imagen:
+                                    st.image(imagen, use_container_width=True)
+                                else:
+                                    st.markdown("🖼️ *Portada no disponible*")
+                                
+                                # Título y autor
+                                st.markdown(f"**📖 {libro['titulo']}**")
+                                st.markdown(f"*✍️ {libro['autor']}*")
+                                
+                                # Descripción
+                                st.markdown(f"<p style='color:#d8c9ff; font-size:0.9em;'>{libro['descripcion']}</p>", unsafe_allow_html=True)
+                                
+                                # Botón agregar a estantes
+                                if st.button(f"➕ A Por Leer", key=f"add_random_{i}", use_container_width=True):
+                                    exito, msg = gestor_estantes.agregar_libro_a_estante(
+                                        "por_leer",
+                                        libro['titulo'],
+                                        libro['autor']
+                                    )
+                                    if exito:
+                                        st.success("✅ Agregado!")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    else:
+                                        st.warning(msg)
+                        
+                        st.balloons()
+                    else:
+                        st.error(f"❌ {imagenes}")
+            
+            elif generar and not descripcion.strip():
+                st.warning("⚠️ Por favor describe qué tipo de libro quieres leer")
+            
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver", key="btn_volver_buscar_libro"):
+            if st.button("🔙 Volver", key="btn_volver_randomizer"):
                 st.session_state.libros_subview = "menu"
                 st.rerun()
         
