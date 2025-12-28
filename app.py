@@ -6495,7 +6495,7 @@ else:
                 st.session_state.libros_subview = "menu"
                 st.rerun()
         
-    elif st.session_state.libros_subview == "estantes":
+        elif st.session_state.libros_subview == "estantes":
             st.markdown("### 📚 Mis Estantes de Libros")
             st.markdown("<p style='color:#d8c9ff;'>Organiza tu biblioteca personal</p>", unsafe_allow_html=True)
             
