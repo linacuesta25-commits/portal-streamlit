@@ -833,6 +833,7 @@ class LocalNotasHandler:
 class LocalLibrosHandler:
     def __init__(self):
         self.GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes?q="
+        self.GOOGLE_BOOKS_API_KEY = st.secrets["GOOGLE_BOOKS_API_KEY"]
         self.OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
         self.openai_client = None
         self.openai_enabled = False
@@ -1970,28 +1971,27 @@ class RobustBibliaHandler:
         
         # BANCO EXPANDIDO DE VERSÍCULOS POR TEMA
         temas = {
-            "ansiedad": ["Filipenses 4:6-7", "Mateo 6:25-34", "1 Pedro 5:7", "Isaías 41:10", "Salmos 94:19", "Juan 14:27"],
-            "tristeza": ["Salmos 34:18", "Mateo 5:4", "2 Corintios 1:3-4", "Salmos 147:3", "Isaías 61:3", "Apocalipsis 21:4"],
-            "miedo": ["Isaías 41:10", "Josué 1:9", "Salmos 23:4", "2 Timoteo 1:7", "Salmos 27:1", "Proverbios 3:5-6"],
-            "soledad": ["Deuteronomio 31:6", "Salmos 68:6", "Hebreos 13:5", "Mateo 28:20", "Isaías 41:10"],
-            "gratitud": ["1 Tesalonicenses 5:18", "Salmos 100:4", "Filipenses 4:4", "Colosenses 3:17", "Salmos 107:1"],
-            "esperanza": ["Jeremías 29:11", "Romanos 15:13", "Hebreos 11:1", "Lamentaciones 3:22-23", "Salmos 42:11"],
-            "paz": ["Juan 14:27", "Colosenses 3:15", "Isaías 26:3", "Romanos 5:1", "Filipenses 4:7", "Salmos 4:8"],
-            "fortaleza": ["Filipenses 4:13", "Isaías 40:31", "Salmos 46:1", "2 Corintios 12:9", "Nehemías 8:10"],
-            "perdón": ["Efesios 4:32", "Colosenses 3:13", "Mateo 6:14-15", "1 Juan 1:9", "Salmos 103:12"],
-            "amor": ["1 Corintios 13:4-7", "1 Juan 4:8", "Juan 13:34-35", "Romanos 8:38-39", "Juan 3:16"],
-            "fe": ["Hebreos 11:1", "Mateo 17:20", "Romanos 10:17", "2 Corintios 5:7", "Marcos 11:24"],
-            "sabiduría": ["Proverbios 3:5-6", "Santiago 1:5", "Proverbios 9:10", "Salmos 111:10", "Proverbios 2:6"],
-            "propósito": ["Jeremías 29:11", "Efesios 2:10", "Romanos 8:28", "Proverbios 19:21", "Filipenses 1:6"],
-            "sanación": ["Jeremías 17:14", "Éxodo 15:26", "Salmos 103:2-3", "1 Pedro 2:24", "Isaías 53:5"],
-            "protección": ["Salmos 91:1-2", "Proverbios 18:10", "Salmos 121:7-8", "2 Tesalonicenses 3:3", "Salmos 32:7"],
-            "dirección": ["Proverbios 3:5-6", "Salmos 32:8", "Isaías 30:21", "Juan 16:13", "Salmos 25:9"],
-            "paciencia": ["Gálatas 5:22-23", "Santiago 1:2-4", "Romanos 12:12", "Colosenses 3:12", "Salmos 27:14"],
-            "alabanza": ["Salmos 150:6", "Salmos 95:1-2", "Hebreos 13:15", "1 Crónicas 16:34", "Salmos 34:1"],
-            "transformación": ["Romanos 12:2", "2 Corintios 5:17", "Filipenses 1:6", "Ezequiel 36:26", "Efesios 4:22-24"],
-            "consuelo": ["2 Corintios 1:3-4", "Salmos 23:4", "Mateo 11:28-30", "Juan 14:16", "Isaías 40:1"]
-        }
-        
+    "ansiedad": ["Salmos 94:19", "Salmos 46:1", "Isaías 41:10", "Salmos 55:22"],
+    "tristeza": ["Salmos 34:18", "Salmos 147:3", "Isaías 61:3", "Salmos 42:11"],
+    "miedo": ["Isaías 41:10", "Salmos 23:4", "Salmos 27:1", "Isaías 43:1"],
+    "soledad": ["Salmos 68:6", "Isaías 41:10", "Salmos 73:23"],
+    "gratitud": ["Salmos 100:4", "Salmos 107:1", "Salmos 103:2"],
+    "esperanza": ["Salmos 42:11", "Isaías 40:31", "Salmos 130:5"],
+    "paz": ["Isaías 26:3", "Salmos 4:8", "Salmos 29:11"],
+    "fortaleza": ["Isaías 40:31", "Salmos 46:1", "Salmos 18:32"],
+    "perdón": ["Salmos 103:12", "Isaías 43:25", "Salmos 32:5"],
+    "amor": ["Salmos 136:1", "Salmos 86:5", "Salmos 103:8"],
+    "fe": ["Salmos 56:3", "Salmos 37:5", "Proverbios 3:5-6"],
+    "sabiduría": ["Proverbios 3:5-6", "Proverbios 9:10", "Proverbios 2:6", "Salmos 111:10"],
+    "propósito": ["Salmos 138:8", "Proverbios 19:21", "Salmos 37:4"],
+    "sanación": ["Salmos 103:2-3", "Salmos 147:3", "Isaías 53:5"],
+    "protección": ["Salmos 91:1-2", "Proverbios 18:10", "Salmos 121:7-8", "Salmos 32:7"],
+    "dirección": ["Proverbios 3:5-6", "Salmos 32:8", "Isaías 30:21", "Salmos 25:9"],
+    "paciencia": ["Salmos 27:14", "Salmos 37:7", "Isaías 40:31"],
+    "alabanza": ["Salmos 150:6", "Salmos 95:1-2", "Salmos 34:1", "Salmos 100:1"],
+    "transformación": ["Salmos 51:10", "Isaías 43:19", "Salmos 40:2"],
+    "consuelo": ["Salmos 23:4", "Isaías 40:1", "Salmos 34:18"]
+}
         # REFLEXIONES PROFUNDAS POR TEMA
         reflexiones = {
             "ansiedad": """La ansiedad es una invitación a soltar el control y confiar en algo más grande que nosotros mismos. Cada preocupación que entregas es un espacio que abres para la paz. En el silencio de tu respiración, en la quietud de este momento presente, existe una paz que trasciende todo entendimiento. 
@@ -5776,10 +5776,135 @@ else:
         
         elif st.session_state.biblia_subview == "journal":
             st.markdown("### 📔 Mi Diario Bíblico")
-            resultado = biblia.ver_journal_biblico()
-            st.markdown(f'<div class="result-card" style="text-align:left; max-height:400px; overflow-y:auto;">{resultado}</div>', unsafe_allow_html=True)
+            st.markdown("<p style='color:#d8c9ff;'>Registra tus reflexiones y aprendizajes</p>", unsafe_allow_html=True)
+            
+            # Tabs
+            tab1, tab2, tab3 = st.tabs(["📖 Ver Entradas", "✍️ Nueva Entrada", "📊 Estadísticas"])
+            
+            # Cargar entradas
+            JOURNAL_FILE = "data/journal_biblico.json"
+            os.makedirs("data", exist_ok=True)
+            
+            if not os.path.exists(JOURNAL_FILE):
+                with open(JOURNAL_FILE, "w", encoding="utf-8") as f:
+                    json.dump([], f)
+            
+            try:
+                with open(JOURNAL_FILE, "r", encoding="utf-8") as f:
+                    entradas = json.load(f)
+            except:
+                entradas = []
+            
+            # TAB 1: Ver Entradas
+            with tab1:
+                if entradas:
+                    st.markdown(f"**{len(entradas)} entradas en total**")
+                    st.markdown("---")
+                    
+                    # Ordenar por fecha (más reciente primero)
+                    entradas_ordenadas = sorted(entradas, key=lambda x: x.get('fecha', ''), reverse=True)
+                    
+                    for i, entrada in enumerate(entradas_ordenadas):
+                        with st.expander(f"📅 {entrada.get('fecha', 'Sin fecha')} - {entrada.get('titulo', 'Sin título')}", expanded=i==0):
+                            if entrada.get('versiculo'):
+                                st.markdown(f"**📖 Versículo:** {entrada['versiculo']}")
+                            
+                            if entrada.get('reflexion'):
+                                st.markdown("**💭 Reflexión:**")
+                                st.write(entrada['reflexion'])
+                            
+                            if entrada.get('aplicacion'):
+                                st.markdown("**🎯 Aplicación:**")
+                                st.write(entrada['aplicacion'])
+                            
+                            # Botón eliminar
+                            if st.button(f"🗑️ Eliminar", key=f"del_journal_{i}"):
+                                entradas_ordenadas.remove(entrada)
+                                with open(JOURNAL_FILE, "w", encoding="utf-8") as f:
+                                    json.dump(entradas_ordenadas, f, indent=2, ensure_ascii=False)
+                                st.success("✅ Entrada eliminada")
+                                st.rerun()
+                else:
+                    st.info("📝 Aún no tienes entradas. ¡Crea tu primera reflexión!")
+            
+            # TAB 2: Nueva Entrada
+            with tab2:
+                st.markdown("#### ✍️ Crear Nueva Entrada")
+                
+                nueva_fecha = st.date_input("📅 Fecha:", value=datetime.datetime.now())
+                nuevo_titulo = st.text_input("📌 Título de la entrada:", placeholder="Ej: Reflexión sobre la fe")
+                nuevo_versiculo = st.text_input("📖 Versículo (opcional):", placeholder="Ej: Juan 3:16")
+                nueva_reflexion = st.text_area("💭 ¿Qué te habló Dios hoy?", height=150, placeholder="Escribe tu reflexión...")
+                nueva_aplicacion = st.text_area("🎯 ¿Cómo lo aplicarás a tu vida?", height=100, placeholder="¿Qué cambiarás o harás diferente?")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                if st.button("💾 Guardar Entrada", use_container_width=True):
+                    if nuevo_titulo.strip() and nueva_reflexion.strip():
+                        nueva_entrada = {
+                            "fecha": str(nueva_fecha),
+                            "titulo": nuevo_titulo.strip(),
+                            "versiculo": nuevo_versiculo.strip(),
+                            "reflexion": nueva_reflexion.strip(),
+                            "aplicacion": nueva_aplicacion.strip()
+                        }
+                        
+                        entradas.append(nueva_entrada)
+                        
+                        with open(JOURNAL_FILE, "w", encoding="utf-8") as f:
+                            json.dump(entradas, f, indent=2, ensure_ascii=False)
+                        
+                        st.success("✅ ¡Entrada guardada exitosamente!")
+                        st.balloons()
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ Por favor completa al menos el título y la reflexión")
+            
+            # TAB 3: Estadísticas
+            with tab3:
+                if entradas:
+                    st.markdown("#### 📊 Tus Estadísticas")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.metric("📝 Total Entradas", len(entradas))
+                    
+                    with col2:
+                        # Entradas este mes
+                        mes_actual = datetime.datetime.now().strftime("%Y-%m")
+                        entradas_mes = sum(1 for e in entradas if e.get('fecha', '').startswith(mes_actual))
+                        st.metric("📅 Este Mes", entradas_mes)
+                    
+                    with col3:
+                        # Racha (días consecutivos)
+                        fechas = sorted([e.get('fecha', '') for e in entradas if e.get('fecha')], reverse=True)
+                        racha = 1
+                        if fechas:
+                            for i in range(len(fechas)-1):
+                                fecha1 = datetime.datetime.strptime(fechas[i], "%Y-%m-%d")
+                                fecha2 = datetime.datetime.strptime(fechas[i+1], "%Y-%m-%d")
+                                diff = (fecha1 - fecha2).days
+                                if diff == 1:
+                                    racha += 1
+                                else:
+                                    break
+                        st.metric("🔥 Racha", f"{racha} días")
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    
+                    # Últimas 5 entradas
+                    st.markdown("### 📌 Últimas Reflexiones")
+                    ultimas = sorted(entradas, key=lambda x: x.get('fecha', ''), reverse=True)[:5]
+                    for entrada in ultimas:
+                        st.markdown(f"• **{entrada.get('fecha')}**: {entrada.get('titulo', 'Sin título')}")
+                    
+                else:
+                    st.info("📊 Las estadísticas aparecerán cuando tengas entradas")
+            
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔙 Volver", key="btn_biblia_volver_journal"):
+            if st.button("🔙 Volver", key="btn_volver_journal"):
                 st.session_state.biblia_subview = "menu"
                 st.rerun()
         
