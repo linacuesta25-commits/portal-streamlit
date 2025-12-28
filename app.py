@@ -1838,103 +1838,131 @@ class GestorPersonalidades:
 import json, os, datetime, random, streamlit as st
 class RobustBibliaHandler:
     def __init__(self):
-        self.BIBLIA_FILE = "data/es_rvr.json"
-        self.books = []
-        self.valid_data = False
-        
-        # MAPEO DE ABREVIATURAS A NOMBRES COMPLETOS
-        self.book_names = {
-            "gn": "Génesis", "ex": "Éxodo", "lv": "Levítico", "nm": "Números", 
-            "dt": "Deuteronomio", "jos": "Josué", "jue": "Jueces", "rt": "Rut",
-            "1s": "1 Samuel", "2s": "2 Samuel", "1r": "1 Reyes", "2r": "2 Reyes",
-            "1cr": "1 Crónicas", "2cr": "2 Crónicas", "esd": "Esdras", "neh": "Nehemías",
-            "est": "Ester", "job": "Job", "sal": "Salmos", "pr": "Proverbios",
-            "ec": "Eclesiastés", "cnt": "Cantares", "is": "Isaías", "jer": "Jeremías",
-            "lm": "Lamentaciones", "ez": "Ezequiel", "dn": "Daniel", "os": "Oseas",
-            "jl": "Joel", "am": "Amós", "abd": "Abdías", "jon": "Jonás",
-            "miq": "Miqueas", "nah": "Nahúm", "hab": "Habacuc", "sof": "Sofonías",
-            "hag": "Hageo", "zac": "Zacarías", "mal": "Malaquías",
-            "mt": "Mateo", "mr": "Marcos", "lc": "Lucas", "jn": "Juan",
-            "hch": "Hechos", "ro": "Romanos", "1co": "1 Corintios", "2co": "2 Corintios",
-            "ga": "Gálatas", "ef": "Efesios", "flp": "Filipenses", "col": "Colosenses",
-            "1ts": "1 Tesalonicenses", "2ts": "2 Tesalonicenses", "1ti": "1 Timoteo",
-            "2ti": "2 Timoteo", "tit": "Tito", "flm": "Filemón", "heb": "Hebreos",
-            "stg": "Santiago", "1p": "1 Pedro", "2p": "2 Pedro", "1jn": "1 Juan",
-            "2jn": "2 Juan", "3jn": "3 Juan", "jud": "Judas", "ap": "Apocalipsis"
-        }
-        
-        # MAPEO INVERSO EXPANDIDO (nombre -> abreviatura)
-        self.abbrev_map = {}
-        
-        # Mapeo automático básico
-        for abbrev, nombre in self.book_names.items():
-            nombre_lower = nombre.lower()
-            self.abbrev_map[nombre_lower] = abbrev
-            # Sin acentos
-            nombre_sin_acento = nombre_lower.replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u').replace('á', 'a')
-            self.abbrev_map[nombre_sin_acento] = abbrev
-        
-        # VARIACIONES MANUALES EXTRAS
-        variaciones = {
-            "genesis": "gn", "génesis": "gn", "gen": "gn",
-            "exodo": "ex", "éxodo": "ex", "exo": "ex",
-            "salmos": "sal", "salmo": "sal", "ps": "sal",
-            "proverbios": "pr", "proverbio": "pr", "prov": "pr",
-            "isaias": "is", "isaías": "is", "isa": "is",
-            "jeremias": "jer", "jeremías": "jer",
-            "mateo": "mt", "mat": "mt",
-            "marcos": "mr", "mar": "mr", "mc": "mr",
-            "lucas": "lc", "luc": "lc",
-            "juan": "jn",
-            "hechos": "hch",
-            "romanos": "ro", "rom": "ro",
-            "galatas": "ga", "gálatas": "ga", "gal": "ga",
-            "efesios": "ef", "efe": "ef",
-            "filipenses": "flp", "fil": "flp",
-            "colosenses": "col",
-            "hebreos": "heb",
-            "santiago": "stg", "sant": "stg",
-            "apocalipsis": "ap", "apo": "ap", "revelacion": "ap"
-        }
-        
-        self.abbrev_map.update(variaciones)
+     self.BIBLIA_FILE = "data/es_rvr.json"
+     self.books = []
+     self.valid_data = False
+    
+    # MAPEO DE ABREVIATURAS REALES A NOMBRES COMPLETOS
+     self.book_names = {
+        "gn": "Génesis", "ex": "Éxodo", "lv": "Levítico", "nm": "Números",
+        "dt": "Deuteronomio", "js": "Josué", "jud": "Jueces", "rt": "Rut",
+        "1sm": "1 Samuel", "2sm": "2 Samuel", "1kgs": "1 Reyes", "2kgs": "2 Reyes",
+        "1ch": "1 Crónicas", "2ch": "2 Crónicas", "ezr": "Esdras", "ne": "Nehemías",
+        "et": "Ester", "job": "Job", "ps": "Salmos", "prv": "Proverbios",
+        "ec": "Eclesiastés", "so": "Cantares", "is": "Isaías", "jr": "Jeremías",
+        "lm": "Lamentaciones", "ez": "Ezequiel", "dn": "Daniel", "ho": "Oseas",
+        "jl": "Joel", "am": "Amós", "ob": "Abdías", "jn": "Jonás",
+        "mi": "Miqueas", "na": "Nahúm", "hk": "Habacuc", "zp": "Sofonías",
+        "hg": "Hageo", "zc": "Zacarías", "ml": "Malaquías",
+        "mt": "Mateo", "mk": "Marcos", "lk": "Lucas", "jo": "Juan",
+        "act": "Hechos", "rm": "Romanos", "1co": "1 Corintios", "2co": "2 Corintios",
+        "gl": "Gálatas", "eph": "Efesios", "ph": "Filipenses", "cl": "Colosenses",
+        "1ts": "1 Tesalonicenses", "2ts": "2 Tesalonicenses", "1tm": "1 Timoteo",
+        "2tm": "2 Timoteo", "tt": "Tito", "phm": "Filemón", "hb": "Hebreos",
+        "jm": "Santiago", "1pe": "1 Pedro", "2pe": "2 Pedro", "1jo": "1 Juan",
+        "2jo": "2 Juan", "3jo": "3 Juan", "jd": "Judas", "re": "Apocalipsis"
+    }
+    
+    # MAPEO INVERSO (nombre → abreviatura)
+    self.abbrev_map = {}
+    
+    # Mapeo automático básico
+    for abbrev, nombre in self.book_names.items():
+        nombre_lower = nombre.lower()
+        self.abbrev_map[nombre_lower] = abbrev
+        # Sin acentos
+        nombre_sin_acento = nombre_lower.replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u').replace('á', 'a')
+        self.abbrev_map[nombre_sin_acento] = abbrev
+    
+    # VARIACIONES MANUALES EXPANDIDAS
+    variaciones = {
+        "genesis": "gn", "génesis": "gn", "gen": "gn",
+        "exodo": "ex", "éxodo": "ex",
+        "levitico": "lv", "levítico": "lv",
+        "numeros": "nm", "números": "nm",
+        "deuteronomio": "dt", "deut": "dt",
+        "josue": "js", "josué": "js",
+        "jueces": "jud",
+        "rut": "rt",
+        "1 samuel": "1sm", "1samuel": "1sm", "primer samuel": "1sm",
+        "2 samuel": "2sm", "2samuel": "2sm", "segundo samuel": "2sm",
+        "1 reyes": "1kgs", "1reyes": "1kgs", "primer reyes": "1kgs",
+        "2 reyes": "2kgs", "2reyes": "2kgs", "segundo reyes": "2kgs",
+        "1 cronicas": "1ch", "1 crónicas": "1ch", "1cronicas": "1ch",
+        "2 cronicas": "2ch", "2 crónicas": "2ch", "2cronicas": "2ch",
+        "esdras": "ezr",
+        "nehemias": "ne", "nehemías": "ne",
+        "ester": "et",
+        "salmos": "ps", "salmo": "ps", "psalms": "ps",
+        "proverbios": "prv", "proverbio": "prv", "prov": "prv",
+        "eclesiastes": "ec", "eclesiástes": "ec",
+        "cantares": "so", "cantar de los cantares": "so",
+        "isaias": "is", "isaías": "is", "isa": "is",
+        "jeremias": "jr", "jeremías": "jr", "jer": "jr",
+        "lamentaciones": "lm",
+        "ezequiel": "ez", "eze": "ez",
+        "daniel": "dn", "dan": "dn",
+        "oseas": "ho",
+        "joel": "jl",
+        "amos": "am", "amós": "am",
+        "abdias": "ob", "abdías": "ob",
+        "jonas": "jn", "jonás": "jn",
+        "miqueas": "mi", "mic": "mi",
+        "nahum": "na", "nahúm": "na",
+        "habacuc": "hk", "hab": "hk",
+        "sofonias": "zp", "sofonías": "zp",
+        "hageo": "hg", "hag": "hg",
+        "zacarias": "zc", "zacarías": "zc", "zac": "zc",
+        "malaquias": "ml", "malaquías": "ml", "mal": "ml",
+        "mateo": "mt", "mat": "mt",
+        "marcos": "mk", "mar": "mk", "mc": "mk",
+        "lucas": "lk", "luc": "lk",
+        "juan": "jo",
+        "hechos": "act", "hch": "act",
+        "romanos": "rm", "rom": "rm",
+        "1 corintios": "1co", "1corintios": "1co",
+        "2 corintios": "2co", "2corintios": "2co",
+        "galatas": "gl", "gálatas": "gl", "gal": "gl",
+        "efesios": "eph", "efe": "eph",
+        "filipenses": "ph", "fil": "ph", "flp": "ph",
+        "colosenses": "cl", "col": "cl",
+        "1 tesalonicenses": "1ts", "1tesalonicenses": "1ts",
+        "2 tesalonicenses": "2ts", "2tesalonicenses": "2ts",
+        "1 timoteo": "1tm", "1timoteo": "1tm",
+        "2 timoteo": "2tm", "2timoteo": "2tm",
+        "tito": "tt",
+        "filemon": "phm", "filemón": "phm",
+        "hebreos": "hb", "heb": "hb",
+        "santiago": "jm", "sant": "jm", "stg": "jm",
+        "1 pedro": "1pe", "1pedro": "1pe",
+        "2 pedro": "2pe", "2pedro": "2pe",
+        "1 juan": "1jo", "1juan": "1jo",
+        "2 juan": "2jo", "2juan": "2jo",
+        "3 juan": "3jo", "3juan": "3jo",
+        "judas": "jd",
+        "apocalipsis": "re", "apo": "re", "revelacion": "re", "revelación": "re"
+    }
+    
+    self.abbrev_map.update(variaciones)
 
-        try:
-            with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
-                data = json.load(f)
+    try:
+        with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
+            data = json.load(f)
 
-            if isinstance(data, dict) and "books" in data:
-                self.books = data["books"]
-            elif isinstance(data, list):
-                self.books = data
+        if isinstance(data, dict) and "books" in data:
+            self.books = data["books"]
+        elif isinstance(data, list):
+            self.books = data
+        
+        self.books = [b for b in self.books if isinstance(b, dict)]
+
+        if self.books:
+            self.valid_data = True
+        else:
+            st.error("⚠️ El archivo JSON no contiene libros válidos.")
             
-            self.books = [b for b in self.books if isinstance(b, dict)]
-
-            if self.books:
-                self.valid_data = True
-            else:
-                st.error("⚠️ El archivo JSON no contiene libros válidos.")
-                
-        except Exception as e:
-            st.error(f"❌ Error cargando la Biblia: {str(e)}")
-    def _get_verse_text(self, capitulo, idx):
-        """Obtiene el texto sin importar si el capítulo es Lista o Diccionario"""
-        try:
-            # CASO A: El capítulo es una LISTA ["texto", "texto"] (Común en RVR)
-            if isinstance(capitulo, list):
-                if 0 <= idx < len(capitulo):
-                    return capitulo[idx]
-            
-            # CASO B: El capítulo es un DICCIONARIO {"verses": [...]}
-            elif isinstance(capitulo, dict):
-                verses = capitulo.get("verses", [])
-                if 0 <= idx < len(verses):
-                    v = verses[idx]
-                    # Si el verso es un objeto {"text": "hola"}, sacamos el texto. Si es string, lo devolvemos.
-                    return v.get("text", str(v)) if isinstance(v, dict) else str(v)
-        except Exception as e:
-            print(f"Error extrayendo verso: {e}")
-        return None
+    except Exception as e:
+        st.error(f"❌ Error cargando la Biblia: {str(e)}")
 
     def versiculo_del_dia(self):
         if not self.valid_data: return "⚠️ Datos no cargados."
