@@ -1441,9 +1441,7 @@ if __name__ == "__main__":
         """Genera 3 sugerencias de libros con IA + portadas"""
         try:
             from openai import OpenAI
-            import base64
             import requests
-            from io import BytesIO
             
             client = OpenAI(api_key=self.OPENAI_API_KEY)
             
@@ -1459,7 +1457,7 @@ Para cada libro, responde SOLO en este formato JSON:
       "titulo": "Título exacto del libro",
       "autor": "Nombre del autor",
       "descripcion": "Por qué este libro encaja (máximo 2 líneas)",
-      "descripcion_portada": "Descripción visual de la portada original del libro para generar imagen"
+      "descripcion_portada": "Descripción detallada de la portada original del libro para generar imagen"
     }}
   ]
 }}
@@ -1467,7 +1465,7 @@ Para cada libro, responde SOLO en este formato JSON:
 IMPORTANTE: 
 - Solo libros REALES que existan
 - Variedad (no 3 libros del mismo autor)
-- Descripción de portada debe ser fiel a la portada real del libro"""
+- Descripción de portada debe ser visual y detallada"""
 
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -1481,13 +1479,13 @@ IMPORTANTE:
             libros = sugerencias.get("libros", [])
             
             if not libros or len(libros) < 3:
-                return None, "No pude generar sugerencias. Intenta con otra descripción."
+                return {"success": False, "error": "No pude generar suficientes sugerencias. Intenta con otra descripción."}
             
             # 2. Generar portadas con DALL-E
             imagenes = []
             for libro in libros[:3]:
                 try:
-                    prompt_imagen = f"Book cover design: {libro['titulo']} by {libro['autor']}. {libro.get('descripcion_portada', 'Professional book cover design, clean and artistic')}"
+                    prompt_imagen = f"Professional book cover design for '{libro['titulo']}' by {libro['autor']}. Style: {libro.get('descripcion_portada', 'Artistic, clean, professional book cover')}. High quality, centered text, attractive design."
                     
                     img_response = client.images.generate(
                         model="dall-e-3",
@@ -1499,17 +1497,23 @@ IMPORTANTE:
                     
                     # Descargar la imagen
                     img_url = img_response.data[0].url
-                    img_data = requests.get(img_url).content
+                    img_data = requests.get(img_url, timeout=10).content
                     imagenes.append(img_data)
                     
                 except Exception as e:
-                    print(f"Error generando imagen: {e}")
+                    print(f"Error generando imagen para {libro['titulo']}: {e}")
+                    # Crear una imagen placeholder en lugar de None
                     imagenes.append(None)
             
-            return libros[:3], imagenes
+            return {
+                "success": True,
+                "libros": libros[:3],
+                "imagenes": imagenes
+            }
             
         except Exception as e:
-            return None, f"Error: {str(e)}"
+            print(f"Error en randomizer_libros: {e}")
+            return {"success": False, "error": f"Error: {str(e)}"}
 
 class LocalFrasesHandler:
     def __init__(self):
@@ -6639,7 +6643,7 @@ else:
             if st.button("🔙 Volver", key="btn_volver_randomizer"):
                 st.session_state.libros_subview = "menu"
                 st.rerun()
-        
+
         elif st.session_state.libros_subview == "arte":
             st.markdown("### 🎨 Generar Arte Inspirado")
             
