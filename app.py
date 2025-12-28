@@ -1838,54 +1838,107 @@ class GestorPersonalidades:
 import json, os, datetime, random, streamlit as st
 class RobustBibliaHandler:
     def __init__(self):
-        self.BIBLIA_FILE = "data/es_rvr.json"
-        self.books = []
-        self.valid_data = False
-        
-        # MAPEO DE ABREVIATURAS A NOMBRES COMPLETOS
-        self.book_names = {
-            "gn": "Génesis", "ex": "Éxodo", "lv": "Levítico", "nm": "Números", 
-            "dt": "Deuteronomio", "jos": "Josué", "jue": "Jueces", "rt": "Rut",
-            "1s": "1 Samuel", "2s": "2 Samuel", "1r": "1 Reyes", "2r": "2 Reyes",
-            "1cr": "1 Crónicas", "2cr": "2 Crónicas", "esd": "Esdras", "neh": "Nehemías",
-            "est": "Ester", "job": "Job", "sal": "Salmos", "pr": "Proverbios",
-            "ec": "Eclesiastés", "cnt": "Cantares", "is": "Isaías", "jer": "Jeremías",
-            "lm": "Lamentaciones", "ez": "Ezequiel", "dn": "Daniel", "os": "Oseas",
-            "jl": "Joel", "am": "Amós", "abd": "Abdías", "jon": "Jonás",
-            "miq": "Miqueas", "nah": "Nahúm", "hab": "Habacuc", "sof": "Sofonías",
-            "hag": "Hageo", "zac": "Zacarías", "mal": "Malaquías",
-            "mt": "Mateo", "mr": "Marcos", "lc": "Lucas", "jn": "Juan",
-            "hch": "Hechos", "ro": "Romanos", "1co": "1 Corintios", "2co": "2 Corintios",
-            "ga": "Gálatas", "ef": "Efesios", "flp": "Filipenses", "col": "Colosenses",
-            "1ts": "1 Tesalonicenses", "2ts": "2 Tesalonicenses", "1ti": "1 Timoteo",
-            "2ti": "2 Timoteo", "tit": "Tito", "flm": "Filemón", "heb": "Hebreos",
-            "stg": "Santiago", "1p": "1 Pedro", "2p": "2 Pedro", "1jn": "1 Juan",
-            "2jn": "2 Juan", "3jn": "3 Juan", "jud": "Judas", "ap": "Apocalipsis"
-        }
-        
-        # Mapeo inverso (nombre -> abreviatura)
-        self.abbrev_map = {v.lower(): k for k, v in self.book_names.items()}
+     self.BIBLIA_FILE = "data/es_rvr.json"
+    self.books = []
+    self.valid_data = False
+    
+    # MAPEO DE ABREVIATURAS A NOMBRES COMPLETOS
+    self.book_names = {
+        "gn": "Génesis", "ex": "Éxodo", "lv": "Levítico", "nm": "Números", 
+        "dt": "Deuteronomio", "jos": "Josué", "jue": "Jueces", "rt": "Rut",
+        "1s": "1 Samuel", "2s": "2 Samuel", "1r": "1 Reyes", "2r": "2 Reyes",
+        "1cr": "1 Crónicas", "2cr": "2 Crónicas", "esd": "Esdras", "neh": "Nehemías",
+        "est": "Ester", "job": "Job", "sal": "Salmos", "pr": "Proverbios",
+        "ec": "Eclesiastés", "cnt": "Cantares", "is": "Isaías", "jer": "Jeremías",
+        "lm": "Lamentaciones", "ez": "Ezequiel", "dn": "Daniel", "os": "Oseas",
+        "jl": "Joel", "am": "Amós", "abd": "Abdías", "jon": "Jonás",
+        "miq": "Miqueas", "nah": "Nahúm", "hab": "Habacuc", "sof": "Sofonías",
+        "hag": "Hageo", "zac": "Zacarías", "mal": "Malaquías",
+        "mt": "Mateo", "mr": "Marcos", "lc": "Lucas", "jn": "Juan",
+        "hch": "Hechos", "ro": "Romanos", "1co": "1 Corintios", "2co": "2 Corintios",
+        "ga": "Gálatas", "ef": "Efesios", "flp": "Filipenses", "col": "Colosenses",
+        "1ts": "1 Tesalonicenses", "2ts": "2 Tesalonicenses", "1ti": "1 Timoteo",
+        "2ti": "2 Timoteo", "tit": "Tito", "flm": "Filemón", "heb": "Hebreos",
+        "stg": "Santiago", "1p": "1 Pedro", "2p": "2 Pedro", "1jn": "1 Juan",
+        "2jn": "2 Juan", "3jn": "3 Juan", "jud": "Judas", "ap": "Apocalipsis"
+    }
+    
+    # MAPEO INVERSO EXPANDIDO (nombre -> abreviatura)
+    # Incluye TODAS las variaciones posibles
+    self.abbrev_map = {}
+    
+    # Mapeo automático básico
+    for abbrev, nombre in self.book_names.items():
+        nombre_lower = nombre.lower()
+        self.abbrev_map[nombre_lower] = abbrev
+        # Sin acentos
+        nombre_sin_acento = nombre_lower.replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u').replace('á', 'a')
+        self.abbrev_map[nombre_sin_acento] = abbrev
+    
+    # VARIACIONES MANUALES EXTRAS (singular/plural, nombres alternativos)
+    variaciones = {
+        # Génesis
+        "genesis": "gn", "génesis": "gn", "gen": "gn",
+        # Éxodo
+        "exodo": "ex", "éxodo": "ex", "exo": "ex",
+        # Salmos
+        "salmos": "sal", "salmo": "sal", "sal": "sal", "ps": "sal", "psalms": "sal",
+        # Proverbios
+        "proverbios": "pr", "proverbio": "pr", "prov": "pr",
+        # Isaías
+        "isaias": "is", "isaías": "is", "isa": "is",
+        # Jeremías
+        "jeremias": "jer", "jeremías": "jer",
+        # Mateo
+        "mateo": "mt", "mat": "mt", "mt": "mt",
+        # Marcos
+        "marcos": "mr", "mar": "mr", "mc": "mr",
+        # Lucas
+        "lucas": "lc", "luc": "lc", "lk": "lc",
+        # Juan
+        "juan": "jn", "jn": "jn",
+        # Hechos
+        "hechos": "hch", "hch": "hch", "acts": "hch",
+        # Romanos
+        "romanos": "ro", "rom": "ro",
+        # Gálatas
+        "galatas": "ga", "gálatas": "ga", "gal": "ga",
+        # Efesios
+        "efesios": "ef", "efe": "ef",
+        # Filipenses
+        "filipenses": "flp", "fil": "flp",
+        # Colosenses
+        "colosenses": "col", "col": "col",
+        # Hebreos
+        "hebreos": "heb", "heb": "heb",
+        # Santiago
+        "santiago": "stg", "stg": "stg", "sant": "stg",
+        # Apocalipsis
+        "apocalipsis": "ap", "apo": "ap", "rev": "ap", "revelacion": "ap"
+    }
+    
+    self.abbrev_map.update(variaciones)
 
-        try:
-            with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
-                data = json.load(f)
+    try:
+        with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
+            data = json.load(f)
 
-            # Detectar estructura del JSON
-            if isinstance(data, dict) and "books" in data:
-                self.books = data["books"]
-            elif isinstance(data, list):
-                self.books = data
+        # Detectar estructura del JSON
+        if isinstance(data, dict) and "books" in data:
+            self.books = data["books"]
+        elif isinstance(data, list):
+            self.books = data
+        
+        # Limpieza: Solo quedarnos con libros que sean diccionarios válidos
+        self.books = [b for b in self.books if isinstance(b, dict)]
+
+        if self.books:
+            self.valid_data = True
+        else:
+            st.error("⚠️ El archivo JSON no contiene libros válidos.")
             
-            # Limpieza: Solo quedarnos con libros que sean diccionarios válidos
-            self.books = [b for b in self.books if isinstance(b, dict)]
-
-            if self.books:
-                self.valid_data = True
-            else:
-                st.error("⚠️ El archivo JSON no contiene libros válidos.")
-                
-        except Exception as e:
-            st.error(f"❌ Error cargando la Biblia: {str(e)}")
+    except Exception as e:
+        st.error(f"❌ Error cargando la Biblia: {str(e)}")
 
     def _get_verse_text(self, capitulo, idx):
         """Obtiene el texto sin importar si el capítulo es Lista o Diccionario"""
