@@ -1841,6 +1841,30 @@ class RobustBibliaHandler:
         self.BIBLIA_FILE = "data/es_rvr.json"
         self.books = []
         self.valid_data = False
+        
+        # MAPEO DE ABREVIATURAS A NOMBRES COMPLETOS
+        self.book_names = {
+            "gn": "Génesis", "ex": "Éxodo", "lv": "Levítico", "nm": "Números", 
+            "dt": "Deuteronomio", "jos": "Josué", "jue": "Jueces", "rt": "Rut",
+            "1s": "1 Samuel", "2s": "2 Samuel", "1r": "1 Reyes", "2r": "2 Reyes",
+            "1cr": "1 Crónicas", "2cr": "2 Crónicas", "esd": "Esdras", "neh": "Nehemías",
+            "est": "Ester", "job": "Job", "sal": "Salmos", "pr": "Proverbios",
+            "ec": "Eclesiastés", "cnt": "Cantares", "is": "Isaías", "jer": "Jeremías",
+            "lm": "Lamentaciones", "ez": "Ezequiel", "dn": "Daniel", "os": "Oseas",
+            "jl": "Joel", "am": "Amós", "abd": "Abdías", "jon": "Jonás",
+            "miq": "Miqueas", "nah": "Nahúm", "hab": "Habacuc", "sof": "Sofonías",
+            "hag": "Hageo", "zac": "Zacarías", "mal": "Malaquías",
+            "mt": "Mateo", "mr": "Marcos", "lc": "Lucas", "jn": "Juan",
+            "hch": "Hechos", "ro": "Romanos", "1co": "1 Corintios", "2co": "2 Corintios",
+            "ga": "Gálatas", "ef": "Efesios", "flp": "Filipenses", "col": "Colosenses",
+            "1ts": "1 Tesalonicenses", "2ts": "2 Tesalonicenses", "1ti": "1 Timoteo",
+            "2ti": "2 Timoteo", "tit": "Tito", "flm": "Filemón", "heb": "Hebreos",
+            "stg": "Santiago", "1p": "1 Pedro", "2p": "2 Pedro", "1jn": "1 Juan",
+            "2jn": "2 Juan", "3jn": "3 Juan", "jud": "Judas", "ap": "Apocalipsis"
+        }
+        
+        # Mapeo inverso (nombre -> abreviatura)
+        self.abbrev_map = {v.lower(): k for k, v in self.book_names.items()}
 
         try:
             with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
@@ -1857,12 +1881,6 @@ class RobustBibliaHandler:
 
             if self.books:
                 self.valid_data = True
-                # DIAGNÓSTICO: Ver qué estructura tiene el primer capítulo del primer libro
-                try:
-                    primer_cap = self.books[0].get("chapters", [])[0]
-                    print(f"🔍 DEBUG: El capítulo es tipo {type(primer_cap)}")
-                except:
-                    pass
             else:
                 st.error("⚠️ El archivo JSON no contiene libros válidos.")
                 
@@ -1916,9 +1934,13 @@ class RobustBibliaHandler:
         texto = self._get_verse_text(capitulo, ver_idx)
 
         if not texto: return "⚠️ Error al leer texto."
+        
+        # Obtener nombre del libro
+        abbrev = libro.get('abbrev', '')
+        nombre_libro = self.book_names.get(abbrev, "Biblia")
 
         return (
-            f"📖 **{libro.get('name')} {cap_idx + 1}:{ver_idx + 1}**\n\n"
+            f"📖 **{nombre_libro} {cap_idx + 1}:{ver_idx + 1}**\n\n"
             f"_{texto}_"
         )
 
@@ -1933,10 +1955,18 @@ class RobustBibliaHandler:
         except:
             return "⚠️ Verifica los números del capítulo y versículo."
 
-        # Buscar Libro
-        libro_obj = next((l for l in self.books if l.get("name", "").lower() == libro_input.lower()), None)
+        # Buscar abreviatura del libro
+        libro_lower = libro_input.lower()
+        abbrev = self.abbrev_map.get(libro_lower)
         
-        if not libro_obj: return f"❌ No encontré el libro '{libro_input}'"
+        if not abbrev:
+            return f"❌ No encontré el libro '{libro_input}'"
+        
+        # Buscar libro por abreviatura
+        libro_obj = next((l for l in self.books if l.get("abbrev", "").lower() == abbrev), None)
+        
+        if not libro_obj:
+            return f"❌ No encontré el libro '{libro_input}'"
 
         chapters = libro_obj.get("chapters", [])
         if cap_num < 1 or cap_num > len(chapters):
@@ -1958,10 +1988,14 @@ class RobustBibliaHandler:
         # Obtener Texto
         texto = self._get_verse_text(capitulo, ver_num - 1)
         
+        # Usar el nombre completo del libro
+        nombre_libro = self.book_names.get(abbrev, libro_input)
+        
         if texto:
-            return f"📖 **{libro_obj.get('name')} {cap_num}:{ver_num}**\n\n_{texto}_"
+            return f"📖 **{nombre_libro} {cap_num}:{ver_num}**\n\n_{texto}_"
         
         return "❌ Error recuperando el texto."
+
     def generar_devocional_personalizado(self, situacion):
         """Genera un devocional profundo basado en la situación del usuario"""
         if not self.valid_data:
@@ -1969,27 +2003,28 @@ class RobustBibliaHandler:
         
         # BANCO EXPANDIDO DE VERSÍCULOS POR TEMA
         temas = {
-    "ansiedad": ["Salmos 94:19", "Salmos 46:1", "Isaías 41:10", "Salmos 55:22"],
-    "tristeza": ["Salmos 34:18", "Salmos 147:3", "Isaías 61:3", "Salmos 42:11"],
-    "miedo": ["Isaías 41:10", "Salmos 23:4", "Salmos 27:1", "Isaías 43:1"],
-    "soledad": ["Salmos 68:6", "Isaías 41:10", "Salmos 73:23"],
-    "gratitud": ["Salmos 100:4", "Salmos 107:1", "Salmos 103:2"],
-    "esperanza": ["Salmos 42:11", "Isaías 40:31", "Salmos 130:5"],
-    "paz": ["Isaías 26:3", "Salmos 4:8", "Salmos 29:11"],
-    "fortaleza": ["Isaías 40:31", "Salmos 46:1", "Salmos 18:32"],
-    "perdón": ["Salmos 103:12", "Isaías 43:25", "Salmos 32:5"],
-    "amor": ["Salmos 136:1", "Salmos 86:5", "Salmos 103:8"],
-    "fe": ["Salmos 56:3", "Salmos 37:5", "Proverbios 3:5-6"],
-    "sabiduría": ["Proverbios 3:5-6", "Proverbios 9:10", "Proverbios 2:6", "Salmos 111:10"],
-    "propósito": ["Salmos 138:8", "Proverbios 19:21", "Salmos 37:4"],
-    "sanación": ["Salmos 103:2-3", "Salmos 147:3", "Isaías 53:5"],
-    "protección": ["Salmos 91:1-2", "Proverbios 18:10", "Salmos 121:7-8", "Salmos 32:7"],
-    "dirección": ["Proverbios 3:5-6", "Salmos 32:8", "Isaías 30:21", "Salmos 25:9"],
-    "paciencia": ["Salmos 27:14", "Salmos 37:7", "Isaías 40:31"],
-    "alabanza": ["Salmos 150:6", "Salmos 95:1-2", "Salmos 34:1", "Salmos 100:1"],
-    "transformación": ["Salmos 51:10", "Isaías 43:19", "Salmos 40:2"],
-    "consuelo": ["Salmos 23:4", "Isaías 40:1", "Salmos 34:18"]
-}
+            "ansiedad": ["Salmos 94:19", "Salmos 46:1", "Isaías 41:10", "Salmos 55:22"],
+            "tristeza": ["Salmos 34:18", "Salmos 147:3", "Isaías 61:3", "Salmos 42:11"],
+            "miedo": ["Isaías 41:10", "Salmos 23:4", "Salmos 27:1", "Isaías 43:1"],
+            "soledad": ["Salmos 68:6", "Isaías 41:10", "Salmos 73:23"],
+            "gratitud": ["Salmos 100:4", "Salmos 107:1", "Salmos 103:2"],
+            "esperanza": ["Salmos 42:11", "Isaías 40:31", "Salmos 130:5"],
+            "paz": ["Isaías 26:3", "Salmos 4:8", "Salmos 29:11"],
+            "fortaleza": ["Isaías 40:31", "Salmos 46:1", "Salmos 18:32"],
+            "perdón": ["Salmos 103:12", "Isaías 43:25", "Salmos 32:5"],
+            "amor": ["Salmos 136:1", "Salmos 86:5", "Salmos 103:8"],
+            "fe": ["Salmos 56:3", "Salmos 37:5", "Proverbios 3:5-6"],
+            "sabiduría": ["Proverbios 3:5-6", "Proverbios 9:10", "Proverbios 2:6", "Salmos 111:10"],
+            "propósito": ["Salmos 138:8", "Proverbios 19:21", "Salmos 37:4"],
+            "sanación": ["Salmos 103:2-3", "Salmos 147:3", "Isaías 53:5"],
+            "protección": ["Salmos 91:1-2", "Proverbios 18:10", "Salmos 121:7-8", "Salmos 32:7"],
+            "dirección": ["Proverbios 3:5-6", "Salmos 32:8", "Isaías 30:21", "Salmos 25:9"],
+            "paciencia": ["Salmos 27:14", "Salmos 37:7", "Isaías 40:31"],
+            "alabanza": ["Salmos 150:6", "Salmos 95:1-2", "Salmos 34:1", "Salmos 100:1"],
+            "transformación": ["Salmos 51:10", "Isaías 43:19", "Salmos 40:2"],
+            "consuelo": ["Salmos 23:4", "Isaías 40:1", "Salmos 34:18"]
+        }
+        
         # REFLEXIONES PROFUNDAS POR TEMA
         reflexiones = {
             "ansiedad": """La ansiedad es una invitación a soltar el control y confiar en algo más grande que nosotros mismos. Cada preocupación que entregas es un espacio que abres para la paz. En el silencio de tu respiración, en la quietud de este momento presente, existe una paz que trasciende todo entendimiento. 
@@ -2167,6 +2202,7 @@ Permítete ser consolado. Permítete recibir. Como un niño en brazos de un padr
 """
         
         return devocional
+
     def ver_journal_biblico(self):
         """Muestra las entradas del diario bíblico"""
         JOURNAL_FILE = "data/journal_biblico.json"
@@ -2184,6 +2220,7 @@ Permítete ser consolado. Permítete recibir. Como un niño en brazos de un padr
             return entradas if isinstance(entradas, list) else []
         except:
             return []
+    
 # =====================================================
 # HANDLER TAROT CON IA
 # =====================================================
@@ -8580,15 +8617,3 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
-if __name__ == "__main__":
-    biblia = RobustBibliaHandler()
-    
-    print("\n" + "="*50)
-    print("📚 NOMBRES DE LIBROS EN LA BIBLIA:")
-    print("="*50)
-    
-    for i, libro in enumerate(biblia.books[:10]):  # Primeros 10 libros
-        nombre = libro.get('name', 'SIN NOMBRE')
-        print(f"{i+1}. {nombre}")
-    
-    print("="*50 + "\n")
