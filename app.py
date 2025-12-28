@@ -2072,6 +2072,169 @@ class RobustBibliaHandler:
             return f"📖 **{nombre_libro} {cap_num}:{ver_num}**\n\n_{texto}_"
         
         return "❌ Error recuperando el texto."
+    def generar_devocional_personalizado(self, situacion):
+        """Genera un devocional profundo basado en la situación del usuario"""
+        if not self.valid_data:
+            return "⚠️ Datos de la Biblia no cargados correctamente."
+        
+        # BANCO EXPANDIDO DE VERSÍCULOS POR TEMA
+        temas = {
+            "ansiedad": ["Salmos 94:19", "Salmos 46:1", "Isaías 41:10", "Salmos 55:22"],
+            "tristeza": ["Salmos 34:18", "Salmos 147:3", "Isaías 61:3", "Salmos 42:11"],
+            "miedo": ["Isaías 41:10", "Salmos 23:4", "Salmos 27:1", "Isaías 43:1"],
+            "soledad": ["Salmos 68:6", "Isaías 41:10", "Salmos 73:23"],
+            "gratitud": ["Salmos 100:4", "Salmos 107:1", "Salmos 103:2"],
+            "esperanza": ["Salmos 42:11", "Isaías 40:31", "Salmos 130:5"],
+            "paz": ["Isaías 26:3", "Salmos 4:8", "Salmos 29:11"],
+            "fortaleza": ["Isaías 40:31", "Salmos 46:1", "Salmos 18:32"],
+            "perdón": ["Salmos 103:12", "Isaías 43:25", "Salmos 32:5"],
+            "amor": ["Salmos 136:1", "Salmos 86:5", "Salmos 103:8"],
+            "fe": ["Salmos 56:3", "Salmos 37:5", "Proverbios 3:5-6"],
+            "sabiduría": ["Proverbios 3:5-6", "Proverbios 9:10", "Proverbios 2:6", "Salmos 111:10"],
+            "propósito": ["Salmos 138:8", "Proverbios 19:21", "Salmos 37:4"],
+            "sanación": ["Salmos 103:2-3", "Salmos 147:3", "Isaías 53:5"],
+            "protección": ["Salmos 91:1-2", "Proverbios 18:10", "Salmos 121:7-8", "Salmos 32:7"],
+            "dirección": ["Proverbios 3:5-6", "Salmos 32:8", "Isaías 30:21", "Salmos 25:9"],
+            "paciencia": ["Salmos 27:14", "Salmos 37:7", "Isaías 40:31"],
+            "alabanza": ["Salmos 150:6", "Salmos 95:1-2", "Salmos 34:1", "Salmos 100:1"],
+            "transformación": ["Salmos 51:10", "Isaías 43:19", "Salmos 40:2"],
+            "consuelo": ["Salmos 23:4", "Isaías 40:1", "Salmos 34:18"]
+        }
+        
+        # REFLEXIONES PROFUNDAS POR TEMA (mantén las que ya tienes)
+        reflexiones = {
+            "ansiedad": """La ansiedad es una invitación a soltar el control y confiar en algo más grande que nosotros mismos. Cada preocupación que entregas es un espacio que abres para la paz. En el silencio de tu respiración, en la quietud de este momento presente, existe una paz que trasciende todo entendimiento. 
+
+No estás diseñado para cargar el peso del mañana sobre los hombros del hoy. Suelta. Respira. Confía.""",
+            "esperanza": """La esperanza es el hilo dorado que sostiene el universo unido. Incluso cuando todo parece perdido, la vida está conspirando a tu favor de maneras que aún no puedes ver. Las semillas germinan en la oscuridad antes de romper la tierra hacia la luz.
+
+Tú también estás germinando. Tu transformación está en proceso. Los mejores capítulos de tu historia aún no han sido escritos, y tú eres el autor con la pluma en la mano."""
+            # ... agrega el resto de reflexiones que ya tienes
+        }
+        
+        # ORACIONES (mantén las que ya tienes)
+        oraciones = {
+            "ansiedad": "Respiro profundo y suelto lo que no puedo controlar. En este momento, elijo la paz sobre la preocupación, la confianza sobre el miedo.",
+            "esperanza": "Planto semillas de esperanza en el jardín de mi corazón. Confío en el proceso invisible de germinación."
+            # ... agrega el resto de oraciones que ya tienes
+        }
+        
+        # PALABRAS CLAVE (mantén las que ya tienes)
+        palabras_clave = {
+            "ansiedad": ["ansiedad", "preocupación", "nervios", "estrés"],
+            "esperanza": ["esperanza", "futuro", "sueños", "metas"]
+            # ... agrega el resto que ya tienes
+        }
+        
+        # Buscar tema más relevante
+        situacion_lower = situacion.lower()
+        tema_encontrado = None
+        max_coincidencias = 0
+        
+        for tema, keywords in palabras_clave.items():
+            coincidencias = sum(1 for palabra in keywords if palabra in situacion_lower)
+            if coincidencias > max_coincidencias:
+                max_coincidencias = coincidencias
+                tema_encontrado = tema
+        
+        if not tema_encontrado or max_coincidencias == 0:
+            tema_encontrado = "esperanza"
+        
+        # Seleccionar versículo aleatorio del tema
+        ref = random.choice(temas[tema_encontrado])
+        versiculo_texto = self.buscar_versiculo_completo(ref)
+        
+        # Construir devocional completo
+        devocional = f"""✨ **DEVOCIONAL PERSONALIZADO** ✨
+
+🌙 **Tu Situación:** {situacion}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{versiculo_texto}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💭 **Reflexión Profunda:**
+
+{reflexiones.get(tema_encontrado, reflexiones['esperanza'])}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🙏 **Oración del Corazón:**
+
+{oraciones.get(tema_encontrado, oraciones['esperanza'])}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🕊️ *Que estas palabras sean bálsamo para tu alma y luz en tu camino. Amén.*
+"""
+        
+        return devocional
+
+    def ver_journal_biblico(self):
+        """Muestra las entradas del diario bíblico"""
+        JOURNAL_FILE = "data/journal_biblico.json"
+        
+        if not os.path.exists(JOURNAL_FILE):
+            os.makedirs("data", exist_ok=True)
+            with open(JOURNAL_FILE, "w", encoding="utf-8") as f:
+                json.dump([], f)
+            return []
+        
+        try:
+            with open(JOURNAL_FILE, "r", encoding="utf-8") as f:
+                entradas = json.load(f)
+            return entradas if isinstance(entradas, list) else []
+        except:
+            return []
+    def ver_favoritos(self):
+        """Muestra los versículos favoritos guardados"""
+        FAVORITOS_FILE = "data/favoritos_biblicos.json"
+        
+        # Crear archivo si no existe
+        if not os.path.exists(FAVORITOS_FILE):
+            os.makedirs("data", exist_ok=True)
+            with open(FAVORITOS_FILE, "w", encoding="utf-8") as f:
+                json.dump([], f)
+            return []
+        
+        try:
+            with open(FAVORITOS_FILE, "r", encoding="utf-8") as f:
+                favoritos = json.load(f)
+            return favoritos if isinstance(favoritos, list) else []
+        except:
+            return []
+    
+    def guardar_favorito(self, referencia, texto):
+        """Guarda un versículo en favoritos"""
+        FAVORITOS_FILE = "data/favoritos_biblicos.json"
+        
+        # Leer favoritos existentes
+        if os.path.exists(FAVORITOS_FILE):
+            try:
+                with open(FAVORITOS_FILE, "r", encoding="utf-8") as f:
+                    favoritos = json.load(f)
+            except:
+                favoritos = []
+        else:
+            os.makedirs("data", exist_ok=True)
+            favoritos = []
+        
+        # Agregar nuevo favorito
+        favorito = {
+            "referencia": referencia,
+            "texto": texto,
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        favoritos.append(favorito)
+        
+        # Guardar
+        with open(FAVORITOS_FILE, "w", encoding="utf-8") as f:
+            json.dump(favoritos, f, ensure_ascii=False, indent=2)
+        
+        return True
 
     # ... (resto de métodos sin cambios: generar_devocional_personalizado, ver_journal_biblico)
 # =====================================================
