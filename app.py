@@ -833,7 +833,7 @@ class LocalNotasHandler:
 class LocalLibrosHandler:
     def __init__(self):
         self.GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes?q="
-        self.GOOGLE_BOOKS_API_KEY = st.secrets["GOOGLE_BOOKS_API_KEY"]
+        self.GOOGLE_BOOKS_API_KEY = "AIzaSyCuw-pxGSkC2MvdVwXIXAuCooAyAAQhtr0"
         self.OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
         self.openai_client = None
         self.openai_enabled = False
