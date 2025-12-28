@@ -1,3 +1,4 @@
+
 import streamlit as st
 import streamlit.components.v1 as components
 import random
@@ -6596,7 +6597,7 @@ else:
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                if st.button("➕ Agregar Libro", use_container_width=True, key="btn_agregar_libro"):
+                if st.button("➕ Agregar Libro", use_container_width=True, key="btn_agregar_libro_estante"):
                     if nuevo_titulo.strip():
                         exito, msg = gestor_estantes.agregar_libro_a_estante(
                             nuevo_estante[0],
@@ -6756,7 +6757,7 @@ else:
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("🔙 Volver", key="btn_volver_estantes"):
                 st.session_state.libros_subview = "menu"
-                st.rerun()  
+                st.rerun()
 # --- MÓDULO FRASES ---
     elif st.session_state.current_view == "frases":
         st.markdown("<div class='title-glow'>💬 Frases</div>", unsafe_allow_html=True)
