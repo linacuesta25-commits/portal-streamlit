@@ -857,7 +857,7 @@ class LocalLibrosHandler:
             
             # Hacer la búsqueda
             response = requests.get(
-                f"{self.GOOGLE_BOOKS_URL}{query_limpio}",
+                f"{self.GOOGLE_BOOKS_URL}{query_limpio}&key={self.GOOGLE_BOOKS_API_KEY}",
                 timeout=10
             )
             
