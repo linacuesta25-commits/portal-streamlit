@@ -8580,3 +8580,15 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
+if __name__ == "__main__":
+    biblia = RobustBibliaHandler()
+    
+    print("\n" + "="*50)
+    print("📚 NOMBRES DE LIBROS EN LA BIBLIA:")
+    print("="*50)
+    
+    for i, libro in enumerate(biblia.books[:10]):  # Primeros 10 libros
+        nombre = libro.get('name', 'SIN NOMBRE')
+        print(f"{i+1}. {nombre}")
+    
+    print("="*50 + "\n")
