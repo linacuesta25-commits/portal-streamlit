@@ -830,9 +830,10 @@ class LocalNotasHandler:
         resultados = [n for n in notas if query_lower in n.get('texto', '').lower()]
         return resultados
 
+
+
 class LocalLibrosHandler:
     def __init__(self):
-        self.GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes?q="
         self.OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
         self.openai_client = None
         self.openai_enabled = False
@@ -846,60 +847,82 @@ class LocalLibrosHandler:
         except:
             self.openai_enabled = False
 
-    def buscar_libro(self, query):
-        """Busca libros en Google Books API con mejor manejo de errores"""
+    def randomizer_libros(self, descripcion):
+        """Genera 3 sugerencias de libros con IA + portadas"""
         try:
+            from openai import OpenAI
             import requests
             
-            # Limpiar y preparar query
-            query_limpio = query.strip()
+            client = OpenAI(api_key=self.OPENAI_API_KEY)
             
-            # Hacer la búsqueda
-            response = requests.get(
-                f"{self.GOOGLE_BOOKS_URL}{query_limpio}&key={self.GOOGLE_BOOKS_API_KEY}",
-                timeout=10
+            # 1. Generar sugerencias con GPT
+            prompt = f"""Eres un experto librero. El usuario quiere leer algo así: "{descripcion}"
+
+Sugiere exactamente 3 LIBROS REALES (que existan) que encajen perfectamente con esa descripción.
+
+Para cada libro, responde SOLO en este formato JSON:
+{{
+  "libros": [
+    {{
+      "titulo": "Título exacto del libro",
+      "autor": "Nombre del autor",
+      "descripcion": "Por qué este libro encaja (máximo 2 líneas)",
+      "descripcion_portada": "Descripción detallada de la portada original del libro para generar imagen"
+    }}
+  ]
+}}
+
+IMPORTANTE: 
+- Solo libros REALES que existan
+- Variedad (no 3 libros del mismo autor)
+- Descripción de portada debe ser visual y detallada"""
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.8,
+                response_format={"type": "json_object"}
             )
             
-            if response.status_code != 200:
-                return f"⚠️ Error al conectar con Google Books (código {response.status_code})"
+            import json
+            sugerencias = json.loads(response.choices[0].message.content)
+            libros = sugerencias.get("libros", [])
             
-            data = response.json()
+            if not libros or len(libros) < 3:
+                return {"success": False, "error": "No pude generar suficientes sugerencias. Intenta con otra descripción."}
             
-            # Verificar si hay resultados
-            if "items" not in data or len(data["items"]) == 0:
-                return f"📚 No encontré resultados para '{query_limpio}'. Intenta con:\n• El título completo\n• Solo el apellido del autor\n• Palabras clave del título"
+            # 2. Generar portadas con DALL-E
+            imagenes = []
+            for libro in libros[:3]:
+                try:
+                    prompt_imagen = f"Professional book cover design for '{libro['titulo']}' by {libro['autor']}. Style: {libro.get('descripcion_portada', 'Artistic, clean, professional book cover')}. High quality, centered text, attractive design."
+                    
+                    img_response = client.images.generate(
+                        model="dall-e-3",
+                        prompt=prompt_imagen,
+                        size="1024x1024",
+                        quality="standard",
+                        n=1
+                    )
+                    
+                    # Descargar la imagen
+                    img_url = img_response.data[0].url
+                    img_data = requests.get(img_url, timeout=10).content
+                    imagenes.append(img_data)
+                    
+                except Exception as e:
+                    print(f"Error generando imagen para {libro['titulo']}: {e}")
+                    imagenes.append(None)
             
-            # Tomar el primer resultado
-            libro = data["items"][0]["volumeInfo"]
+            return {
+                "success": True,
+                "libros": libros[:3],
+                "imagenes": imagenes
+            }
             
-            titulo = libro.get("title", "Sin título")
-            autores = ", ".join(libro.get("authors", ["Autor desconocido"]))
-            descripcion = libro.get("description", "Sin descripción disponible")
-            
-            # Limitar descripción
-            if len(descripcion) > 300:
-                descripcion = descripcion[:300] + "..."
-            
-            # Información adicional
-            fecha = libro.get("publishedDate", "Fecha desconocida")
-            paginas = libro.get("pageCount", "N/A")
-            
-            resultado = f"""📖 **{titulo}**
-👤 Autor(es): {autores}
-📅 Publicado: {fecha}
-📄 Páginas: {paginas}
-
-📝 Descripción:
-{descripcion}
-"""
-            return resultado
-            
-        except requests.exceptions.Timeout:
-            return "⏱️ La búsqueda tardó demasiado. Intenta de nuevo."
-        except requests.exceptions.ConnectionError:
-            return "🌐 No hay conexión a Internet. Verifica tu conexión."
         except Exception as e:
-            return f"❌ Error inesperado: {str(e)}\n\nIntenta con una búsqueda más simple."
+            print(f"Error en randomizer_libros: {e}")
+            return {"success": False, "error": f"Error: {str(e)}"}
 
     def _generar_imagen(self, prompt):
         if not self.openai_enabled: return None
@@ -1136,6 +1159,7 @@ class LocalLibrosHandler:
         data['reuniones'] = [r for r in data['reuniones'] if r['id'] != reunion_id]
         self._guardar_bookclub(data)
         return True
+    
     # === RETO DE LECTURA ANUAL ===
     
     def __init_reto_lectura(self):
@@ -1258,9 +1282,7 @@ class LocalLibrosHandler:
             'libros_por_dia': libros_por_dia,
             'completados': completados
         }
-    import os
-import json
-import datetime
+
 
 class GestorEstantes:
     def __init__(self):
@@ -1272,7 +1294,6 @@ class GestorEstantes:
     def _init_estantes_data(self):
         """Inicializa la carpeta de datos si no existe"""
         os.makedirs(self.DATA_FOLDER, exist_ok=True)
-        # Si el archivo no existe, crear uno vacío para evitar errores de lectura inicial
         if not os.path.exists(self.ESTANTES_FILE):
             self._guardar_estantes({
                 'por_leer': [],
@@ -1289,7 +1310,6 @@ class GestorEstantes:
             with open(self.ESTANTES_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, IOError):
-            # Si el archivo está corrupto o vacío, devolver estructura base
             return {'por_leer': [], 'leyendo': [], 'leidos': []}
 
     def _guardar_estantes(self, estantes):
@@ -1307,12 +1327,10 @@ class GestorEstantes:
         
         estantes = self._cargar_estantes()
         
-        # Verificar si ya existe en algún estante (case insensitive)
         for est_nombre, est_lista in estantes.items():
             if any(l['titulo'].strip().lower() == titulo.strip().lower() for l in est_lista):
                 return False, f"Este libro ya está en: {est_nombre.replace('_', ' ').title()}"
         
-        # Generación de ID robusta (evita duplicados si se borran libros)
         all_ids = [libro['id'] for lista in estantes.values() for libro in lista]
         nuevo_id = max(all_ids) + 1 if all_ids else 1
 
@@ -1343,7 +1361,6 @@ class GestorEstantes:
         libro_encontrado = None
         estante_origen = None
         
-        # Buscar el libro
         titulo_busqueda = titulo.strip().lower()
         for est_nombre, est_lista in estantes.items():
             for libro in est_lista:
@@ -1360,10 +1377,8 @@ class GestorEstantes:
         if estante_origen == estante_destino:
             return False, f"El libro ya está en: {estante_destino.replace('_', ' ').title()}"
         
-        # Eliminar del origen
         estantes[estante_origen].remove(libro_encontrado)
         
-        # Actualizar fechas y metadatos según destino
         hoy = datetime.datetime.now().strftime("%Y-%m-%d")
         
         if estante_destino == 'leyendo':
@@ -1372,11 +1387,9 @@ class GestorEstantes:
         
         elif estante_destino == 'leidos':
             libro_encontrado['fecha_finalizado'] = hoy
-            # Opcional: Si no tenía fecha de inicio, asumimos hoy
             if 'fecha_inicio' not in libro_encontrado:
                 libro_encontrado['fecha_inicio'] = hoy
 
-        # Agregar al destino
         estantes[estante_destino].append(libro_encontrado)
         
         self._guardar_estantes(estantes)
@@ -1394,7 +1407,7 @@ class GestorEstantes:
         for est_nombre, est_lista in estantes.items():
             for i, libro in enumerate(est_lista):
                 if libro['titulo'].lower() == titulo_busqueda:
-                    del estantes[est_nombre][i] # Eliminar por índice es más seguro y rápido
+                    del estantes[est_nombre][i]
                     self._guardar_estantes(estantes)
                     return True, f"Libro eliminado de: {est_nombre.replace('_', ' ').title()}"
         
@@ -1422,98 +1435,6 @@ class GestorEstantes:
             'total': total_general,
             'leidos_este_anio': leidos_este_anio
         }
-
-# --- EJEMPLO DE USO ---
-if __name__ == "__main__":
-    gestor = GestorEstantes()
-    
-    # 1. Agregar libros
-    print(gestor.agregar_libro_a_estante("por_leer", "El Principito", "Saint-Exupéry"))
-    print(gestor.agregar_libro_a_estante("leyendo", "1984", "George Orwell"))
-    
-    # 2. Mover libro
-    print(gestor.mover_libro_entre_estantes("1984", "leidos"))
-    
-    # 3. Ver estadísticas
-    print(gestor.estadisticas_estantes())
-
-    def randomizer_libros(self, descripcion):
-        """Genera 3 sugerencias de libros con IA + portadas"""
-        try:
-            from openai import OpenAI
-            import requests
-            
-            client = OpenAI(api_key=self.OPENAI_API_KEY)
-            
-            # 1. Generar sugerencias con GPT
-            prompt = f"""Eres un experto librero. El usuario quiere leer algo así: "{descripcion}"
-
-Sugiere exactamente 3 LIBROS REALES (que existan) que encajen perfectamente con esa descripción.
-
-Para cada libro, responde SOLO en este formato JSON:
-{{
-  "libros": [
-    {{
-      "titulo": "Título exacto del libro",
-      "autor": "Nombre del autor",
-      "descripcion": "Por qué este libro encaja (máximo 2 líneas)",
-      "descripcion_portada": "Descripción detallada de la portada original del libro para generar imagen"
-    }}
-  ]
-}}
-
-IMPORTANTE: 
-- Solo libros REALES que existan
-- Variedad (no 3 libros del mismo autor)
-- Descripción de portada debe ser visual y detallada"""
-
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.8,
-                response_format={"type": "json_object"}
-            )
-            
-            import json
-            sugerencias = json.loads(response.choices[0].message.content)
-            libros = sugerencias.get("libros", [])
-            
-            if not libros or len(libros) < 3:
-                return {"success": False, "error": "No pude generar suficientes sugerencias. Intenta con otra descripción."}
-            
-            # 2. Generar portadas con DALL-E
-            imagenes = []
-            for libro in libros[:3]:
-                try:
-                    prompt_imagen = f"Professional book cover design for '{libro['titulo']}' by {libro['autor']}. Style: {libro.get('descripcion_portada', 'Artistic, clean, professional book cover')}. High quality, centered text, attractive design."
-                    
-                    img_response = client.images.generate(
-                        model="dall-e-3",
-                        prompt=prompt_imagen,
-                        size="1024x1024",
-                        quality="standard",
-                        n=1
-                    )
-                    
-                    # Descargar la imagen
-                    img_url = img_response.data[0].url
-                    img_data = requests.get(img_url, timeout=10).content
-                    imagenes.append(img_data)
-                    
-                except Exception as e:
-                    print(f"Error generando imagen para {libro['titulo']}: {e}")
-                    # Crear una imagen placeholder en lugar de None
-                    imagenes.append(None)
-            
-            return {
-                "success": True,
-                "libros": libros[:3],
-                "imagenes": imagenes
-            }
-            
-        except Exception as e:
-            print(f"Error en randomizer_libros: {e}")
-            return {"success": False, "error": f"Error: {str(e)}"}
 
 class LocalFrasesHandler:
     def __init__(self):
@@ -8659,4 +8580,3 @@ else:
     # =====================================================
       
 st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
-
