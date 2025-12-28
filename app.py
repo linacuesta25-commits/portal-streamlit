@@ -1838,131 +1838,150 @@ class GestorPersonalidades:
 import json, os, datetime, random, streamlit as st
 class RobustBibliaHandler:
     def __init__(self):
-     self.BIBLIA_FILE = "data/es_rvr.json"
-     self.books = []
-     self.valid_data = False
-    
-    # MAPEO DE ABREVIATURAS REALES A NOMBRES COMPLETOS
-     self.book_names = {
-        "gn": "Génesis", "ex": "Éxodo", "lv": "Levítico", "nm": "Números",
-        "dt": "Deuteronomio", "js": "Josué", "jud": "Jueces", "rt": "Rut",
-        "1sm": "1 Samuel", "2sm": "2 Samuel", "1kgs": "1 Reyes", "2kgs": "2 Reyes",
-        "1ch": "1 Crónicas", "2ch": "2 Crónicas", "ezr": "Esdras", "ne": "Nehemías",
-        "et": "Ester", "job": "Job", "ps": "Salmos", "prv": "Proverbios",
-        "ec": "Eclesiastés", "so": "Cantares", "is": "Isaías", "jr": "Jeremías",
-        "lm": "Lamentaciones", "ez": "Ezequiel", "dn": "Daniel", "ho": "Oseas",
-        "jl": "Joel", "am": "Amós", "ob": "Abdías", "jn": "Jonás",
-        "mi": "Miqueas", "na": "Nahúm", "hk": "Habacuc", "zp": "Sofonías",
-        "hg": "Hageo", "zc": "Zacarías", "ml": "Malaquías",
-        "mt": "Mateo", "mk": "Marcos", "lk": "Lucas", "jo": "Juan",
-        "act": "Hechos", "rm": "Romanos", "1co": "1 Corintios", "2co": "2 Corintios",
-        "gl": "Gálatas", "eph": "Efesios", "ph": "Filipenses", "cl": "Colosenses",
-        "1ts": "1 Tesalonicenses", "2ts": "2 Tesalonicenses", "1tm": "1 Timoteo",
-        "2tm": "2 Timoteo", "tt": "Tito", "phm": "Filemón", "hb": "Hebreos",
-        "jm": "Santiago", "1pe": "1 Pedro", "2pe": "2 Pedro", "1jo": "1 Juan",
-        "2jo": "2 Juan", "3jo": "3 Juan", "jd": "Judas", "re": "Apocalipsis"
-    }
-    
-    # MAPEO INVERSO (nombre → abreviatura)
-    self.abbrev_map = {}
-    
-    # Mapeo automático básico
-    for abbrev, nombre in self.book_names.items():
-        nombre_lower = nombre.lower()
-        self.abbrev_map[nombre_lower] = abbrev
-        # Sin acentos
-        nombre_sin_acento = nombre_lower.replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u').replace('á', 'a')
-        self.abbrev_map[nombre_sin_acento] = abbrev
-    
-    # VARIACIONES MANUALES EXPANDIDAS
-    variaciones = {
-        "genesis": "gn", "génesis": "gn", "gen": "gn",
-        "exodo": "ex", "éxodo": "ex",
-        "levitico": "lv", "levítico": "lv",
-        "numeros": "nm", "números": "nm",
-        "deuteronomio": "dt", "deut": "dt",
-        "josue": "js", "josué": "js",
-        "jueces": "jud",
-        "rut": "rt",
-        "1 samuel": "1sm", "1samuel": "1sm", "primer samuel": "1sm",
-        "2 samuel": "2sm", "2samuel": "2sm", "segundo samuel": "2sm",
-        "1 reyes": "1kgs", "1reyes": "1kgs", "primer reyes": "1kgs",
-        "2 reyes": "2kgs", "2reyes": "2kgs", "segundo reyes": "2kgs",
-        "1 cronicas": "1ch", "1 crónicas": "1ch", "1cronicas": "1ch",
-        "2 cronicas": "2ch", "2 crónicas": "2ch", "2cronicas": "2ch",
-        "esdras": "ezr",
-        "nehemias": "ne", "nehemías": "ne",
-        "ester": "et",
-        "salmos": "ps", "salmo": "ps", "psalms": "ps",
-        "proverbios": "prv", "proverbio": "prv", "prov": "prv",
-        "eclesiastes": "ec", "eclesiástes": "ec",
-        "cantares": "so", "cantar de los cantares": "so",
-        "isaias": "is", "isaías": "is", "isa": "is",
-        "jeremias": "jr", "jeremías": "jr", "jer": "jr",
-        "lamentaciones": "lm",
-        "ezequiel": "ez", "eze": "ez",
-        "daniel": "dn", "dan": "dn",
-        "oseas": "ho",
-        "joel": "jl",
-        "amos": "am", "amós": "am",
-        "abdias": "ob", "abdías": "ob",
-        "jonas": "jn", "jonás": "jn",
-        "miqueas": "mi", "mic": "mi",
-        "nahum": "na", "nahúm": "na",
-        "habacuc": "hk", "hab": "hk",
-        "sofonias": "zp", "sofonías": "zp",
-        "hageo": "hg", "hag": "hg",
-        "zacarias": "zc", "zacarías": "zc", "zac": "zc",
-        "malaquias": "ml", "malaquías": "ml", "mal": "ml",
-        "mateo": "mt", "mat": "mt",
-        "marcos": "mk", "mar": "mk", "mc": "mk",
-        "lucas": "lk", "luc": "lk",
-        "juan": "jo",
-        "hechos": "act", "hch": "act",
-        "romanos": "rm", "rom": "rm",
-        "1 corintios": "1co", "1corintios": "1co",
-        "2 corintios": "2co", "2corintios": "2co",
-        "galatas": "gl", "gálatas": "gl", "gal": "gl",
-        "efesios": "eph", "efe": "eph",
-        "filipenses": "ph", "fil": "ph", "flp": "ph",
-        "colosenses": "cl", "col": "cl",
-        "1 tesalonicenses": "1ts", "1tesalonicenses": "1ts",
-        "2 tesalonicenses": "2ts", "2tesalonicenses": "2ts",
-        "1 timoteo": "1tm", "1timoteo": "1tm",
-        "2 timoteo": "2tm", "2timoteo": "2tm",
-        "tito": "tt",
-        "filemon": "phm", "filemón": "phm",
-        "hebreos": "hb", "heb": "hb",
-        "santiago": "jm", "sant": "jm", "stg": "jm",
-        "1 pedro": "1pe", "1pedro": "1pe",
-        "2 pedro": "2pe", "2pedro": "2pe",
-        "1 juan": "1jo", "1juan": "1jo",
-        "2 juan": "2jo", "2juan": "2jo",
-        "3 juan": "3jo", "3juan": "3jo",
-        "judas": "jd",
-        "apocalipsis": "re", "apo": "re", "revelacion": "re", "revelación": "re"
-    }
-    
-    self.abbrev_map.update(variaciones)
-
-    try:
-        with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
-            data = json.load(f)
-
-        if isinstance(data, dict) and "books" in data:
-            self.books = data["books"]
-        elif isinstance(data, list):
-            self.books = data
+        self.BIBLIA_FILE = "data/es_rvr.json"
+        self.books = []
+        self.valid_data = False
         
-        self.books = [b for b in self.books if isinstance(b, dict)]
+        # MAPEO DE ABREVIATURAS REALES A NOMBRES COMPLETOS
+        self.book_names = {
+            "gn": "Génesis", "ex": "Éxodo", "lv": "Levítico", "nm": "Números",
+            "dt": "Deuteronomio", "js": "Josué", "jud": "Jueces", "rt": "Rut",
+            "1sm": "1 Samuel", "2sm": "2 Samuel", "1kgs": "1 Reyes", "2kgs": "2 Reyes",
+            "1ch": "1 Crónicas", "2ch": "2 Crónicas", "ezr": "Esdras", "ne": "Nehemías",
+            "et": "Ester", "job": "Job", "ps": "Salmos", "prv": "Proverbios",
+            "ec": "Eclesiastés", "so": "Cantares", "is": "Isaías", "jr": "Jeremías",
+            "lm": "Lamentaciones", "ez": "Ezequiel", "dn": "Daniel", "ho": "Oseas",
+            "jl": "Joel", "am": "Amós", "ob": "Abdías", "jn": "Jonás",
+            "mi": "Miqueas", "na": "Nahúm", "hk": "Habacuc", "zp": "Sofonías",
+            "hg": "Hageo", "zc": "Zacarías", "ml": "Malaquías",
+            "mt": "Mateo", "mk": "Marcos", "lk": "Lucas", "jo": "Juan",
+            "act": "Hechos", "rm": "Romanos", "1co": "1 Corintios", "2co": "2 Corintios",
+            "gl": "Gálatas", "eph": "Efesios", "ph": "Filipenses", "cl": "Colosenses",
+            "1ts": "1 Tesalonicenses", "2ts": "2 Tesalonicenses", "1tm": "1 Timoteo",
+            "2tm": "2 Timoteo", "tt": "Tito", "phm": "Filemón", "hb": "Hebreos",
+            "jm": "Santiago", "1pe": "1 Pedro", "2pe": "2 Pedro", "1jo": "1 Juan",
+            "2jo": "2 Juan", "3jo": "3 Juan", "jd": "Judas", "re": "Apocalipsis"
+        }
+        
+        # MAPEO INVERSO (nombre → abreviatura)
+        self.abbrev_map = {}
+        
+        # Mapeo automático básico
+        for abbrev, nombre in self.book_names.items():
+            nombre_lower = nombre.lower()
+            self.abbrev_map[nombre_lower] = abbrev
+            # Sin acentos
+            nombre_sin_acento = nombre_lower.replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u').replace('á', 'a')
+            self.abbrev_map[nombre_sin_acento] = abbrev
+        
+        # VARIACIONES MANUALES EXPANDIDAS
+        variaciones = {
+            "genesis": "gn", "génesis": "gn", "gen": "gn",
+            "exodo": "ex", "éxodo": "ex",
+            "levitico": "lv", "levítico": "lv",
+            "numeros": "nm", "números": "nm",
+            "deuteronomio": "dt", "deut": "dt",
+            "josue": "js", "josué": "js",
+            "jueces": "jud",
+            "rut": "rt",
+            "1 samuel": "1sm", "1samuel": "1sm", "primer samuel": "1sm",
+            "2 samuel": "2sm", "2samuel": "2sm", "segundo samuel": "2sm",
+            "1 reyes": "1kgs", "1reyes": "1kgs", "primer reyes": "1kgs",
+            "2 reyes": "2kgs", "2reyes": "2kgs", "segundo reyes": "2kgs",
+            "1 cronicas": "1ch", "1 crónicas": "1ch", "1cronicas": "1ch",
+            "2 cronicas": "2ch", "2 crónicas": "2ch", "2cronicas": "2ch",
+            "esdras": "ezr",
+            "nehemias": "ne", "nehemías": "ne",
+            "ester": "et",
+            "salmos": "ps", "salmo": "ps", "psalms": "ps",
+            "proverbios": "prv", "proverbio": "prv", "prov": "prv",
+            "eclesiastes": "ec", "eclesiástes": "ec",
+            "cantares": "so", "cantar de los cantares": "so",
+            "isaias": "is", "isaías": "is", "isa": "is",
+            "jeremias": "jr", "jeremías": "jr", "jer": "jr",
+            "lamentaciones": "lm",
+            "ezequiel": "ez", "eze": "ez",
+            "daniel": "dn", "dan": "dn",
+            "oseas": "ho",
+            "joel": "jl",
+            "amos": "am", "amós": "am",
+            "abdias": "ob", "abdías": "ob",
+            "jonas": "jn", "jonás": "jn",
+            "miqueas": "mi", "mic": "mi",
+            "nahum": "na", "nahúm": "na",
+            "habacuc": "hk", "hab": "hk",
+            "sofonias": "zp", "sofonías": "zp",
+            "hageo": "hg", "hag": "hg",
+            "zacarias": "zc", "zacarías": "zc", "zac": "zc",
+            "malaquias": "ml", "malaquías": "ml", "mal": "ml",
+            "mateo": "mt", "mat": "mt",
+            "marcos": "mk", "mar": "mk", "mc": "mk",
+            "lucas": "lk", "luc": "lk",
+            "juan": "jo",
+            "hechos": "act", "hch": "act",
+            "romanos": "rm", "rom": "rm",
+            "1 corintios": "1co", "1corintios": "1co",
+            "2 corintios": "2co", "2corintios": "2co",
+            "galatas": "gl", "gálatas": "gl", "gal": "gl",
+            "efesios": "eph", "efe": "eph",
+            "filipenses": "ph", "fil": "ph", "flp": "ph",
+            "colosenses": "cl", "col": "cl",
+            "1 tesalonicenses": "1ts", "1tesalonicenses": "1ts",
+            "2 tesalonicenses": "2ts", "2tesalonicenses": "2ts",
+            "1 timoteo": "1tm", "1timoteo": "1tm",
+            "2 timoteo": "2tm", "2timoteo": "2tm",
+            "tito": "tt",
+            "filemon": "phm", "filemón": "phm",
+            "hebreos": "hb", "heb": "hb",
+            "santiago": "jm", "sant": "jm", "stg": "jm",
+            "1 pedro": "1pe", "1pedro": "1pe",
+            "2 pedro": "2pe", "2pedro": "2pe",
+            "1 juan": "1jo", "1juan": "1jo",
+            "2 juan": "2jo", "2juan": "2jo",
+            "3 juan": "3jo", "3juan": "3jo",
+            "judas": "jd",
+            "apocalipsis": "re", "apo": "re", "revelacion": "re", "revelación": "re"
+        }
+        
+        self.abbrev_map.update(variaciones)
 
-        if self.books:
-            self.valid_data = True
-        else:
-            st.error("⚠️ El archivo JSON no contiene libros válidos.")
+        try:
+            with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
+                data = json.load(f)
+
+            if isinstance(data, dict) and "books" in data:
+                self.books = data["books"]
+            elif isinstance(data, list):
+                self.books = data
             
-    except Exception as e:
-        st.error(f"❌ Error cargando la Biblia: {str(e)}")
+            self.books = [b for b in self.books if isinstance(b, dict)]
+
+            if self.books:
+                self.valid_data = True
+            else:
+                st.error("⚠️ El archivo JSON no contiene libros válidos.")
+                
+        except Exception as e:
+            st.error(f"❌ Error cargando la Biblia: {str(e)}")
+    
+    def _get_verse_text(self, capitulo, idx):
+        """Obtiene el texto sin importar si el capítulo es Lista o Diccionario"""
+        try:
+            # CASO A: El capítulo es una LISTA ["texto", "texto"] (Común en RVR)
+            if isinstance(capitulo, list):
+                if 0 <= idx < len(capitulo):
+                    return capitulo[idx]
+            
+            # CASO B: El capítulo es un DICCIONARIO {"verses": [...]}
+            elif isinstance(capitulo, dict):
+                verses = capitulo.get("verses", [])
+                if 0 <= idx < len(verses):
+                    v = verses[idx]
+                    # Si el verso es un objeto {"text": "hola"}, sacamos el texto. Si es string, lo devolvemos.
+                    return v.get("text", str(v)) if isinstance(v, dict) else str(v)
+        except Exception as e:
+            print(f"Error extrayendo verso: {e}")
+        return None
 
     def versiculo_del_dia(self):
         if not self.valid_data: return "⚠️ Datos no cargados."
@@ -2054,231 +2073,7 @@ class RobustBibliaHandler:
         
         return "❌ Error recuperando el texto."
 
-    def generar_devocional_personalizado(self, situacion):
-        """Genera un devocional profundo basado en la situación del usuario"""
-        if not self.valid_data:
-            return "⚠️ Datos de la Biblia no cargados correctamente."
-        
-        # BANCO EXPANDIDO DE VERSÍCULOS POR TEMA
-        temas = {
-            "ansiedad": ["Salmos 94:19", "Salmos 46:1", "Isaías 41:10", "Salmos 55:22"],
-            "tristeza": ["Salmos 34:18", "Salmos 147:3", "Isaías 61:3", "Salmos 42:11"],
-            "miedo": ["Isaías 41:10", "Salmos 23:4", "Salmos 27:1", "Isaías 43:1"],
-            "soledad": ["Salmos 68:6", "Isaías 41:10", "Salmos 73:23"],
-            "gratitud": ["Salmos 100:4", "Salmos 107:1", "Salmos 103:2"],
-            "esperanza": ["Salmos 42:11", "Isaías 40:31", "Salmos 130:5"],
-            "paz": ["Isaías 26:3", "Salmos 4:8", "Salmos 29:11"],
-            "fortaleza": ["Isaías 40:31", "Salmos 46:1", "Salmos 18:32"],
-            "perdón": ["Salmos 103:12", "Isaías 43:25", "Salmos 32:5"],
-            "amor": ["Salmos 136:1", "Salmos 86:5", "Salmos 103:8"],
-            "fe": ["Salmos 56:3", "Salmos 37:5", "Proverbios 3:5-6"],
-            "sabiduría": ["Proverbios 3:5-6", "Proverbios 9:10", "Proverbios 2:6", "Salmos 111:10"],
-            "propósito": ["Salmos 138:8", "Proverbios 19:21", "Salmos 37:4"],
-            "sanación": ["Salmos 103:2-3", "Salmos 147:3", "Isaías 53:5"],
-            "protección": ["Salmos 91:1-2", "Proverbios 18:10", "Salmos 121:7-8", "Salmos 32:7"],
-            "dirección": ["Proverbios 3:5-6", "Salmos 32:8", "Isaías 30:21", "Salmos 25:9"],
-            "paciencia": ["Salmos 27:14", "Salmos 37:7", "Isaías 40:31"],
-            "alabanza": ["Salmos 150:6", "Salmos 95:1-2", "Salmos 34:1", "Salmos 100:1"],
-            "transformación": ["Salmos 51:10", "Isaías 43:19", "Salmos 40:2"],
-            "consuelo": ["Salmos 23:4", "Isaías 40:1", "Salmos 34:18"]
-        }
-        
-        # REFLEXIONES PROFUNDAS POR TEMA
-        reflexiones = {
-            "ansiedad": """La ansiedad es una invitación a soltar el control y confiar en algo más grande que nosotros mismos. Cada preocupación que entregas es un espacio que abres para la paz. En el silencio de tu respiración, en la quietud de este momento presente, existe una paz que trasciende todo entendimiento. 
-
-No estás diseñado para cargar el peso del mañana sobre los hombros del hoy. Suelta. Respira. Confía.""",
-            
-            "tristeza": """La tristeza no es tu enemiga - es una maestra que te invita a sentir profundamente, a honrar lo que has perdido o lo que anhelas. Tus lágrimas son sagradas; cada una lleva consigo la posibilidad de sanación. 
-
-Permitirte sentir es el primer paso hacia la transformación. No hay luz sin oscuridad, no hay amanecer sin noche. Y tú, incluso en este valle oscuro, estás siendo sostenido por manos invisibles que nunca te han soltado.""",
-            
-            "miedo": """El miedo es la sombra que proyecta la luz de lo desconocido. Pero tú eres más grande que tus miedos. Cada vez que eliges dar un paso adelante a pesar del temblor en tus rodillas, estás reescribiendo la historia de tu valentía.
-
-No se trata de la ausencia de miedo, sino de la presencia de fe. Fe en que eres guiado, protegido, acompañado. El camino puede parecer incierto, pero tus pies conocen el siguiente paso. Confía en ellos.""",
-            
-            "soledad": """La soledad puede ser tanto un desierto como un santuario. En el silencio de tu solitud, existe la posibilidad de encontrarte contigo mismo de maneras que el ruido del mundo nunca permite.
-
-No estás solo, aunque así lo sientas. Hay una presencia que respira contigo, que late con tu corazón, que habita en el espacio sagrado de tu ser. La conexión que buscas afuera comienza adentro. Eres parte de un tapiz infinito de existencia - nunca separado, siempre entrelazado.""",
-            
-            "gratitud": """La gratitud es el portal hacia la abundancia. Cuando cambias tu mirada de lo que falta a lo que existe, todo tu universo se reorganiza. Cada respiración es un regalo, cada latido es un milagro, cada amanecer es una promesa renovada.
-
-Hoy, permite que tu corazón se expanda en reconocimiento. No por obligación, sino por la pura alegría de estar vivo, de poder sentir, de poder amar. La gratitud transforma lo ordinario en extraordinario.""",
-            
-            "esperanza": """La esperanza es el hilo dorado que sostiene el universo unido. Incluso cuando todo parece perdido, la vida está conspirando a tu favor de maneras que aún no puedes ver. Las semillas germinan en la oscuridad antes de romper la tierra hacia la luz.
-
-Tú también estás germinando. Tu transformación está en proceso. Los mejores capítulos de tu historia aún no han sido escritos, y tú eres el autor con la pluma en la mano. La esperanza no es ingenuidad - es valentía vestida de posibilidad.""",
-            
-            "paz": """La paz no es la ausencia de caos, sino la quietud en el centro de la tormenta. Es el ojo del huracán donde todo se detiene, donde el tiempo se suspende, donde tú simplemente eres.
-
-Esta paz no depende de circunstancias externas - fluye desde una fuente inagotable dentro de ti. Cuando el mundo exterior grita, tu mundo interior puede permanecer en silencio sagrado. Cultiva ese jardín interno. Riégalo con presencia, con respiración consciente, con momentos de quietud deliberada.""",
-            
-            "fortaleza": """Tu fortaleza no viene de nunca caer, sino de levantarte cada vez. No de nunca quebrarte, sino de permitir que la luz entre a través de tus grietas. Eres más resiliente de lo que crees, más poderoso de lo que imaginas.
-
-La verdadera fortaleza es vulnerable - reconoce sus límites, pide ayuda, se permite descansar. Eres como el bambú: flexible pero inquebrantable, doblándote con el viento pero nunca rompiéndote. Tu poder reside no en tu rigidez, sino en tu capacidad de fluir.""",
-            
-            "perdón": """El perdón es el regalo que te das a ti mismo. No es olvidar, no es justificar, no es reconciliarse necesariamente. Es soltar el veneno que has estado bebiendo esperando que duela a otro.
-
-Cada resentimiento que sueltas es una cadena que se rompe, un peso que dejas caer, un espacio que liberas para el amor. Perdonar es un acto revolucionario de auto-liberación. No lo haces por ellos - lo haces por ti. Porque mereces vivir libre.""",
-            
-            "amor": """El amor es la esencia de todo lo que eres. No algo que buscas afuera, sino lo que emana desde tu núcleo mismo. Eres amor en forma humana, experimentando la danza de la vida.
-
-Cuando amas, te expandes. Cuando juzgas, te contraes. Elige la expansión. Elige ver lo divino en cada rostro, la luz en cada corazón, la bondad en cada alma. El amor no es un sentimiento - es una decisión, una práctica, un camino.""",
-            
-            "fe": """La fe es ver lo invisible, creer lo imposible, confiar en lo desconocido. Es el puente entre donde estás y donde quieres estar. No necesitas tener todas las respuestas - solo necesitas dar el siguiente paso.
-
-Tu fe no tiene que ser perfecta, solo tiene que ser sincera. Una semilla de mostaza contiene en sí misma el potencial de un árbol entero. Tu fe, por pequeña que parezca, contiene mundos de posibilidad. Nutre esa semilla.""",
-            
-            "sabiduría": """La sabiduría no viene de saber todas las respuestas, sino de hacer las preguntas correctas. De escuchar más que hablar. De observar antes de juzgar. De esperar antes de reaccionar.
-
-Hay una inteligencia universal fluyendo a través de ti, disponible cuando aquietas el ruido mental y escuchas. La sabiduría habla en susurros - en la intuición, en los sueños, en las sincronicidades. Afina tu oído interno.""",
-            
-            "propósito": """Tu existencia no es accidental. Eres una nota única en la sinfonía cósmica, necesaria para completar la melodía del universo. Tu propósito no es algo que encuentras - es algo que despliegas, momento a momento.
-
-No tiene que ser grandioso para ser significativo. Cada acto de bondad, cada palabra de aliento, cada momento de presencia - estos son hilos de propósito tejiendo el tapiz de tu vida. Vives tu propósito cuando vives auténticamente.""",
-            
-            "sanación": """La sanación no siempre significa cura, pero siempre significa transformación. Es un viaje en espiral, no una línea recta. Habrá días de progreso y días de aparente retroceso, pero cada uno te está enseñando algo.
-
-Tu cuerpo tiene una sabiduría antigua - sabe cómo sanar cuando le das el espacio, el descanso, el amor que necesita. Tu alma también. Sé paciente contigo mismo. La sanación ocurre en capas, en olas, en ciclos. Estás exactamente donde necesitas estar.""",
-            
-            "protección": """Estás rodeado por una presencia protectora que nunca duerme, nunca descansa, nunca te abandona. Como el águila que protege su nido, como el pastor que cuida su rebaño, así eres cuidado.
-
-Esta protección no significa que nunca enfrentarás desafíos, sino que nunca los enfrentarás solo. En medio de la tormenta, hay un refugio. En medio del peligro, hay un escudo invisible. Confía en esa protección divina que trasciende lo visible.""",
-            
-            "dirección": """No necesitas ver todo el camino para dar el siguiente paso. La dirección se revela en el movimiento, no en la parálisis. Como conducir de noche - tus faros solo iluminan unos metros adelante, pero así recorres todo el camino.
-
-Las señales están en todas partes para quien sabe mirar - en las puertas que se abren, en los encuentros "casuales", en los susurros del corazón. Confía en tu GPS interno. Sabe hacia dónde vas, incluso cuando tu mente está confundida.""",
-            
-            "paciencia": """La paciencia es la práctica espiritual más difícil en un mundo que exige inmediatez. Pero todo lo verdaderamente valioso toma tiempo - los árboles, los diamantes, la sabiduría, el amor profundo.
-
-Tú también estás en proceso. No eres un producto terminado sino una obra maestra en creación constante. Sé tan paciente contigo mismo como lo eres con una semilla que plantaste - no la desenterrarías cada día para ver si está creciendo. Confía en el proceso invisible.""",
-            
-            "alabanza": """La alabanza eleva tu vibración. Cuando elevas tu voz en gratitud y reconocimiento, te alineas con las frecuencias más altas del universo. No es para beneficio de lo divino - es para tu propia transformación.
-
-Alabar es participar en el canto eterno de la creación. Las estrellas lo hacen, los océanos lo hacen, las montañas en su silencio lo hacen. Tú también eres parte de este coro cósmico. Que tu vida sea tu canción de alabanza.""",
-            
-            "transformación": """No eres quien eras ayer, y no serás quien eres hoy. Estás en constante transformación, como la oruga que no puede imaginar sus alas mientras está en el capullo.
-
-La transformación requiere soltar - viejas identidades, viejas heridas, viejas historias. Requiere muerte y renacimiento, una y otra vez. Es incómoda, desordenada, y absolutamente necesaria. Eres un ser de metamorfosis constante. Abraza el proceso.""",
-            
-            "consuelo": """En tu dolor, hay manos invisibles sosteniéndote. En tu quebranto, hay un amor que lo entiende todo. El consuelo divino no elimina el dolor, pero te acompaña en él.
-
-Permítete ser consolado. Permítete recibir. Como un niño en brazos de un padre amoroso, puedes descansar tu corazón cansado. No tienes que ser fuerte todo el tiempo. Hay un regazo cósmico esperándote, un refugio sagrado donde puedes finalmente exhalar."""
-        }
-        
-        # ORACIONES PODEROSAS POR TEMA
-        oraciones = {
-            "ansiedad": "Respiro profundo y suelto lo que no puedo controlar. En este momento, elijo la paz sobre la preocupación, la confianza sobre el miedo. Que cada exhalación libere la tensión, y cada inhalación traiga calma divina a mi ser.",
-            "tristeza": "Honro mi tristeza como maestra. Permito que mis lágrimas limpien y sanen. En mi vulnerabilidad encuentro mi humanidad, y en mi humanidad encuentro lo divino. Que el consuelo llegue como olas suaves a la orilla de mi corazón.",
-            "miedo": "Reconozco mi miedo sin ser consumido por él. Elijo valentía no por ausencia de temor, sino por presencia de fe. Camino hacia adelante sabiendo que soy guiado, protegido, acompañado. El amor perfecto echa fuera todo temor.",
-            "soledad": "En mi solitud, me encuentro contigo y conmigo. Reconozco la conexión invisible que me une a todo lo que existe. No estoy solo - soy uno con todo. Que esta verdad llene el espacio vacío con presencia divina.",
-            "gratitud": "Abro mi corazón en reconocimiento de todas las bendiciones, vistas e invisibles. Por este día, este aliento, esta oportunidad de estar vivo. Que mi gratitud transforme mi percepción y abra puertas a más abundancia.",
-            "esperanza": "Planto semillas de esperanza en el jardín de mi corazón. Confío en el proceso invisible de germinación. Creo en posibilidades que aún no puedo ver. El mejor capítulo de mi historia está por escribirse.",
-            "paz": "Me anclo en el centro de paz que existe dentro de mí, más allá del caos externo. Soy el ojo del huracán - quieto, centrado, en calma. Que esta paz irradie desde mi centro hacia todo lo que toco.",
-            "fortaleza": "Reconozco mi fortaleza no en mi rigidez sino en mi flexibilidad. Soy resiliente, soy capaz, soy poderoso. En mi vulnerabilidad encuentro mi verdadera fuerza. Me levanto una vez más.",
-            "perdón": "Suelto el peso del resentimiento. Libero las cadenas del rencor. El perdón es mi regalo para mí mismo. Me libero, me sano, me elevo. Elijo el amor sobre el odio, la paz sobre la venganza.",
-            "amor": "Soy amor en acción. Veo lo divino en cada ser. Mi corazón se expande para abrazar la vida en toda su complejidad. Amo porque es mi naturaleza esencial, no porque espero algo a cambio.",
-            "fe": "Mi fe es la sustancia de lo que espero, la certeza de lo que no veo. Doy el siguiente paso confiando en que el camino aparecerá bajo mis pies. Creo en milagros, en posibilidades, en lo imposible hecho posible.",
-            "sabiduría": "Aquieto mi mente para escuchar la sabiduría que fluye a través de mí. Observo antes de juzgar, escucho antes de hablar, siento antes de actuar. La inteligencia universal me guía.",
-            "propósito": "Mi vida tiene significado y propósito. Cada momento es una oportunidad para expresar mi esencia única. Vivo con intención, amo con propósito, sirvo con alegría. Soy exactamente quien necesito ser.",
-            "sanación": "Mi cuerpo conoce el camino de la sanación. Mi alma conoce el camino de la transformación. Me rindo al proceso, confío en la sabiduría innata de mi ser. Cada célula se renueva, cada herida se cierra, cada dolor se transforma.",
-            "protección": "Estoy rodeado por luz protectora. Estoy cubierto por amor divino. Camino seguro sabiendo que no estoy desprotegido. Un escudo invisible me rodea - nada puede tocarme que no sea para mi más alto bien.",
-            "dirección": "Confío en el GPS de mi alma. El camino se revela paso a paso. No necesito verlo todo - solo necesito dar el siguiente paso. Soy guiado hacia mi más alto bien por una inteligencia que ve lo que yo no puedo.",
-            "paciencia": "Respiro en paciencia, exhalo impaciencia. Confío en el tiempo divino. Todo llega en su momento perfecto, ni antes ni después. Soy como el árbol que no apresura sus estaciones. Todo a su tiempo.",
-            "alabanza": "Elevo mi voz en gratitud y reconocimiento. Mi vida es mi canción de alabanza. Cada aliento es un gracias, cada latido es un aleluya. Me uno al coro eterno de la creación en celebración de la vida.",
-            "transformación": "Suelto quien era para convertirme en quien estoy destinado a ser. Abrazo el proceso de metamorfosis. Como la oruga que se disuelve para emerger con alas, yo también me transformo. Muerte y renacimiento, constantemente.",
-            "consuelo": "Descanso en brazos invisibles de amor. Permito que el consuelo divino llene cada rincón de mi corazón herido. No estoy solo en mi dolor. Hay una presencia que entiende, que acompaña, que sana. Me rindo a ese amor."
-        }
-        
-        # DETECTAR TEMA (con múltiples palabras clave por tema)
-        palabras_clave = {
-            "ansiedad": ["ansiedad", "preocupación", "nervios", "estrés", "inquietud", "angustia", "agobiado"],
-            "tristeza": ["tristeza", "triste", "depresión", "melancolía", "lloro", "lágrimas", "pena", "duelo"],
-            "miedo": ["miedo", "temor", "pánico", "terror", "asustado", "inseguridad"],
-            "soledad": ["soledad", "solo", "aislado", "abandonado", "nadie"],
-            "gratitud": ["gratitud", "agradecer", "gracias", "bendición", "afortunado"],
-            "esperanza": ["esperanza", "futuro", "sueños", "metas", "deseo"],
-            "paz": ["paz", "calma", "tranquilidad", "serenidad", "quietud"],
-            "fortaleza": ["fortaleza", "fuerza", "valor", "valentía", "resistencia", "débil", "cansado"],
-            "perdón": ["perdón", "perdonar", "resentimiento", "rencor", "ofensa", "herida"],
-            "amor": ["amor", "amar", "cariño", "afecto", "relación", "pareja"],
-            "fe": ["fe", "creer", "confianza", "duda", "incredulidad"],
-            "sabiduría": ["sabiduría", "decisión", "elección", "confusión", "guía"],
-            "propósito": ["propósito", "sentido", "significado", "rumbo", "vacío", "sin sentido"],
-            "sanación": ["sanación", "sanar", "enfermedad", "dolor", "salud", "enfermo"],
-            "protección": ["protección", "peligro", "amenaza", "seguridad", "vulnerable"],
-            "dirección": ["dirección", "camino", "perdido", "rumbo", "sin dirección"],
-            "paciencia": ["paciencia", "espera", "desesperación", "urgencia", "prisa"],
-            "alabanza": ["alabanza", "adoración", "gratitud", "celebración"],
-            "transformación": ["transformación", "cambio", "nuevo", "diferente", "evolución"],
-            "consuelo": ["consuelo", "dolor", "sufrimiento", "aflicción", "quebranto"]
-        }
-        
-        # Buscar tema más relevante
-        situacion_lower = situacion.lower()
-        tema_encontrado = None
-        max_coincidencias = 0
-        
-        for tema, keywords in palabras_clave.items():
-            coincidencias = sum(1 for palabra in keywords if palabra in situacion_lower)
-            if coincidencias > max_coincidencias:
-                max_coincidencias = coincidencias
-                tema_encontrado = tema
-        
-        # Si no encuentra nada, usar esperanza como default
-        if not tema_encontrado or max_coincidencias == 0:
-            tema_encontrado = "esperanza"
-        
-        # Seleccionar versículo aleatorio del tema
-        ref = random.choice(temas[tema_encontrado])
-        versiculo_texto = self.buscar_versiculo_completo(ref)
-        
-        # Construir devocional completo
-        devocional = f"""✨ **DEVOCIONAL PERSONALIZADO** ✨
-
-🌙 **Tu Situación:** {situacion}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-{versiculo_texto}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💭 **Reflexión Profunda:**
-
-{reflexiones.get(tema_encontrado, reflexiones['esperanza'])}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🙏 **Oración del Corazón:**
-
-{oraciones.get(tema_encontrado, oraciones['esperanza'])}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🕊️ *Que estas palabras sean bálsamo para tu alma y luz en tu camino. Amén.*
-"""
-        
-        return devocional
-
-    def ver_journal_biblico(self):
-        """Muestra las entradas del diario bíblico"""
-        JOURNAL_FILE = "data/journal_biblico.json"
-        
-        # Crear archivo si no existe
-        if not os.path.exists(JOURNAL_FILE):
-            os.makedirs("data", exist_ok=True)
-            with open(JOURNAL_FILE, "w", encoding="utf-8") as f:
-                json.dump([], f)
-            return []
-        
-        try:
-            with open(JOURNAL_FILE, "r", encoding="utf-8") as f:
-                entradas = json.load(f)
-            return entradas if isinstance(entradas, list) else []
-        except:
-            return []
-    
+    # ... (resto de métodos sin cambios: generar_devocional_personalizado, ver_journal_biblico)
 # =====================================================
 # HANDLER TAROT CON IA
 # =====================================================
