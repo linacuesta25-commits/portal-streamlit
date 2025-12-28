@@ -847,18 +847,59 @@ class LocalLibrosHandler:
             self.openai_enabled = False
 
     def buscar_libro(self, query):
+        """Busca libros en Google Books API con mejor manejo de errores"""
         try:
             import requests
-            response = requests.get(f"{self.GOOGLE_BOOKS_URL}{query}", timeout=5)
+            
+            # Limpiar y preparar query
+            query_limpio = query.strip()
+            
+            # Hacer la búsqueda
+            response = requests.get(
+                f"{self.GOOGLE_BOOKS_URL}{query_limpio}",
+                timeout=10
+            )
+            
+            if response.status_code != 200:
+                return f"⚠️ Error al conectar con Google Books (código {response.status_code})"
+            
             data = response.json()
-            if "items" not in data: return "No encontré resultados para ese libro 📚"
+            
+            # Verificar si hay resultados
+            if "items" not in data or len(data["items"]) == 0:
+                return f"📚 No encontré resultados para '{query_limpio}'. Intenta con:\n• El título completo\n• Solo el apellido del autor\n• Palabras clave del título"
+            
+            # Tomar el primer resultado
             libro = data["items"][0]["volumeInfo"]
+            
             titulo = libro.get("title", "Sin título")
             autores = ", ".join(libro.get("authors", ["Autor desconocido"]))
-            descripcion = libro.get("description", "Sin descripción disponible")[:200]
-            return f"📖 *{titulo}*\n👤 {autores}\n\n{descripcion}..."
-        except:
-            return "Error al buscar el libro. Intenta de nuevo 💛"
+            descripcion = libro.get("description", "Sin descripción disponible")
+            
+            # Limitar descripción
+            if len(descripcion) > 300:
+                descripcion = descripcion[:300] + "..."
+            
+            # Información adicional
+            fecha = libro.get("publishedDate", "Fecha desconocida")
+            paginas = libro.get("pageCount", "N/A")
+            
+            resultado = f"""📖 **{titulo}**
+👤 Autor(es): {autores}
+📅 Publicado: {fecha}
+📄 Páginas: {paginas}
+
+📝 Descripción:
+{descripcion}
+"""
+            return resultado
+            
+        except requests.exceptions.Timeout:
+            return "⏱️ La búsqueda tardó demasiado. Intenta de nuevo."
+        except requests.exceptions.ConnectionError:
+            return "🌐 No hay conexión a Internet. Verifica tu conexión."
+        except Exception as e:
+            return f"❌ Error inesperado: {str(e)}\n\nIntenta con una búsqueda más simple."
 
     def _generar_imagen(self, prompt):
         if not self.openai_enabled: return None
@@ -1922,6 +1963,229 @@ class RobustBibliaHandler:
             return f"📖 **{libro_obj.get('name')} {cap_num}:{ver_num}**\n\n_{texto}_"
         
         return "❌ Error recuperando el texto."
+    def generar_devocional_personalizado(self, situacion):
+        """Genera un devocional profundo basado en la situación del usuario"""
+        if not self.valid_data:
+            return "⚠️ Datos de la Biblia no cargados correctamente."
+        
+        # BANCO EXPANDIDO DE VERSÍCULOS POR TEMA
+        temas = {
+            "ansiedad": ["Filipenses 4:6-7", "Mateo 6:25-34", "1 Pedro 5:7", "Isaías 41:10", "Salmos 94:19", "Juan 14:27"],
+            "tristeza": ["Salmos 34:18", "Mateo 5:4", "2 Corintios 1:3-4", "Salmos 147:3", "Isaías 61:3", "Apocalipsis 21:4"],
+            "miedo": ["Isaías 41:10", "Josué 1:9", "Salmos 23:4", "2 Timoteo 1:7", "Salmos 27:1", "Proverbios 3:5-6"],
+            "soledad": ["Deuteronomio 31:6", "Salmos 68:6", "Hebreos 13:5", "Mateo 28:20", "Isaías 41:10"],
+            "gratitud": ["1 Tesalonicenses 5:18", "Salmos 100:4", "Filipenses 4:4", "Colosenses 3:17", "Salmos 107:1"],
+            "esperanza": ["Jeremías 29:11", "Romanos 15:13", "Hebreos 11:1", "Lamentaciones 3:22-23", "Salmos 42:11"],
+            "paz": ["Juan 14:27", "Colosenses 3:15", "Isaías 26:3", "Romanos 5:1", "Filipenses 4:7", "Salmos 4:8"],
+            "fortaleza": ["Filipenses 4:13", "Isaías 40:31", "Salmos 46:1", "2 Corintios 12:9", "Nehemías 8:10"],
+            "perdón": ["Efesios 4:32", "Colosenses 3:13", "Mateo 6:14-15", "1 Juan 1:9", "Salmos 103:12"],
+            "amor": ["1 Corintios 13:4-7", "1 Juan 4:8", "Juan 13:34-35", "Romanos 8:38-39", "Juan 3:16"],
+            "fe": ["Hebreos 11:1", "Mateo 17:20", "Romanos 10:17", "2 Corintios 5:7", "Marcos 11:24"],
+            "sabiduría": ["Proverbios 3:5-6", "Santiago 1:5", "Proverbios 9:10", "Salmos 111:10", "Proverbios 2:6"],
+            "propósito": ["Jeremías 29:11", "Efesios 2:10", "Romanos 8:28", "Proverbios 19:21", "Filipenses 1:6"],
+            "sanación": ["Jeremías 17:14", "Éxodo 15:26", "Salmos 103:2-3", "1 Pedro 2:24", "Isaías 53:5"],
+            "protección": ["Salmos 91:1-2", "Proverbios 18:10", "Salmos 121:7-8", "2 Tesalonicenses 3:3", "Salmos 32:7"],
+            "dirección": ["Proverbios 3:5-6", "Salmos 32:8", "Isaías 30:21", "Juan 16:13", "Salmos 25:9"],
+            "paciencia": ["Gálatas 5:22-23", "Santiago 1:2-4", "Romanos 12:12", "Colosenses 3:12", "Salmos 27:14"],
+            "alabanza": ["Salmos 150:6", "Salmos 95:1-2", "Hebreos 13:15", "1 Crónicas 16:34", "Salmos 34:1"],
+            "transformación": ["Romanos 12:2", "2 Corintios 5:17", "Filipenses 1:6", "Ezequiel 36:26", "Efesios 4:22-24"],
+            "consuelo": ["2 Corintios 1:3-4", "Salmos 23:4", "Mateo 11:28-30", "Juan 14:16", "Isaías 40:1"]
+        }
+        
+        # REFLEXIONES PROFUNDAS POR TEMA
+        reflexiones = {
+            "ansiedad": """La ansiedad es una invitación a soltar el control y confiar en algo más grande que nosotros mismos. Cada preocupación que entregas es un espacio que abres para la paz. En el silencio de tu respiración, en la quietud de este momento presente, existe una paz que trasciende todo entendimiento. 
+
+No estás diseñado para cargar el peso del mañana sobre los hombros del hoy. Suelta. Respira. Confía.""",
+            
+            "tristeza": """La tristeza no es tu enemiga - es una maestra que te invita a sentir profundamente, a honrar lo que has perdido o lo que anhelas. Tus lágrimas son sagradas; cada una lleva consigo la posibilidad de sanación. 
+
+Permitirte sentir es el primer paso hacia la transformación. No hay luz sin oscuridad, no hay amanecer sin noche. Y tú, incluso en este valle oscuro, estás siendo sostenido por manos invisibles que nunca te han soltado.""",
+            
+            "miedo": """El miedo es la sombra que proyecta la luz de lo desconocido. Pero tú eres más grande que tus miedos. Cada vez que eliges dar un paso adelante a pesar del temblor en tus rodillas, estás reescribiendo la historia de tu valentía.
+
+No se trata de la ausencia de miedo, sino de la presencia de fe. Fe en que eres guiado, protegido, acompañado. El camino puede parecer incierto, pero tus pies conocen el siguiente paso. Confía en ellos.""",
+            
+            "soledad": """La soledad puede ser tanto un desierto como un santuario. En el silencio de tu solitud, existe la posibilidad de encontrarte contigo mismo de maneras que el ruido del mundo nunca permite.
+
+No estás solo, aunque así lo sientas. Hay una presencia que respira contigo, que late con tu corazón, que habita en el espacio sagrado de tu ser. La conexión que buscas afuera comienza adentro. Eres parte de un tapiz infinito de existencia - nunca separado, siempre entrelazado.""",
+            
+            "gratitud": """La gratitud es el portal hacia la abundancia. Cuando cambias tu mirada de lo que falta a lo que existe, todo tu universo se reorganiza. Cada respiración es un regalo, cada latido es un milagro, cada amanecer es una promesa renovada.
+
+Hoy, permite que tu corazón se expanda en reconocimiento. No por obligación, sino por la pura alegría de estar vivo, de poder sentir, de poder amar. La gratitud transforma lo ordinario en extraordinario.""",
+            
+            "esperanza": """La esperanza es el hilo dorado que sostiene el universo unido. Incluso cuando todo parece perdido, la vida está conspirando a tu favor de maneras que aún no puedes ver. Las semillas germinan en la oscuridad antes de romper la tierra hacia la luz.
+
+Tú también estás germinando. Tu transformación está en proceso. Los mejores capítulos de tu historia aún no han sido escritos, y tú eres el autor con la pluma en la mano. La esperanza no es ingenuidad - es valentía vestida de posibilidad.""",
+            
+            "paz": """La paz no es la ausencia de caos, sino la quietud en el centro de la tormenta. Es el ojo del huracán donde todo se detiene, donde el tiempo se suspende, donde tú simplemente eres.
+
+Esta paz no depende de circunstancias externas - fluye desde una fuente inagotable dentro de ti. Cuando el mundo exterior grita, tu mundo interior puede permanecer en silencio sagrado. Cultiva ese jardín interno. Riégalo con presencia, con respiración consciente, con momentos de quietud deliberada.""",
+            
+            "fortaleza": """Tu fortaleza no viene de nunca caer, sino de levantarte cada vez. No de nunca quebrarte, sino de permitir que la luz entre a través de tus grietas. Eres más resiliente de lo que crees, más poderoso de lo que imaginas.
+
+La verdadera fortaleza es vulnerable - reconoce sus límites, pide ayuda, se permite descansar. Eres como el bambú: flexible pero inquebrantable, doblándote con el viento pero nunca rompiéndote. Tu poder reside no en tu rigidez, sino en tu capacidad de fluir.""",
+            
+            "perdón": """El perdón es el regalo que te das a ti mismo. No es olvidar, no es justificar, no es reconciliarse necesariamente. Es soltar el veneno que has estado bebiendo esperando que duela a otro.
+
+Cada resentimiento que sueltas es una cadena que se rompe, un peso que dejas caer, un espacio que liberas para el amor. Perdonar es un acto revolucionario de auto-liberación. No lo haces por ellos - lo haces por ti. Porque mereces vivir libre.""",
+            
+            "amor": """El amor es la esencia de todo lo que eres. No algo que buscas afuera, sino lo que emana desde tu núcleo mismo. Eres amor en forma humana, experimentando la danza de la vida.
+
+Cuando amas, te expandes. Cuando juzgas, te contraes. Elige la expansión. Elige ver lo divino en cada rostro, la luz en cada corazón, la bondad en cada alma. El amor no es un sentimiento - es una decisión, una práctica, un camino.""",
+            
+            "fe": """La fe es ver lo invisible, creer lo imposible, confiar en lo desconocido. Es el puente entre donde estás y donde quieres estar. No necesitas tener todas las respuestas - solo necesitas dar el siguiente paso.
+
+Tu fe no tiene que ser perfecta, solo tiene que ser sincera. Una semilla de mostaza contiene en sí misma el potencial de un árbol entero. Tu fe, por pequeña que parezca, contiene mundos de posibilidad. Nutre esa semilla.""",
+            
+            "sabiduría": """La sabiduría no viene de saber todas las respuestas, sino de hacer las preguntas correctas. De escuchar más que hablar. De observar antes de juzgar. De esperar antes de reaccionar.
+
+Hay una inteligencia universal fluyendo a través de ti, disponible cuando aquietas el ruido mental y escuchas. La sabiduría habla en susurros - en la intuición, en los sueños, en las sincronicidades. Afina tu oído interno.""",
+            
+            "propósito": """Tu existencia no es accidental. Eres una nota única en la sinfonía cósmica, necesaria para completar la melodía del universo. Tu propósito no es algo que encuentras - es algo que despliegas, momento a momento.
+
+No tiene que ser grandioso para ser significativo. Cada acto de bondad, cada palabra de aliento, cada momento de presencia - estos son hilos de propósito tejiendo el tapiz de tu vida. Vives tu propósito cuando vives auténticamente.""",
+            
+            "sanación": """La sanación no siempre significa cura, pero siempre significa transformación. Es un viaje en espiral, no una línea recta. Habrá días de progreso y días de aparente retroceso, pero cada uno te está enseñando algo.
+
+Tu cuerpo tiene una sabiduría antigua - sabe cómo sanar cuando le das el espacio, el descanso, el amor que necesita. Tu alma también. Sé paciente contigo mismo. La sanación ocurre en capas, en olas, en ciclos. Estás exactamente donde necesitas estar.""",
+            
+            "protección": """Estás rodeado por una presencia protectora que nunca duerme, nunca descansa, nunca te abandona. Como el águila que protege su nido, como el pastor que cuida su rebaño, así eres cuidado.
+
+Esta protección no significa que nunca enfrentarás desafíos, sino que nunca los enfrentarás solo. En medio de la tormenta, hay un refugio. En medio del peligro, hay un escudo invisible. Confía en esa protección divina que trasciende lo visible.""",
+            
+            "dirección": """No necesitas ver todo el camino para dar el siguiente paso. La dirección se revela en el movimiento, no en la parálisis. Como conducir de noche - tus faros solo iluminan unos metros adelante, pero así recorres todo el camino.
+
+Las señales están en todas partes para quien sabe mirar - en las puertas que se abren, en los encuentros "casuales", en los susurros del corazón. Confía en tu GPS interno. Sabe hacia dónde vas, incluso cuando tu mente está confundida.""",
+            
+            "paciencia": """La paciencia es la práctica espiritual más difícil en un mundo que exige inmediatez. Pero todo lo verdaderamente valioso toma tiempo - los árboles, los diamantes, la sabiduría, el amor profundo.
+
+Tú también estás en proceso. No eres un producto terminado sino una obra maestra en creación constante. Sé tan paciente contigo mismo como lo eres con una semilla que plantaste - no la desenterrarías cada día para ver si está creciendo. Confía en el proceso invisible.""",
+            
+            "alabanza": """La alabanza eleva tu vibración. Cuando elevas tu voz en gratitud y reconocimiento, te alineas con las frecuencias más altas del universo. No es para beneficio de lo divino - es para tu propia transformación.
+
+Alabar es participar en el canto eterno de la creación. Las estrellas lo hacen, los océanos lo hacen, las montañas en su silencio lo hacen. Tú también eres parte de este coro cósmico. Que tu vida sea tu canción de alabanza.""",
+            
+            "transformación": """No eres quien eras ayer, y no serás quien eres hoy. Estás en constante transformación, como la oruga que no puede imaginar sus alas mientras está en el capullo.
+
+La transformación requiere soltar - viejas identidades, viejas heridas, viejas historias. Requiere muerte y renacimiento, una y otra vez. Es incómoda, desordenada, y absolutamente necesaria. Eres un ser de metamorfosis constante. Abraza el proceso.""",
+            
+            "consuelo": """En tu dolor, hay manos invisibles sosteniéndote. En tu quebranto, hay un amor que lo entiende todo. El consuelo divino no elimina el dolor, pero te acompaña en él.
+
+Permítete ser consolado. Permítete recibir. Como un niño en brazos de un padre amoroso, puedes descansar tu corazón cansado. No tienes que ser fuerte todo el tiempo. Hay un regazo cósmico esperándote, un refugio sagrado donde puedes finalmente exhalar."""
+        }
+        
+        # ORACIONES PODEROSAS POR TEMA
+        oraciones = {
+            "ansiedad": "Respiro profundo y suelto lo que no puedo controlar. En este momento, elijo la paz sobre la preocupación, la confianza sobre el miedo. Que cada exhalación libere la tensión, y cada inhalación traiga calma divina a mi ser.",
+            "tristeza": "Honro mi tristeza como maestra. Permito que mis lágrimas limpien y sanen. En mi vulnerabilidad encuentro mi humanidad, y en mi humanidad encuentro lo divino. Que el consuelo llegue como olas suaves a la orilla de mi corazón.",
+            "miedo": "Reconozco mi miedo sin ser consumido por él. Elijo valentía no por ausencia de temor, sino por presencia de fe. Camino hacia adelante sabiendo que soy guiado, protegido, acompañado. El amor perfecto echa fuera todo temor.",
+            "soledad": "En mi solitud, me encuentro contigo y conmigo. Reconozco la conexión invisible que me une a todo lo que existe. No estoy solo - soy uno con todo. Que esta verdad llene el espacio vacío con presencia divina.",
+            "gratitud": "Abro mi corazón en reconocimiento de todas las bendiciones, vistas e invisibles. Por este día, este aliento, esta oportunidad de estar vivo. Que mi gratitud transforme mi percepción y abra puertas a más abundancia.",
+            "esperanza": "Planto semillas de esperanza en el jardín de mi corazón. Confío en el proceso invisible de germinación. Creo en posibilidades que aún no puedo ver. El mejor capítulo de mi historia está por escribirse.",
+            "paz": "Me anclo en el centro de paz que existe dentro de mí, más allá del caos externo. Soy el ojo del huracán - quieto, centrado, en calma. Que esta paz irradie desde mi centro hacia todo lo que toco.",
+            "fortaleza": "Reconozco mi fortaleza no en mi rigidez sino en mi flexibilidad. Soy resiliente, soy capaz, soy poderoso. En mi vulnerabilidad encuentro mi verdadera fuerza. Me levanto una vez más.",
+            "perdón": "Suelto el peso del resentimiento. Libero las cadenas del rencor. El perdón es mi regalo para mí mismo. Me libero, me sano, me elevo. Elijo el amor sobre el odio, la paz sobre la venganza.",
+            "amor": "Soy amor en acción. Veo lo divino en cada ser. Mi corazón se expande para abrazar la vida en toda su complejidad. Amo porque es mi naturaleza esencial, no porque espero algo a cambio.",
+            "fe": "Mi fe es la sustancia de lo que espero, la certeza de lo que no veo. Doy el siguiente paso confiando en que el camino aparecerá bajo mis pies. Creo en milagros, en posibilidades, en lo imposible hecho posible.",
+            "sabiduría": "Aquieto mi mente para escuchar la sabiduría que fluye a través de mí. Observo antes de juzgar, escucho antes de hablar, siento antes de actuar. La inteligencia universal me guía.",
+            "propósito": "Mi vida tiene significado y propósito. Cada momento es una oportunidad para expresar mi esencia única. Vivo con intención, amo con propósito, sirvo con alegría. Soy exactamente quien necesito ser.",
+            "sanación": "Mi cuerpo conoce el camino de la sanación. Mi alma conoce el camino de la transformación. Me rindo al proceso, confío en la sabiduría innata de mi ser. Cada célula se renueva, cada herida se cierra, cada dolor se transforma.",
+            "protección": "Estoy rodeado por luz protectora. Estoy cubierto por amor divino. Camino seguro sabiendo que no estoy desprotegido. Un escudo invisible me rodea - nada puede tocarme que no sea para mi más alto bien.",
+            "dirección": "Confío en el GPS de mi alma. El camino se revela paso a paso. No necesito verlo todo - solo necesito dar el siguiente paso. Soy guiado hacia mi más alto bien por una inteligencia que ve lo que yo no puedo.",
+            "paciencia": "Respiro en paciencia, exhalo impaciencia. Confío en el tiempo divino. Todo llega en su momento perfecto, ni antes ni después. Soy como el árbol que no apresura sus estaciones. Todo a su tiempo.",
+            "alabanza": "Elevo mi voz en gratitud y reconocimiento. Mi vida es mi canción de alabanza. Cada aliento es un gracias, cada latido es un aleluya. Me uno al coro eterno de la creación en celebración de la vida.",
+            "transformación": "Suelto quien era para convertirme en quien estoy destinado a ser. Abrazo el proceso de metamorfosis. Como la oruga que se disuelve para emerger con alas, yo también me transformo. Muerte y renacimiento, constantemente.",
+            "consuelo": "Descanso en brazos invisibles de amor. Permito que el consuelo divino llene cada rincón de mi corazón herido. No estoy solo en mi dolor. Hay una presencia que entiende, que acompaña, que sana. Me rindo a ese amor."
+        }
+        
+        # DETECTAR TEMA (con múltiples palabras clave por tema)
+        palabras_clave = {
+            "ansiedad": ["ansiedad", "preocupación", "nervios", "estrés", "inquietud", "angustia", "agobiado"],
+            "tristeza": ["tristeza", "triste", "depresión", "melancolía", "lloro", "lágrimas", "pena", "duelo"],
+            "miedo": ["miedo", "temor", "pánico", "terror", "asustado", "inseguridad"],
+            "soledad": ["soledad", "solo", "aislado", "abandonado", "nadie"],
+            "gratitud": ["gratitud", "agradecer", "gracias", "bendición", "afortunado"],
+            "esperanza": ["esperanza", "futuro", "sueños", "metas", "deseo"],
+            "paz": ["paz", "calma", "tranquilidad", "serenidad", "quietud"],
+            "fortaleza": ["fortaleza", "fuerza", "valor", "valentía", "resistencia", "débil", "cansado"],
+            "perdón": ["perdón", "perdonar", "resentimiento", "rencor", "ofensa", "herida"],
+            "amor": ["amor", "amar", "cariño", "afecto", "relación", "pareja"],
+            "fe": ["fe", "creer", "confianza", "duda", "incredulidad"],
+            "sabiduría": ["sabiduría", "decisión", "elección", "confusión", "guía"],
+            "propósito": ["propósito", "sentido", "significado", "rumbo", "vacío", "sin sentido"],
+            "sanación": ["sanación", "sanar", "enfermedad", "dolor", "salud", "enfermo"],
+            "protección": ["protección", "peligro", "amenaza", "seguridad", "vulnerable"],
+            "dirección": ["dirección", "camino", "perdido", "rumbo", "sin dirección"],
+            "paciencia": ["paciencia", "espera", "desesperación", "urgencia", "prisa"],
+            "alabanza": ["alabanza", "adoración", "gratitud", "celebración"],
+            "transformación": ["transformación", "cambio", "nuevo", "diferente", "evolución"],
+            "consuelo": ["consuelo", "dolor", "sufrimiento", "aflicción", "quebranto"]
+        }
+        
+        # Buscar tema más relevante
+        situacion_lower = situacion.lower()
+        tema_encontrado = None
+        max_coincidencias = 0
+        
+        for tema, keywords in palabras_clave.items():
+            coincidencias = sum(1 for palabra in keywords if palabra in situacion_lower)
+            if coincidencias > max_coincidencias:
+                max_coincidencias = coincidencias
+                tema_encontrado = tema
+        
+        # Si no encuentra nada, usar esperanza como default
+        if not tema_encontrado or max_coincidencias == 0:
+            tema_encontrado = "esperanza"
+        
+        # Seleccionar versículo aleatorio del tema
+        ref = random.choice(temas[tema_encontrado])
+        versiculo_texto = self.buscar_versiculo_completo(ref)
+        
+        # Construir devocional completo
+        devocional = f"""✨ **DEVOCIONAL PERSONALIZADO** ✨
+
+🌙 **Tu Situación:** {situacion}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{versiculo_texto}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💭 **Reflexión Profunda:**
+
+{reflexiones.get(tema_encontrado, reflexiones['esperanza'])}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🙏 **Oración del Corazón:**
+
+{oraciones.get(tema_encontrado, oraciones['esperanza'])}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🕊️ *Que estas palabras sean bálsamo para tu alma y luz en tu camino. Amén.*
+"""
+        
+        return devocional
+    def ver_journal_biblico(self):
+        """Muestra las entradas del diario bíblico"""
+        JOURNAL_FILE = "data/journal_biblico.json"
+        
+        # Crear archivo si no existe
+        if not os.path.exists(JOURNAL_FILE):
+            os.makedirs("data", exist_ok=True)
+            with open(JOURNAL_FILE, "w", encoding="utf-8") as f:
+                json.dump([], f)
+            return []
+        
+        try:
+            with open(JOURNAL_FILE, "r", encoding="utf-8") as f:
+                entradas = json.load(f)
+            return entradas if isinstance(entradas, list) else []
+        except:
+            return []
 # =====================================================
 # HANDLER TAROT CON IA
 # =====================================================
