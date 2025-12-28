@@ -6593,9 +6593,12 @@ else:
             
             if generar and descripcion.strip():
                 with st.spinner("🔮 Generando tus sugerencias mágicas..."):
-                    libros, imagenes = libros_handler.randomizer_libros(descripcion)
+                    resultado = libros_handler.randomizer_libros(descripcion)
                     
-                    if libros:
+                    if resultado.get("success"):
+                        libros = resultado.get("libros", [])
+                        imagenes = resultado.get("imagenes", [])
+                        
                         st.markdown("<br>", unsafe_allow_html=True)
                         st.markdown("### 📚 Tus 3 Sugerencias:")
                         st.markdown("---")
@@ -6603,11 +6606,11 @@ else:
                         # Mostrar en 3 columnas
                         cols = st.columns(3)
                         
-                        for i, (libro, imagen) in enumerate(zip(libros, imagenes)):
+                        for i, libro in enumerate(libros):
                             with cols[i]:
                                 # Portada
-                                if imagen:
-                                    st.image(imagen, use_container_width=True)
+                                if i < len(imagenes) and imagenes[i]:
+                                    st.image(imagenes[i], use_container_width=True)
                                 else:
                                     st.markdown("🖼️ *Portada no disponible*")
                                 
@@ -6634,7 +6637,7 @@ else:
                         
                         st.balloons()
                     else:
-                        st.error(f"❌ {imagenes}")
+                        st.error(f"❌ {resultado.get('error', 'Error desconocido')}")
             
             elif generar and not descripcion.strip():
                 st.warning("⚠️ Por favor describe qué tipo de libro quieres leer")
@@ -6643,6 +6646,7 @@ else:
             if st.button("🔙 Volver", key="btn_volver_randomizer"):
                 st.session_state.libros_subview = "menu"
                 st.rerun()
+                
 
         elif st.session_state.libros_subview == "arte":
             st.markdown("### 🎨 Generar Arte Inspirado")
