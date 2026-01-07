@@ -8422,6 +8422,54 @@ else:
                                     if st.button("🗑️ Eliminar", key=f"btn_del_item_{item['id']}", use_container_width=True):
                                         if ideas_handler.eliminar_item(proyecto['id'], item['id']):
                                             st.rerun()
+                                
+                                # Botón de editar item
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                if st.button("✏️ Editar Item", key=f"btn_edit_item_{item['id']}", use_container_width=True):
+                                    st.session_state.editando_item_id = item['id']
+                                    st.rerun()
+                                
+                                # Si está en modo edición para este item
+                                if st.session_state.get("editando_item_id") == item['id']:
+                                    st.markdown("---")
+                                    st.markdown("**✏️ Editando item:**")
+                                    
+                                    nueva_descripcion = st.text_area(
+                                        "Descripción:",
+                                        value=item['descripcion'],
+                                        height=80,
+                                        key=f"edit_desc_{item['id']}"
+                                    )
+                                    
+                                    nuevo_precio = st.number_input(
+                                        "💰 Precio:",
+                                        value=float(item.get('precio', 0)),
+                                        min_value=0.0,
+                                        step=0.01,
+                                        format="%.2f",
+                                        key=f"edit_precio_{item['id']}"
+                                    )
+                                    
+                                    col_edit1, col_edit2 = st.columns(2)
+                                    with col_edit1:
+                                        if st.button("💾 Guardar Cambios", key=f"btn_save_edit_{item['id']}", use_container_width=True):
+                                            exito = ideas_handler.editar_item(
+                                                proyecto['id'],
+                                                item['id'],
+                                                descripcion=nueva_descripcion,
+                                                precio=nuevo_precio
+                                            )
+                                            if exito:
+                                                st.success("✅ Item actualizado")
+                                                st.session_state.editando_item_id = None
+                                                st.rerun()
+                                            else:
+                                                st.error("❌ Error al actualizar")
+                                    
+                                    with col_edit2:
+                                        if st.button("❌ Cancelar Edición", key=f"btn_cancel_edit_{item['id']}", use_container_width=True):
+                                            st.session_state.editando_item_id = None
+                                            st.rerun()
                     else:
                         st.info(f"No hay items que mostrar con el filtro '{filtro_tipo}'")
                 else:
@@ -8504,53 +8552,6 @@ else:
             if st.button("🔙 Volver al Menú", key="btn_ideas_volver_chat", use_container_width=True):
                 st.session_state.ideas_subview = "menu"
                 st.rerun()
-            # Botón de editar item
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("✏️ Editar Item", key=f"btn_edit_item_{item['id']}", use_container_width=True):
-                                    st.session_state.editando_item_id = item['id']
-                                    st.rerun()
-                                
-                                # Si está en modo edición para este item
-            if st.session_state.get("editando_item_id") == item['id']:
-                                    st.markdown("---")
-                                    st.markdown("**✏️ Editando item:**")
-                                    
-                                    nueva_descripcion = st.text_area(
-                                        "Descripción:",
-                                        value=item['descripcion'],
-                                        height=80,
-                                        key=f"edit_desc_{item['id']}"
-                                    )
-                                    
-                                    nuevo_precio = st.number_input(
-                                        "💰 Precio:",
-                                        value=float(item.get('precio', 0)),
-                                        min_value=0.0,
-                                        step=0.01,
-                                        format="%.2f",
-                                        key=f"edit_precio_{item['id']}"
-                                    )
-                                    
-                                    col_edit1, col_edit2 = st.columns(2)
-                                    with col_edit1:
-                                        if st.button("💾 Guardar Cambios", key=f"btn_save_edit_{item['id']}", use_container_width=True):
-                                            exito = ideas_handler.editar_item(
-                                                proyecto['id'],
-                                                item['id'],
-                                                descripcion=nueva_descripcion,
-                                                precio=nuevo_precio
-                                            )
-                                            if exito:
-                                                st.success("✅ Item actualizado")
-                                                st.session_state.editando_item_id = None
-                                                st.rerun()
-                                            else:
-                                                st.error("❌ Error al actualizar")
-                                    
-                                    with col_edit2:
-                                        if st.button("❌ Cancelar Edición", key=f"btn_cancel_edit_{item['id']}", use_container_width=True):
-                                            st.session_state.editando_item_id = None
-                                            st.rerun()
 
     # --- MÓDULO PROFESIONAL ---
     elif st.session_state.current_view == "profesional":
