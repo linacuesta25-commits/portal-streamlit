@@ -5049,6 +5049,60 @@ Máximo 200 palabras. Tono amigable y motivador."""
             return response.choices[0].message.content.strip()
         except:
             return "No pude procesar la idea 🥺 Intenta de nuevo"
+    def editar_item(self, proyecto_id, item_id, **cambios):
+        """
+        Edita un item existente de un proyecto
+        
+        Args:
+            proyecto_id: ID del proyecto
+            item_id: ID del item a editar
+            **cambios: Campos a actualizar (descripcion, precio, etc.)
+        
+        Returns:
+            True si se editó correctamente, False en caso contrario
+        """
+        proyectos = self._cargar_proyectos()
+        
+        try:
+            pid = int(proyecto_id)
+            iid = int(item_id)
+        except:
+            return False
+        
+        # Buscar el proyecto
+        proyecto = next((p for p in proyectos if p["id"] == pid), None)
+        
+        if not proyecto:
+            return False
+        
+        # Buscar el item
+        item = next((i for i in proyecto['items'] if i["id"] == iid), None)
+        
+        if not item:
+            return False
+        
+        # Guardar precio anterior si existe
+        precio_anterior = item.get('precio', 0)
+        
+        # Actualizar los campos que se pasaron
+        for campo, valor in cambios.items():
+            if valor is not None:  # Solo actualizar si el valor no es None
+                item[campo] = valor
+        
+        # Si cambió el precio, actualizar presupuesto del proyecto
+        if 'precio' in cambios and item['tipo'] == 'compra' and not item.get('conseguido'):
+            precio_nuevo = cambios['precio']
+            diferencia = precio_nuevo - precio_anterior
+            proyecto['presupuesto_estimado'] = proyecto.get('presupuesto_estimado', 0) + diferencia
+        
+        # Agregar fecha de última edición
+        import datetime
+        item['fecha_editado'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        
+        self._guardar_proyectos(proyectos)
+        
+        return True
+    
 # =====================================================
 # HANDLER PROFESIONAL CON IA
 # =====================================================
@@ -5586,7 +5640,66 @@ profesional_handler = profesional
 # =====================================================
 # 6. NAVEGACIÓN PRINCIPAL
 # =====================================================
-CONTRASENA = "portal1058*"
+def _cargar_auth_config():
+    """Carga la configuración de autenticación"""
+    AUTH_FILE = os.path.join("data", "auth_config.json")
+    
+    if not os.path.exists(AUTH_FILE):
+        # Si no existe, crear con contraseña por defecto
+        config_default = {
+            "password": "portal1058*",
+            "fecha_creacion": "2025-01-06",
+            "ultima_actualizacion": None
+        }
+        with open(AUTH_FILE, "w", encoding="utf-8") as f:
+            json.dump(config_default, f, indent=2, ensure_ascii=False)
+        return config_default
+    
+    try:
+        with open(AUTH_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return {"password": "portal1058*"}
+
+def _guardar_auth_config(config):
+    """Guarda la configuración de autenticación"""
+    AUTH_FILE = os.path.join("data", "auth_config.json")
+    with open(AUTH_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+def verificar_contrasena(password_ingresada):
+    """Verifica si la contraseña ingresada es correcta"""
+    config = _cargar_auth_config()
+    return password_ingresada == config.get("password", "portal1058*")
+
+def cambiar_contrasena(password_actual, password_nueva, confirmar_nueva):
+    """Cambia la contraseña del portal"""
+    
+    # Validaciones
+    if not password_actual or not password_nueva or not confirmar_nueva:
+        return False, "⚠️ Todos los campos son obligatorios"
+    
+    if not verificar_contrasena(password_actual):
+        return False, "❌ La contraseña actual es incorrecta"
+    
+    if password_nueva != confirmar_nueva:
+        return False, "❌ Las contraseñas nuevas no coinciden"
+    
+    if len(password_nueva) < 6:
+        return False, "❌ La nueva contraseña debe tener al menos 6 caracteres"
+    
+    if password_nueva == password_actual:
+        return False, "⚠️ La nueva contraseña debe ser diferente a la actual"
+    
+    # Cambiar contraseña
+    config = _cargar_auth_config()
+    config["password"] = password_nueva
+    config["ultima_actualizacion"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    _guardar_auth_config(config)
+    
+    return True, "✅ Contraseña cambiada exitosamente. Usa tu nueva contraseña en el próximo inicio de sesión."
+
 st.markdown('<div class="top-banner">✨ Tu refugio de magia, intuición y energía ✨</div>', unsafe_allow_html=True)
 
 if not st.session_state.login:
@@ -5597,7 +5710,7 @@ if not st.session_state.login:
     c1, c2, c3 = st.columns([3.5, 2, 3.5])
     with c2:
         if st.button("✨ Entrar al Reino", key="btn_login", use_container_width=True):
-            if password == CONTRASENA: 
+            if verificar_contrasena(password): 
                 st.session_state.login = True
                 st.rerun()
             elif password: 
@@ -5745,6 +5858,39 @@ else:
                     st.success("✅ Backup creado correctamente")
                 else:
                     st.error(f"❌ Error al crear backup: {nombre}")
+        # Botón de Cambiar Contraseña
+        st.markdown("<br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([3, 2, 3])
+        with col2:
+            if st.button("🔐 Cambiar Contraseña", key="btn_cambiar_password", use_container_width=True):
+                st.session_state.mostrar_cambio_password = True
+        
+        # Modal de cambio de contraseña
+        if st.session_state.get("mostrar_cambio_password", False):
+            st.markdown("---")
+            st.markdown("### 🔐 Cambiar Contraseña")
+            
+            password_actual = st.text_input("Contraseña actual:", type="password", key="input_pass_actual")
+            password_nueva = st.text_input("Nueva contraseña:", type="password", key="input_pass_nueva")
+            password_confirmar = st.text_input("Confirmar nueva contraseña:", type="password", key="input_pass_confirmar")
+            
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("✅ Confirmar Cambio", use_container_width=True, key="btn_confirmar_cambio"):
+                    exito, mensaje = cambiar_contrasena(password_actual, password_nueva, password_confirmar)
+                    if exito:
+                        st.success(mensaje)
+                        st.session_state.mostrar_cambio_password = False
+                        st.balloons()
+                    else:
+                        st.error(mensaje)
+            
+            with col_b:
+                if st.button("❌ Cancelar", use_container_width=True, key="btn_cancelar_cambio"):
+                    st.session_state.mostrar_cambio_password = False
+                    st.rerun()
+            
+            st.markdown("---")
         
         # Botón de Cerrar Sesión
         st.markdown("<br>", unsafe_allow_html=True)
@@ -5754,6 +5900,7 @@ else:
                 st.session_state.login = False
                 st.session_state.current_view = "menu"
                 st.rerun()
+
 
     # --- MÓDULO BIBLIA ---
     elif st.session_state.current_view == "biblia":
@@ -8357,6 +8504,54 @@ else:
             if st.button("🔙 Volver al Menú", key="btn_ideas_volver_chat", use_container_width=True):
                 st.session_state.ideas_subview = "menu"
                 st.rerun()
+            # Botón de editar item
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("✏️ Editar Item", key=f"btn_edit_item_{item['id']}", use_container_width=True):
+                                    st.session_state.editando_item_id = item['id']
+                                    st.rerun()
+                                
+                                # Si está en modo edición para este item
+            if st.session_state.get("editando_item_id") == item['id']:
+                                    st.markdown("---")
+                                    st.markdown("**✏️ Editando item:**")
+                                    
+                                    nueva_descripcion = st.text_area(
+                                        "Descripción:",
+                                        value=item['descripcion'],
+                                        height=80,
+                                        key=f"edit_desc_{item['id']}"
+                                    )
+                                    
+                                    nuevo_precio = st.number_input(
+                                        "💰 Precio:",
+                                        value=float(item.get('precio', 0)),
+                                        min_value=0.0,
+                                        step=0.01,
+                                        format="%.2f",
+                                        key=f"edit_precio_{item['id']}"
+                                    )
+                                    
+                                    col_edit1, col_edit2 = st.columns(2)
+                                    with col_edit1:
+                                        if st.button("💾 Guardar Cambios", key=f"btn_save_edit_{item['id']}", use_container_width=True):
+                                            exito = ideas_handler.editar_item(
+                                                proyecto['id'],
+                                                item['id'],
+                                                descripcion=nueva_descripcion,
+                                                precio=nuevo_precio
+                                            )
+                                            if exito:
+                                                st.success("✅ Item actualizado")
+                                                st.session_state.editando_item_id = None
+                                                st.rerun()
+                                            else:
+                                                st.error("❌ Error al actualizar")
+                                    
+                                    with col_edit2:
+                                        if st.button("❌ Cancelar Edición", key=f"btn_cancel_edit_{item['id']}", use_container_width=True):
+                                            st.session_state.editando_item_id = None
+                                            st.rerun()
+
     # --- MÓDULO PROFESIONAL ---
     elif st.session_state.current_view == "profesional":
         mostrar_breadcrumbs()
