@@ -1,0 +1,8796 @@
+
+import streamlit as st
+import streamlit.components.v1 as components
+import random
+import sys
+import json
+import os
+import datetime
+from datetime import timedelta
+from collections import defaultdict
+from mongodb_handler import get_mongodb_handler
+
+# =====================================================
+# 1. CONFIGURACIÓN DE PÁGINA (SIEMPRE PRIMERO)
+# =====================================================
+st.set_page_config(
+    page_title="Portal Sagrado Noche Profunda",
+    page_icon="🌙",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
+# =====================================================
+# 2. GESTIÓN DE ESTADO E INICIALIZACIÓN
+# =====================================================
+def init_session_state():
+    defaults = {
+        "login": False, "current_view": "menu", "sub_view": None,
+        "biblia_subview": "menu", "biblia_vdia_res": None, "biblia_vdia_date": None, "biblia_vdia_stored": None,
+        "finanzas_subview": "menu", "finanzas_result": None,
+        "notas_subview": "menu", "notas_result": None,
+        "libros_subview": "menu", "libros_result": None, "libros_imagen": None,
+        "frases_subview": "menu", "frases_result": None,
+        "personalidades_subview": "menu",
+        "ideas_subview": "menu", "ideas_history": [], "selected_project_id": None,
+        "confirmar_eliminar_proyecto": False, 
+        "tarot_subview": "menu", "tarot_result": None, "tarot_reading_type": None,
+        "astro_subview": "menu", "astro_result": None,
+        "nume_subview": "menu", "nume_result": None, "oculto_subview": "menu",
+        "profesional_subview": "menu", "profesional_pregunta": None, "profesional_respuesta": None,
+        "first_load_done": False
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state: st.session_state[key] = value
+    
+    # Inicializar MongoDB
+    if "db" not in st.session_state:
+        st.session_state.db = get_mongodb_handler()
+
+init_session_state()
+
+# =====================================================
+# 3. CACHÉ DE ESTILOS Y ASSETS (OPTIMIZACIÓN VISUAL)
+# =====================================================
+@st.cache_data
+def get_main_css():
+    return """
+<style>
+    .stApp, p, span, div, h1, h2, h3, h4, h5, h6 { color: #ffffff !important; }
+    label, .stSelectbox label, .stTextInput label, .stTextArea label, .stNumberInput label {
+        color: #ffda89 !important; font-weight: bold !important; font-size: 1.1rem !important; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+    textarea, input, .stNumberInput input {
+        background-color: rgba(10, 10, 25, 0.9) !important; color: #ffffff !important;
+        border: 1px solid rgba(147, 51, 234, 0.5) !important; border-radius: 15px !important;
+    }
+    .stTextInput > div > div, .stTextArea > div > div, .stSelectbox > div > div, .stNumberInput > div > div { 
+        background: rgba(10, 10, 25, 0.85) !important; color: white !important;
+    }
+    ul[data-testid="stSelectboxVirtualDropdown"] li { background: #020617 !important; color: white !important; }
+    ::placeholder { color: rgba(255, 255, 255, 0.6) !important; }
+    .stChatInputContainer {
+        position: fixed !important; bottom: 180px !important; left: 0 !important; right: 0 !important;
+        z-index: 1001 !important; background: rgba(2, 6, 23, 0.98) !important; padding: 15px !important;
+        border-top: 1px solid rgba(147, 51, 234, 0.5) !important; backdrop-filter: blur(10px) !important;
+    }
+    .stChatInput, .stChatInput > div {
+        background-color: rgba(255, 255, 255, 0.95) !important; border: 2px solid rgba(147, 51, 234, 0.8) !important;
+        border-radius: 25px !important; color: #1a1a2e !important;
+    }
+    .stChatInput textarea, .stChatInput input { color: #1a1a2e !important; -webkit-text-fill-color: #1a1a2e !important; }
+    #MainMenu, footer, header, .stDeployButton {display: none !important;}
+    .stApp { background: radial-gradient(circle at 50% 50%, #020617 0%, #01020a 50%, #000000 100%) !important; background-attachment: fixed; }
+    .block-container { padding-top: 15vh !important; padding-bottom: 280px !important; max-width: 1000px !important; }
+    .stButton button {
+        background: linear-gradient(135deg, #ffdd92 0%, #d4af37 100%) !important;
+        color: #3d2b00 !important; border-radius: 50px !important; padding: 10px 25px !important; font-weight: bold !important;
+        box-shadow: 0 4px 15px rgba(255, 218, 137, 0.4) !important; border: none !important;
+        width: 100% !important; transition: transform 0.2s !important; position: relative; z-index: 10;
+    }
+    .stButton button:hover { transform: scale(1.02) !important; box-shadow: 0 6px 20px rgba(255, 218, 137, 0.6) !important; }
+    @keyframes floatIcon { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
+    .magic-card {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; 
+        padding: 15px 8px; background: linear-gradient(135deg, rgba(147,51,234,0.15) 0%, rgba(16,185,129,0.1) 100%);
+        border: 1px solid rgba(147,51,234,0.4); border-radius: 25px; min-height: 120px;
+        aspect-ratio: 1 / 1; backdrop-filter: blur(5px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: all 0.3s ease;
+    }
+    .magic-card:hover { transform: translateY(-8px) scale(1.02); border-color: rgba(255, 218, 137, 0.8); }
+    .card-icon { font-size: 4.2rem; filter: drop-shadow(0 0 12px currentColor); animation: floatIcon 3s ease-in-out infinite; }
+    .card-label { font-size: 1.05rem; font-weight: 700; color: #fff; text-transform: uppercase; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+    .tarot-icon { color: #d8b4fe; } .ideas-icon { color: #93c5fd; } .biblia-icon { color: #fde047; }
+    .finanzas-icon { color: #86efac; } .notas-icon { color: #c4b5fd; } .libros-icon { color: #67e8f9; }
+    .frases-icon { color: #fdba74; } .personalidades-icon { color: #fca5a5; } .profesional-icon { color: #e9d5ff; }
+    .oculto-icon { color: #a78bfa; }
+    .result-card {
+        padding: 25px; background: linear-gradient(135deg, rgba(15, 15, 30, 0.95) 0%, rgba(20, 20, 45, 0.90) 100%);
+        backdrop-filter: blur(15px); border: 1px solid rgba(255, 218, 137, 0.3); border-radius: 20px; 
+        margin-top: 20px; text-align: center; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    .result-card h2 { color: #ffda89 !important; font-size: 1.8rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+    .result-card p, .result-card div { font-size: 1.15rem; line-height: 1.6; color: #ffffff !important; text-shadow: 0 1px 2px rgba(0,0,0,0.9); }
+    .result-card strong { color: #ffda89 !important; font-weight: 700; display: block; margin-bottom: 5px; font-size: 1.2rem; }
+    .title-glow { font-size: 5.5rem; font-weight: 900; text-align: center; color: #ffffff !important; text-shadow: 0 0 30px #ffda89; margin: 30px 0 20px 0; }
+    .subtitle-text { color: #d8c9ff !important; text-align: center; font-size: 1.2rem; margin-bottom: 30px; }
+    .top-banner { position: fixed; top: 0; left: 0; width: 100%; height: 60px; background: rgba(2,6,23,0.95); display: flex; align-items: center; justify-content: center; color: #ffda89 !important; z-index: 999; border-bottom: 1px solid rgba(255,218,137,0.3); }
+    .bottom-footer { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; text-align: center; color: rgba(216,201,255,0.6) !important; font-size: 0.8rem; background: rgba(2,6,23,0.95); border-top: 1px solid rgba(147,51,234,0.2); z-index: 998; }
+    .star { position: fixed; background: white; border-radius: 50%; z-index: 1; opacity: 0; animation: twinkle var(--duration) ease-in-out infinite; }
+    @keyframes twinkle { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+    .shooting-star { 
+        position: fixed; width: 3px; height: 3px; background: white; border-radius: 50%; z-index: 2; 
+        box-shadow: 0 0 15px 3px rgba(255, 255, 255, 0.9), 0 0 5px 1px rgba(147, 197, 253, 0.5); 
+        animation: shoot var(--shoot-duration) cubic-bezier(0.25, 0.46, 0.45, 0.94) var(--shoot-delay) infinite; 
+        opacity: 0; 
+    }
+    .shooting-star::after { 
+        content: ''; position: absolute; top: 50%; left: 50%; width: 120px; height: 2px; 
+        background: linear-gradient(to right, rgba(255, 255, 255, 0.95), rgba(147, 197, 253, 0.6) 40%, rgba(147, 197, 253, 0.2) 70%, transparent); 
+        transform: translate(-120px, -50%); border-radius: 50%; filter: blur(0.5px);
+    }
+    @keyframes shoot { 
+        0% { opacity: 0; transform: translateX(0) translateY(0) rotate(-45deg) scale(0.5); } 
+        5% { opacity: 1; transform: translateX(20px) translateY(20px) rotate(-45deg) scale(1); } 
+        85% { opacity: 1; } 
+        100% { opacity: 0; transform: translateX(400px) translateY(400px) rotate(-45deg) scale(0.8); } 
+    }
+    
+    /* SPOTIFY: Sin animaciones complejas, opacidad fija */
+    .spotify-container { 
+        position: fixed; 
+        bottom: 50px; 
+        left: 50%; 
+        transform: translateX(-50%); 
+        z-index: 995; 
+        border-radius: 12px; 
+        overflow: hidden; 
+        box-shadow: 0 4px 20px rgba(147, 51, 234, 0.5); 
+        width: 300px; 
+        opacity: 0.9; 
+        transition: all 0.3s ease;
+    }
+    .spotify-container iframe { 
+        pointer-events: all !important; 
+        border: none; 
+        display: block; 
+    }
+    .spotify-container:hover { 
+        transform: translateX(-50%) translateY(-5px); 
+        box-shadow: 0 6px 30px rgba(147, 51, 234, 0.7); 
+        opacity: 1; 
+    }
+    
+    @media (max-width: 768px) { 
+        .title-glow { font-size: 3.5rem !important; } 
+        .card-icon { font-size: 3rem; } 
+    }
+</style>
+"""
+
+@st.cache_data
+def generar_fondo_estelar_cached():
+    stars_html = "".join([f'<div class="star" style="top:{random.randint(0,100)}%; left:{random.randint(0,100)}%; width:{random.uniform(1,2.5)}px; height:{random.uniform(1,2.5)}px; --duration:{random.uniform(2,8)}s;"></div>' for _ in range(50)])
+    shooting_html = "".join([f'<div class="shooting-star" style="top:{random.randint(0,50)}%; left:{random.randint(0,80)}%; --shoot-duration:{random.uniform(1.5,3)}s; --shoot-delay:{random.uniform(0,10)}s;"></div>' for _ in range(10)])
+    return stars_html + shooting_html
+
+# Inyectamos CSS y Fondo
+st.markdown(get_main_css(), unsafe_allow_html=True)
+st.markdown(generar_fondo_estelar_cached(), unsafe_allow_html=True)
+
+# =====================================================
+# 4. DEFINICIÓN DE CLASES (MODELO)
+# =====================================================
+class LocalFinanzasHandler:
+    def __init__(self):
+        self.DATA_FOLDER = "data"
+        self.FINANZAS_FILE = os.path.join(self.DATA_FOLDER, "finanzas.json")
+        self.CATEGORIAS = {
+            "🍔 comida": ["comida", "restaurante", "supermercado", "almuerzo", "cena"],
+            "🚗 transporte": ["uber", "taxi", "gasolina", "bus", "metro", "transporte"],
+            "🏠 hogar": ["renta", "luz", "agua", "gas", "internet", "servicios"],
+            "🎉 entretenimiento": ["cine", "concierto", "salida", "fiesta", "netflix"],
+            "👕 ropa": ["ropa", "zapatos", "accesorios", "moda"],
+            "💊 salud": ["doctor", "medicina", "farmacia", "gym", "terapia"],
+            "📚 educación": ["curso", "libro", "universidad", "clase"],
+            "🎁 regalos": ["regalo", "cumpleaños"],
+            "💰 ahorro": ["ahorro", "inversión"],
+            "📱 tecnología": ["celular", "computadora", "app"],
+            "✈️ viajes": ["hotel", "vuelo", "viaje"],
+            "🐕 mascotas": ["veterinario", "comida perro", "gato"],
+            "💅 personal": ["peluquería", "spa", "cosmético"],
+            "📄 otros": []
+        }
+
+    def _cargar_finanzas(self):
+        try:
+            data = cargar_json_mongo("finanzas")
+            if not data:
+                return {"gastos": [], "ingresos": [], "presupuestos": {}}
+            # Si es una lista antigua, convertir al nuevo formato
+            if isinstance(data, list):
+                return {"gastos": data, "ingresos": [], "presupuestos": {}}
+            # Si es un solo dict, devolverlo
+            if isinstance(data, dict):
+                return data
+            # Si es una lista de dicts, tomar el primero
+            if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+                return data[0]
+            return {"gastos": [], "ingresos": [], "presupuestos": {}}
+        except:
+            return {"gastos": [], "ingresos": [], "presupuestos": {}}
+
+    def _guardar_finanzas(self, data):
+        guardar_json_mongo("finanzas", [data])
+
+    def _detectar_categoria(self, descripcion):
+        desc_lower = descripcion.lower()
+        for categoria, palabras in self.CATEGORIAS.items():
+            for palabra in palabras:
+                if palabra in desc_lower: return categoria
+        return "📄 otros"
+
+    def _verificar_presupuesto(self, data, categoria, monto_nuevo):
+        if categoria not in data["presupuestos"]: return ""
+        mes_actual = datetime.datetime.now().strftime("%Y-%m")
+        gasto_mes = sum(g["monto"] for g in data["gastos"] if g["categoria"] == categoria and g["fecha"].startswith(mes_actual))
+        presupuesto = data["presupuestos"][categoria]
+        porcentaje = (gasto_mes / presupuesto) * 100
+        if porcentaje >= 100: return f"\n⚠️ *ALERTA:* Ya gastaste ${gasto_mes} de ${presupuesto} ({porcentaje:.0f}%) en {categoria}"
+        elif porcentaje >= 80: return f"\n⚠️ Llevas ${gasto_mes} de ${presupuesto} ({porcentaje:.0f}%) en {categoria}"
+        return ""
+
+    def agregar_gasto(self, monto, categoria, descripcion):
+        data = self._cargar_finanzas()
+        if not categoria or categoria.lower() in ["auto", "automático", ""]:
+            categoria = self._detectar_categoria(descripcion)
+        nuevo = {
+            "id": len(data["gastos"]) + 1,
+            "monto": float(monto),
+            "categoria": categoria.lower().strip(),
+            "descripcion": descripcion,
+            "fecha": datetime.datetime.now().strftime("%Y-%m-%d"),
+            "hora": datetime.datetime.now().strftime("%H:%M")
+        }
+        data["gastos"].append(nuevo)
+        self._guardar_finanzas(data)
+        alerta = self._verificar_presupuesto(data, categoria, float(monto))
+        return f"✨ *Gasto agregado exitosamente*\n\n💰 Monto: ${monto}\n🏷️ Categoría: {categoria}\n📝 Descripción: {descripcion}\n📅 Fecha: {nuevo['fecha']}\n{alerta}"
+
+    def listar_gastos(self):
+        data = self._cargar_finanzas()
+        gastos = data["gastos"]
+        if not gastos: return "Aún no tienes gastos registrados, amor 🥺"
+        texto = "📘 *Todos tus gastos registrados:* \n\n"
+        total = 0
+        for g in reversed(gastos[-15:]):
+            texto += f"**#{g['id']}** ${g['monto']} — {g['categoria']} — {g['descripcion']} ({g['fecha']})\n"
+            total += g["monto"]
+        texto += f"\n💰 *Total gastado:* ${total}"
+        return texto
+
+    def gastos_de_hoy(self):
+        hoy = datetime.datetime.now().strftime("%Y-%m-%d")
+        data = self._cargar_finanzas()
+        filtrados = [g for g in data["gastos"] if g["fecha"] == hoy]
+        if not filtrados: return "Hoy no tienes gastos registrados ✨"
+        texto = "📅 *Gastos de hoy:* \n\n"
+        total = 0
+        for g in filtrados:
+            texto += f"• ${g['monto']} — {g['categoria']} — {g['descripcion']}\n"
+            total += g["monto"]
+        texto += f"\n💰 *Total gastado hoy:* ${total}"
+        return texto
+
+    def buscar_gastos(self, palabra):
+        data = self._cargar_finanzas()
+        palabra_lower = palabra.lower()
+        resultados = [g for g in data["gastos"] if palabra_lower in g["descripcion"].lower() or palabra_lower in g["categoria"].lower()]
+        if not resultados: return f"No encontré gastos con '{palabra}', amor 💛"
+        texto = f"🔍 *RESULTADOS PARA: {palabra}* 🔍\n\n"
+        total = 0
+        for g in reversed(resultados[-10:]):
+            texto += f"**#{g['id']}** ${g['monto']} — {g['categoria']} — {g['descripcion']} ({g['fecha']})\n"
+            total += g["monto"]
+        texto += f"\n📊 *Total encontrado:* ${total}\n🔢 *{len(resultados)} resultados*"
+        return texto
+    
+    def gastos_por_categoria(self, categoria):
+        data = self._cargar_finanzas()
+        filtrados = [g for g in data["gastos"] if categoria.lower() in g["categoria"].lower()]
+        if not filtrados: return f"No tienes gastos en la categoría '{categoria}', amor 💛"
+        texto = f"🏷️ *Gastos en categoría '{categoria}':*\n\n"
+        total = 0
+        for g in reversed(filtrados[-10:]):
+            texto += f"**#{g['id']}** ${g['monto']} — {g['descripcion']} ({g['fecha']})\n"
+            total += g["monto"]
+        texto += f"\n💰 *Total en {categoria}:* ${total}"
+        return texto
+
+    def borrar_gasto(self, gasto_id):
+        try:
+            data = self._cargar_finanzas()
+            gasto = next((g for g in data["gastos"] if g["id"] == int(gasto_id)), None)
+            if not gasto: return "El ID no es válido 🥺"
+            data["gastos"] = [g for g in data["gastos"] if g["id"] != int(gasto_id)]
+            self._guardar_finanzas(data)
+            return f"🗑️ Gasto eliminado:\n${gasto['monto']} — {gasto['categoria']} — {gasto['descripcion']}"
+        except: return "Error eliminando gasto."
+
+    def agregar_ingreso(self, monto, descripcion):
+        data = self._cargar_finanzas()
+        nuevo = {
+            "id": len(data["ingresos"]) + 1,
+            "monto": float(monto),
+            "descripcion": descripcion,
+            "fecha": datetime.datetime.now().strftime("%Y-%m-%d"),
+            "hora": datetime.datetime.now().strftime("%H:%M")
+        }
+        data["ingresos"].append(nuevo)
+        self._guardar_finanzas(data)
+        return f"✨ *Ingreso agregado exitosamente*\n\n💵 Monto: ${monto}\n📝 Descripción: {descripcion}\n📅 Fecha: {nuevo['fecha']}"
+
+    def listar_ingresos(self):
+        data = self._cargar_finanzas()
+        ingresos = data["ingresos"]
+        if not ingresos: return "Aún no tienes ingresos registrados, amor 🥺"
+        texto = "💵 *Todos tus ingresos registrados:* \n\n"
+        total = 0
+        for ing in reversed(ingresos[-15:]):
+            texto += f"**#{ing['id']}** ${ing['monto']} — {ing['descripcion']} ({ing['fecha']})\n"
+            total += ing["monto"]
+        texto += f"\n💰 *Total de ingresos:* ${total}"
+        return texto
+
+    def borrar_ingreso(self, indice):
+        try:
+            data = self._cargar_finanzas()
+            ing = next((i for i in data["ingresos"] if i["id"] == int(indice)), None)
+            if not ing: return "El ID no es válido 🥺"
+            data["ingresos"] = [i for i in data["ingresos"] if i["id"] != int(indice)]
+            self._guardar_finanzas(data)
+            return f"🗑️ Ingreso eliminado:\n${ing['monto']} — {ing['descripcion']}"
+        except: return "Error eliminando ingreso."
+
+    def establecer_presupuesto(self, categoria, monto):
+        data = self._cargar_finanzas()
+        data["presupuestos"][categoria.lower().strip()] = float(monto)
+        self._guardar_finanzas(data)
+        return f"✅ *Presupuesto establecido*\n\n🏷️ {categoria}\n💰 ${monto}/mes"
+
+    def ver_presupuestos(self):
+        data = self._cargar_finanzas()
+        if not data["presupuestos"]: return "No tienes presupuestos establecidos aún, amor 💛"
+        mes_actual = datetime.datetime.now().strftime("%Y-%m")
+        texto = "📊 *PRESUPUESTOS DEL MES* 📊\n\n"
+        for categoria, presupuesto in data["presupuestos"].items():
+            gasto_mes = sum(g["monto"] for g in data["gastos"] if g["categoria"] == categoria and g["fecha"].startswith(mes_actual))
+            porcentaje = (gasto_mes / presupuesto) * 100
+            restante = presupuesto - gasto_mes
+            emoji = "🔴" if porcentaje >= 100 else "🟡" if porcentaje >= 80 else "🟢"
+            texto += f"{emoji} *{categoria}*\n💰 ${gasto_mes} / ${presupuesto}\n📊 {porcentaje:.0f}% usado\n"
+            if restante > 0: texto += f"✅ Quedan ${restante}\n\n"
+            else: texto += f"❌ Excedido por ${abs(restante)}\n\n"
+        return texto
+
+    def resumen_mensual(self):
+        data = self._cargar_finanzas()
+        mes_actual = datetime.datetime.now().strftime("%Y-%m")
+        mes_nombre = datetime.datetime.now().strftime("%B %Y")
+        gastos_mes = [g for g in data["gastos"] if g["fecha"].startswith(mes_actual)]
+        ingresos_mes = [i for i in data["ingresos"] if i["fecha"].startswith(mes_actual)]
+        if not gastos_mes and not ingresos_mes: return f"No hay movimientos en {mes_nombre}, amor 💛"
+        texto = f"📊 *RESUMEN DE {mes_nombre.upper()}* 📊\n\n"
+        total_ingresos = sum(i["monto"] for i in ingresos_mes)
+        texto += f"💵 *Ingresos:* ${total_ingresos}\n"
+        total_gastos = sum(g["monto"] for g in gastos_mes)
+        texto += f"💸 *Gastos:* ${total_gastos}\n"
+        balance = total_ingresos - total_gastos
+        if balance >= 0: texto += f"✅ *Balance:* +${balance}\n\n"
+        else: texto += f"❌ *Balance:* -${abs(balance)}\n\n"
+        gastos_por_cat = defaultdict(float)
+        for gasto in gastos_mes: gastos_por_cat[gasto["categoria"]] += gasto["monto"]
+        if gastos_por_cat:
+            texto += "📋 *Top Categorías:*\n"
+            for cat, total in sorted(gastos_por_cat.items(), key=lambda x: x[1], reverse=True)[:5]:
+                porcentaje = (total / total_gastos * 100) if total_gastos > 0 else 0
+                texto += f"{cat}: ${total} ({porcentaje:.0f}%)\n"
+        if total_ingresos > 0:
+            tasa_ahorro = (balance / total_ingresos) * 100
+            texto += f"\n💰 *Tasa de ahorro:* {tasa_ahorro:.0f}%"
+        return texto
+
+    def comparar_meses(self):
+        data = self._cargar_finanzas()
+        mes_actual = datetime.datetime.now().strftime("%Y-%m")
+        mes_nombre_actual = datetime.datetime.now().strftime("%B")
+        primer_dia = datetime.datetime.now().replace(day=1)
+        mes_anterior = (primer_dia - timedelta(days=1)).strftime("%Y-%m")
+        mes_nombre_anterior = (primer_dia - timedelta(days=1)).strftime("%B")
+        gastos_actual = sum(g["monto"] for g in data["gastos"] if g["fecha"].startswith(mes_actual))
+        gastos_anterior = sum(g["monto"] for g in data["gastos"] if g["fecha"].startswith(mes_anterior))
+        texto = f"📊 *COMPARATIVA MENSUAL* 📊\n\n📅 {mes_nombre_anterior}: ${gastos_anterior}\n📅 {mes_nombre_actual}: ${gastos_actual}\n\n"
+        if gastos_anterior > 0:
+            diferencia = gastos_actual - gastos_anterior
+            porcentaje = (diferencia / gastos_anterior) * 100
+            if diferencia > 0: texto += f"📈 Gastaste ${abs(diferencia)} MÁS ({porcentaje:.0f}%)"
+            elif diferencia < 0: texto += f"📉 Gastaste ${abs(diferencia)} MENOS ({abs(porcentaje):.0f}%)"
+            else: texto += "➡️ Gasto similar"
+        return texto
+
+    def ver_categorias(self):
+        texto = "🏷 *CATEGORÍAS DISPONIBLES* 🏷\n\n"
+        for categoria in self.CATEGORIAS.keys(): texto += f"{categoria}\n"
+        return texto
+    
+    def exportar_a_csv(self):
+        """Exporta todos los datos financieros a CSV"""
+        import csv
+        from io import StringIO
+        
+        data = self._cargar_finanzas()
+        
+        # Crear CSV en memoria
+        output = StringIO()
+        
+        # Exportar gastos
+        writer = csv.writer(output)
+        writer.writerow(['GASTOS'])
+        writer.writerow(['ID', 'Monto', 'Categoría', 'Descripción', 'Fecha', 'Hora'])
+        
+        for gasto in data.get('gastos', []):
+            writer.writerow([
+                gasto.get('id', ''),
+                gasto.get('monto', ''),
+                gasto.get('categoria', ''),
+                gasto.get('descripcion', ''),
+                gasto.get('fecha', ''),
+                gasto.get('hora', '')
+            ])
+        
+        writer.writerow([])  # Línea en blanco
+        
+        # Exportar ingresos
+        writer.writerow(['INGRESOS'])
+        writer.writerow(['ID', 'Monto', 'Fuente', 'Fecha'])
+        
+        for ingreso in data.get('ingresos', []):
+            writer.writerow([
+                ingreso.get('id', ''),
+                ingreso.get('monto', ''),
+                ingreso.get('fuente', ''),
+                ingreso.get('fecha', '')
+            ])
+        
+        writer.writerow([])  # Línea en blanco
+        
+        # Exportar presupuestos
+        writer.writerow(['PRESUPUESTOS'])
+        writer.writerow(['Categoría', 'Presupuesto'])
+        
+        for categoria, presupuesto in data.get('presupuestos', {}).items():
+            writer.writerow([categoria, presupuesto])
+        
+        csv_string = output.getvalue()
+        output.close()
+        
+        return csv_string
+    
+    def estadisticas_avanzadas(self):
+        """Genera estadísticas avanzadas de finanzas"""
+        data = self._cargar_finanzas()
+        
+        if not data.get('gastos'):
+            return None
+        
+        # Fecha actual
+        hoy = datetime.datetime.now()
+        mes_actual = hoy.strftime("%Y-%m")
+        dia_actual = hoy.day
+        
+        # Gastos del mes actual
+        gastos_mes = [g for g in data['gastos'] if g['fecha'].startswith(mes_actual)]
+        
+        if not gastos_mes:
+            return None
+        
+        # Total gastado este mes
+        total_mes = sum(g['monto'] for g in gastos_mes)
+        
+        # Promedio diario (basado en días transcurridos)
+        promedio_diario = total_mes / dia_actual if dia_actual > 0 else 0
+        
+        # Proyección del mes (promedio diario × días del mes)
+        dias_mes = 30  # Aproximado
+        proyeccion_mes = promedio_diario * dias_mes
+        
+        # Gastos por categoría este mes
+        gastos_por_cat = {}
+        for g in gastos_mes:
+            cat = g.get('categoria', '📄 otros')
+            gastos_por_cat[cat] = gastos_por_cat.get(cat, 0) + g['monto']
+        
+        # Top 3 categorías
+        top_categorias = sorted(gastos_por_cat.items(), key=lambda x: x[1], reverse=True)[:3]
+        
+        # Comparación con mes anterior
+        primer_dia = hoy.replace(day=1)
+        mes_anterior = (primer_dia - timedelta(days=1)).strftime("%Y-%m")
+        gastos_mes_ant = [g for g in data['gastos'] if g['fecha'].startswith(mes_anterior)]
+        total_mes_anterior = sum(g['monto'] for g in gastos_mes_ant)
+        
+        # Calcular diferencia y porcentaje
+        diferencia = total_mes - total_mes_anterior
+        porcentaje_cambio = (diferencia / total_mes_anterior * 100) if total_mes_anterior > 0 else 0
+        
+        # Ingresos del mes
+        ingresos_mes = sum(i['monto'] for i in data.get('ingresos', []) if i['fecha'].startswith(mes_actual))
+        
+        # Balance (ingresos - gastos)
+        balance = ingresos_mes - total_mes
+        
+        return {
+            'total_mes': total_mes,
+            'promedio_diario': promedio_diario,
+            'proyeccion_mes': proyeccion_mes,
+            'top_categorias': top_categorias,
+            'total_mes_anterior': total_mes_anterior,
+            'diferencia': diferencia,
+            'porcentaje_cambio': porcentaje_cambio,
+            'ingresos_mes': ingresos_mes,
+            'balance': balance,
+            'num_gastos': len(gastos_mes),
+            'gasto_promedio': total_mes / len(gastos_mes) if gastos_mes else 0,
+            'dia_actual': dia_actual
+        }
+
+class MetasAhorroHandler:
+    def __init__(self):
+        self.DATA_FOLDER = "data"
+        self.METAS_FILE = os.path.join(self.DATA_FOLDER, "metas_ahorro.json")
+    
+    def _cargar_metas(self):
+        try:
+            metas = cargar_json_mongo("metas_ahorro")
+            return metas if metas else []
+        except:
+            return []
+    
+    def _guardar_metas(self, metas):
+        guardar_json_mongo("metas_ahorro", metas)
+    
+    def crear_meta(self, nombre, monto_objetivo, descripcion=""):
+        metas = self._cargar_metas()
+        nueva = {
+            "id": len(metas) + 1,
+            "nombre": nombre,
+            "monto_objetivo": float(monto_objetivo),
+            "monto_actual": 0.0,
+            "descripcion": descripcion,
+            "fecha_creacion": datetime.datetime.now().strftime("%Y-%m-%d"),
+            "completada": False,
+            "fecha_completada": None
+        }
+        metas.append(nueva)
+        self._guardar_metas(metas)
+        return nueva
+    
+    def aportar_a_meta(self, meta_id, monto):
+        metas = self._cargar_metas()
+        meta = next((m for m in metas if m["id"] == int(meta_id)), None)
+        if not meta:
+            return None
+        
+        meta["monto_actual"] += float(monto)
+        
+        # Verificar si se completó
+        if meta["monto_actual"] >= meta["monto_objetivo"] and not meta["completada"]:
+            meta["completada"] = True
+            meta["fecha_completada"] = datetime.datetime.now().strftime("%Y-%m-%d")
+        
+        self._guardar_metas(metas)
+        return meta
+    
+    def listar_metas(self):
+        return self._cargar_metas()
+    
+    def borrar_meta(self, meta_id):
+        metas = self._cargar_metas()
+        meta = next((m for m in metas if m["id"] == int(meta_id)), None)
+        if not meta:
+            return None
+        metas = [m for m in metas if m["id"] != int(meta_id)]
+        self._guardar_metas(metas)
+        return meta
+
+class LocalNotasHandler:
+    def __init__(self):
+        self.DATA_FOLDER = "data"
+        self.NOTAS_FILE = os.path.join(self.DATA_FOLDER, "notas.json")
+        self.CATEGORIAS = [
+            "💼 Trabajo",
+            "❤️ Personal",
+            "💡 Ideas",
+            "⏰ Recordatorios",
+            "🛒 Compras",
+            "📚 Estudio",
+            "🎯 Metas",
+            "📄 Otros"
+        ]
+
+    def _cargar_notas(self):
+        try:
+            notas = cargar_json_mongo("notas")
+            if not notas:
+                return []
+            # Migrar formato antiguo si es necesario
+            if notas and isinstance(notas[0], str):
+                notas_nuevas = []
+                for i, texto in enumerate(notas, 1):
+                    notas_nuevas.append({
+                        "id": i,
+                        "texto": texto,
+                        "categoria": "📄 Otros",
+                        "fecha_creacion": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        "importante": False,
+                        "recordatorio": None
+                    })
+                self._guardar_notas(notas_nuevas)
+                return notas_nuevas
+            return notas
+        except:
+            return []
+
+    def _guardar_notas(self, notas):
+        try:
+            guardar_json_mongo("notas", notas)
+            return True
+        except:
+            return False
+
+    def agregar_nota(self, texto, categoria="📄 Otros", importante=False, recordatorio=None):
+        if not texto or texto.strip() == "":
+            return "❌ No puedes agregar una nota vacía."
+        notas = self._cargar_notas()
+        nueva_nota = {
+            "id": len(notas) + 1,
+            "texto": texto.strip(),
+            "categoria": categoria,
+            "fecha_creacion": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "importante": importante,
+            "recordatorio": recordatorio
+        }
+        notas.append(nueva_nota)
+        if self._guardar_notas(notas):
+            mensaje = f"✅ Nota guardada en {categoria}"
+            if importante: mensaje += " ⭐"
+            if recordatorio: mensaje += f"\n⏰ Recordatorio: {recordatorio}"
+            return mensaje
+        return "❌ Error al guardar la nota."
+
+    def ver_notas(self, filtro=None):
+        notas = self._cargar_notas()
+        if not notas: return "📭 No tienes notas guardadas."
+        notas_filtradas = notas
+        titulo = "📘 *Tus notas:*"
+        if filtro == "importantes":
+            notas_filtradas = [n for n in notas if n.get("importante", False)]
+            titulo = "⭐ *Notas importantes:*"
+        elif filtro and filtro.startswith("categoria:"):
+            cat = filtro.replace("categoria:", "")
+            notas_filtradas = [n for n in notas if n.get("categoria", "").lower() == cat.lower()]
+            titulo = f"📂 *Notas en {cat}:*"
+        elif filtro == "hoy":
+            hoy = datetime.datetime.now().strftime("%Y-%m-%d")
+            notas_filtradas = [n for n in notas if n.get("fecha_creacion", "").startswith(hoy)]
+            titulo = "📅 *Notas de hoy:*"
+        elif filtro == "semana":
+            hace_semana = (datetime.datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+            notas_filtradas = [n for n in notas if n.get("fecha_creacion", "") >= hace_semana]
+            titulo = "📅 *Notas de esta semana:*"
+        elif filtro == "mes":
+            mes_actual = datetime.datetime.now().strftime("%Y-%m")
+            notas_filtradas = [n for n in notas if n.get("fecha_creacion", "").startswith(mes_actual)]
+            titulo = "📅 *Notas de este mes:*"
+        if not notas_filtradas: return f"📭 No hay notas con ese filtro."
+        notas_filtradas.sort(key=lambda x: (not x.get("importante", False), x.get("fecha_creacion", "")), reverse=True)
+        texto = f"{titulo}\n\n"
+        for nota in notas_filtradas:
+            estrella = "⭐ " if nota.get("importante", False) else ""
+            categoria = nota.get("categoria", "📄 Otros")
+            nota_texto = nota.get("texto", "")
+            nota_id = nota.get("id", "?")
+            fecha = nota.get("fecha_creacion", "")
+            nota_preview = nota_texto[:80] + "..." if len(nota_texto) > 80 else nota_texto
+            texto += f"{estrella}**#{nota_id}** {categoria}\n{nota_preview}\n_📅 {fecha}_\n\n"
+        return texto
+
+    def ver_notas_por_categoria(self):
+        notas = self._cargar_notas()
+        if not notas: return "📭 No tienes notas guardadas."
+        por_categoria = {}
+        for nota in notas:
+            cat = nota.get("categoria", "📄 Otros")
+            if cat not in por_categoria: por_categoria[cat] = []
+            por_categoria[cat].append(nota)
+        texto = "📊 *NOTAS POR CATEGORÍA* 📊\n\n"
+        for cat, lista in sorted(por_categoria.items()):
+            importantes = sum(1 for n in lista if n.get("importante", False))
+            texto += f"{cat}: {len(lista)} notas"
+            if importantes > 0: texto += f" ({importantes} ⭐)"
+            texto += "\n"
+        texto += f"\n📂 Total: {len(notas)} notas"
+        return texto
+
+    def editar_nota(self, nota_id, nuevo_texto=None, nueva_categoria=None, nuevo_importante=None):
+        notas = self._cargar_notas()
+        nota = next((n for n in notas if n["id"] == int(nota_id)), None)
+        if not nota: return f"❌ No encontré la nota #{nota_id}."
+        if nuevo_texto: nota["texto"] = nuevo_texto
+        if nueva_categoria: nota["categoria"] = nueva_categoria
+        if nuevo_importante is not None: nota["importante"] = nuevo_importante
+        if self._guardar_notas(notas):
+            estrella = "⭐" if nota["importante"] else ""
+            return f"✅ Nota #{nota_id} actualizada {estrella}\n\n{nota['categoria']}\n{nota['texto']}"
+        return "❌ Error al actualizar la nota."
+
+    def ver_nota_completa(self, nota_id):
+        notas = self._cargar_notas()
+        nota = next((n for n in notas if n["id"] == int(nota_id)), None)
+        if not nota: return f"❌ No encontré la nota #{nota_id}."
+        estrella = "⭐ " if nota.get("importante", False) else ""
+        texto = f"{estrella}**NOTA #{nota['id']}**\n\n"
+        texto += f"📂 Categoría: {nota.get('categoria', 'Otros')}\n"
+        texto += f"📅 Creada: {nota.get('fecha_creacion', 'N/A')}\n"
+        if nota.get("recordatorio"): texto += f"⏰ Recordatorio: {nota['recordatorio']}\n"
+        texto += f"\n📝 Contenido:\n{nota['texto']}"
+        return texto
+
+    def marcar_importante(self, nota_id, importante=True):
+        notas = self._cargar_notas()
+        nota = next((n for n in notas if n["id"] == int(nota_id)), None)
+        if not nota: return f"❌ No encontré la nota #{nota_id}."
+        nota["importante"] = importante
+        if self._guardar_notas(notas):
+            return f"⭐ Nota #{nota_id} marcada como importante" if importante else f"✅ Nota #{nota_id} desmarcada como importante"
+        return "❌ Error al actualizar la nota."
+
+    def agregar_recordatorio(self, nota_id, fecha_hora):
+        notas = self._cargar_notas()
+        nota = next((n for n in notas if n["id"] == int(nota_id)), None)
+        if not nota: return f"❌ No encontré la nota #{nota_id}."
+        nota["recordatorio"] = fecha_hora
+        if self._guardar_notas(notas):
+            return f"⏰ Recordatorio agregado\n\n📝 Nota #{nota_id}\n⏰ {fecha_hora}"
+        return "❌ Error al agregar recordatorio."
+
+    def ver_recordatorios(self):
+        notas = self._cargar_notas()
+        con_recordatorio = [n for n in notas if n.get("recordatorio")]
+        if not con_recordatorio: return "📭 No tienes recordatorios pendientes."
+        con_recordatorio.sort(key=lambda x: x["recordatorio"])
+        texto = "⏰ *RECORDATORIOS PENDIENTES* ⏰\n\n"
+        for nota in con_recordatorio:
+            texto += f"**#{nota['id']}** - {nota['recordatorio']}\n"
+            nota_preview = nota['texto'][:60] + "..." if len(nota['texto']) > 60 else nota['texto']
+            texto += f"📝 {nota_preview}\n\n"
+        return texto
+
+    def borrar_nota(self, nota_id):
+        notas = self._cargar_notas()
+        nota = next((n for n in notas if n["id"] == int(nota_id)), None)
+        if not nota: return f"❌ No encontré la nota #{nota_id}."
+        notas = [n for n in notas if n["id"] != int(nota_id)]
+        if self._guardar_notas(notas):
+            nota_preview = nota['texto'][:100] + "..." if len(nota['texto']) > 100 else nota['texto']
+            return f"🗑️ Nota #{nota_id} eliminada:\n\n{nota_preview}"
+        return "❌ Error al eliminar la nota."
+
+    def buscar_nota(self, palabra_clave):
+        notas = self._cargar_notas()
+        if not notas: return "📭 No tienes notas guardadas."
+        palabra_clave = palabra_clave.lower()
+        encontradas = []
+        for nota in notas:
+            if palabra_clave in nota['texto'].lower():
+                nota_preview = nota['texto'][:80] + "..." if len(nota['texto']) > 80 else nota['texto']
+                estrella = "⭐ " if nota.get("importante", False) else ""
+                encontradas.append(f"{estrella}**#{nota['id']}** {nota['categoria']}\n{nota_preview}")
+        if not encontradas: return f"🔍 No encontré notas con '{palabra_clave}'."
+        resultado = f"🔍 *Notas con '{palabra_clave}':*\n\n"
+        resultado += "\n\n".join(encontradas)
+        return resultado
+
+    def ver_categorias(self):
+        texto = "📂 *CATEGORÍAS DISPONIBLES* 📂\n\n"
+        for cat in self.CATEGORIAS: texto += f"{cat}\n"
+        return texto
+
+    def estadisticas_notas(self):
+        notas = self._cargar_notas()
+        if not notas: return "📭 No tienes notas guardadas."
+        total = len(notas)
+        importantes = sum(1 for n in notas if n.get("importante", False))
+        con_recordatorio = sum(1 for n in notas if n.get("recordatorio"))
+        por_categoria = {}
+        for nota in notas:
+            cat = nota.get("categoria", "📄 Otros")
+            por_categoria[cat] = por_categoria.get(cat, 0) + 1
+        cat_top = max(por_categoria.items(), key=lambda x: x[1]) if por_categoria else ("N/A", 0)
+        texto = "📊 *ESTADÍSTICAS DE NOTAS* 📊\n\n"
+        texto += f"📂 Total: {total}\n"
+        texto += f"⭐ Importantes: {importantes}\n"
+        texto += f"⏰ Con recordatorio: {con_recordatorio}\n"
+        texto += f"🏆 Categoría más usada: {cat_top[0]} ({cat_top[1]})\n"
+        return texto
+    
+    def buscar_notas(self, query):
+        """Busca notas que contengan la palabra clave"""
+        if not query or query.strip() == "":
+            return self._cargar_notas()
+        
+        notas = self._cargar_notas()
+        query_lower = query.lower().strip()
+        
+        resultados = [n for n in notas if query_lower in n.get('texto', '').lower()]
+        return resultados
+
+
+
+class LocalLibrosHandler:
+    def __init__(self):
+        self.OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+        self.openai_client = None
+        self.openai_enabled = False
+        self._inicializar_openai()
+
+    def _inicializar_openai(self):
+        try:
+            from openai import OpenAI
+            self.openai_client = OpenAI(api_key=self.OPENAI_API_KEY)
+            self.openai_enabled = True
+        except:
+            self.openai_enabled = False
+
+    def randomizer_libros(self, descripcion):
+        """Genera 3 sugerencias de libros con IA + portadas"""
+        try:
+            from openai import OpenAI
+            import requests
+            
+            client = OpenAI(api_key=self.OPENAI_API_KEY)
+            
+            # 1. Generar sugerencias con GPT
+            prompt = f"""Eres un experto librero. El usuario quiere leer algo así: "{descripcion}"
+
+Sugiere exactamente 3 LIBROS REALES (que existan) que encajen perfectamente con esa descripción.
+
+Para cada libro, responde SOLO en este formato JSON:
+{{
+  "libros": [
+    {{
+      "titulo": "Título exacto del libro",
+      "autor": "Nombre del autor",
+      "descripcion": "Por qué este libro encaja (máximo 2 líneas)",
+      "descripcion_portada": "Descripción detallada de la portada original del libro para generar imagen"
+    }}
+  ]
+}}
+
+IMPORTANTE: 
+- Solo libros REALES que existan
+- Variedad (no 3 libros del mismo autor)
+- Descripción de portada debe ser visual y detallada"""
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.8,
+                response_format={"type": "json_object"}
+            )
+            
+            import json
+            sugerencias = json.loads(response.choices[0].message.content)
+            libros = sugerencias.get("libros", [])
+            
+            if not libros or len(libros) < 3:
+                return {"success": False, "error": "No pude generar suficientes sugerencias. Intenta con otra descripción."}
+            
+            # 2. Generar portadas con DALL-E
+            imagenes = []
+            for libro in libros[:3]:
+                try:
+                    prompt_imagen = f"Professional book cover design for '{libro['titulo']}' by {libro['autor']}. Style: {libro.get('descripcion_portada', 'Artistic, clean, professional book cover')}. High quality, centered text, attractive design."
+                    
+                    img_response = client.images.generate(
+                        model="dall-e-3",
+                        prompt=prompt_imagen,
+                        size="1024x1024",
+                        quality="standard",
+                        n=1
+                    )
+                    
+                    # Descargar la imagen
+                    img_url = img_response.data[0].url
+                    img_data = requests.get(img_url, timeout=10).content
+                    imagenes.append(img_data)
+                    
+                except Exception as e:
+                    print(f"Error generando imagen para {libro['titulo']}: {e}")
+                    imagenes.append(None)
+            
+            return {
+                "success": True,
+                "libros": libros[:3],
+                "imagenes": imagenes
+            }
+            
+        except Exception as e:
+            print(f"Error en randomizer_libros: {e}")
+            return {"success": False, "error": f"Error: {str(e)}"}
+
+    def _generar_imagen(self, prompt):
+        if not self.openai_enabled: return None
+        try:
+            response = self.openai_client.images.generate(
+                model="dall-e-3",
+                prompt=prompt,
+                size="1024x1024",
+                quality="standard",
+                n=1
+            )
+            return response.data[0].url
+        except Exception as e:
+            print(f"Error generando imagen: {e}")
+            return None
+
+    def imagen_de_libro(self, titulo):
+        prompt = (
+            f"Create an aesthetic illustration inspired by the book '{titulo}'. "
+            f"Focus on atmosphere, symbolism, and mood. No text, no people. "
+            f"Dreamy lighting, soft textures, cinematic digital art style."
+        )
+        return self._generar_imagen(prompt)
+
+    def fanart_libro(self, titulo):
+        prompt = (
+            f"Fantasy fanart inspired by the book '{titulo}'. "
+            f"Focus on scenery, atmosphere, and symbolic elements. No characters or text. "
+            f"High-quality digital art with dramatic lighting."
+        )
+        return self._generar_imagen(prompt)
+
+    def estetica_libro(self, titulo):
+        prompt = (
+            f"Aesthetic moodboard inspired by '{titulo}'. "
+            f"Show textures, objects, colors, and atmosphere that represent the book's vibe. "
+            f"No people, no text. Soft, dreamy aesthetic."
+        )
+        return self._generar_imagen(prompt)
+
+    def imagen_genero(self, genero):
+        prompt = (
+            f"Atmospheric artwork representing the literary genre '{genero}'. "
+            f"Use symbolic objects, lighting, and mood. No text, no people. "
+            f"Cinematic and artistic style."
+        )
+        return self._generar_imagen(prompt)
+
+    def imagen_autor(self, nombre):
+        prompt = (
+            f"Conceptual artwork inspired by the writing style of author '{nombre}'. "
+            f"Abstract scenery with symbolic textures and atmospheric elements. "
+            f"No people, no text. Artistic and evocative."
+        )
+        return self._generar_imagen(prompt)
+    
+    def __init_libros_data(self):
+        """Inicializa archivo de libros guardados"""
+        self.DATA_FOLDER = "data"
+        self.LIBROS_FILE = os.path.join(self.DATA_FOLDER, "libros_guardados.json")
+    
+    def _cargar_libros(self):
+        """Carga libros guardados"""
+        if not hasattr(self, 'LIBROS_FILE'):
+            self.__init_libros_data()
+        try:
+            libros = cargar_json_mongo("libros_guardados")
+            return libros if libros else []
+        except:
+            return []
+    
+    def _guardar_libros(self, libros):
+        """Guarda libros"""
+        if not hasattr(self, 'LIBROS_FILE'):
+            self.__init_libros_data()
+        guardar_json_mongo("libros_guardados", libros)
+    
+    def agregar_resena(self, libro_titulo, rating, texto_resena):
+        """Agrega reseña y rating a un libro"""
+        if not hasattr(self, 'LIBROS_FILE'):
+            self.__init_libros_data()
+        
+        libros = self._cargar_libros()
+        
+        # Buscar si el libro ya existe
+        libro_existente = next((l for l in libros if l['titulo'].lower() == libro_titulo.lower()), None)
+        
+        if libro_existente:
+            # Actualizar reseña
+            libro_existente['rating'] = rating
+            libro_existente['resena'] = texto_resena
+            libro_existente['fecha_resena'] = datetime.datetime.now().strftime("%Y-%m-%d")
+        else:
+            # Crear nuevo libro
+            nuevo_libro = {
+                'id': len(libros) + 1,
+                'titulo': libro_titulo,
+                'rating': rating,
+                'resena': texto_resena,
+                'fecha_resena': datetime.datetime.now().strftime("%Y-%m-%d")
+            }
+            libros.append(nuevo_libro)
+        
+        self._guardar_libros(libros)
+        return True, "Reseña guardada correctamente ⭐"
+    
+    def ver_libros_con_resenas(self):
+        """Ver todos los libros con reseñas"""
+        if not hasattr(self, 'LIBROS_FILE'):
+            self.__init_libros_data()
+        return self._cargar_libros()
+    
+    def eliminar_resena(self, libro_id):
+        """Elimina una reseña"""
+        if not hasattr(self, 'LIBROS_FILE'):
+            self.__init_libros_data()
+        libros = self._cargar_libros()
+        libros = [l for l in libros if l['id'] != libro_id]
+        self._guardar_libros(libros)
+        return True
+    
+    # === BOOK CLUB FUNCTIONS ===
+    
+    def __init_bookclub_data(self):
+        """Inicializa archivo de book club"""
+        self.DATA_FOLDER = "data"
+        self.BOOKCLUB_FILE = os.path.join(self.DATA_FOLDER, "book_club.json")
+    
+    def _cargar_bookclub(self):
+        """Carga datos del book club"""
+        if not hasattr(self, 'BOOKCLUB_FILE'):
+            self.__init_bookclub_data()
+        try:
+            data = cargar_json_mongo("book_club")
+            if not data or len(data) == 0:
+                return {
+                    'libro_actual': None,
+                    'reuniones': [],
+                    'miembros': [],
+                    'discusiones': []
+                }
+            # Si es una lista, tomar el primer elemento
+            if isinstance(data, list):
+                return data[0] if len(data) > 0 else {
+                    'libro_actual': None,
+                    'reuniones': [],
+                    'miembros': [],
+                    'discusiones': []
+                }
+            return data
+        except:
+            return {
+                'libro_actual': None,
+                'reuniones': [],
+                'miembros': [],
+                'discusiones': []
+            }
+    
+    def _guardar_bookclub(self, data):
+        """Guarda datos del book club"""
+        if not hasattr(self, 'BOOKCLUB_FILE'):
+            self.__init_bookclub_data()
+        guardar_json_mongo("book_club", [data])
+    
+    def establecer_libro_actual(self, titulo, autor=""):
+        """Establece el libro actual del club"""
+        data = self._cargar_bookclub()
+        data['libro_actual'] = {
+            'titulo': titulo,
+            'autor': autor,
+            'fecha_inicio': datetime.datetime.now().strftime("%Y-%m-%d")
+        }
+        self._guardar_bookclub(data)
+        return True, f"Libro actual: {titulo}"
+    
+    def agregar_reunion(self, fecha, tema, notas=""):
+        """Agrega una reunión del book club"""
+        data = self._cargar_bookclub()
+        
+        nueva_reunion = {
+            'id': len(data['reuniones']) + 1,
+            'fecha': fecha,
+            'tema': tema,
+            'notas': notas,
+            'libro': data['libro_actual']['titulo'] if data['libro_actual'] else "Sin libro",
+            'fecha_creacion': datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+        
+        data['reuniones'].append(nueva_reunion)
+        self._guardar_bookclub(data)
+        return True, "Reunión agregada"
+    
+    def agregar_miembro(self, nombre, email=""):
+        """Agrega un miembro al book club"""
+        data = self._cargar_bookclub()
+        
+        # Verificar si ya existe
+        existe = any(m['nombre'].lower() == nombre.lower() for m in data['miembros'])
+        if existe:
+            return False, "Este miembro ya existe"
+        
+        nuevo_miembro = {
+            'id': len(data['miembros']) + 1,
+            'nombre': nombre,
+            'email': email,
+            'fecha_union': datetime.datetime.now().strftime("%Y-%m-%d")
+        }
+        
+        data['miembros'].append(nuevo_miembro)
+        self._guardar_bookclub(data)
+        return True, f"Miembro {nombre} agregado"
+    
+    def agregar_discusion(self, pregunta, respuesta=""):
+        """Agrega una pregunta/tema de discusión"""
+        data = self._cargar_bookclub()
+        
+        nueva_discusion = {
+            'id': len(data['discusiones']) + 1,
+            'pregunta': pregunta,
+            'respuesta': respuesta,
+            'libro': data['libro_actual']['titulo'] if data['libro_actual'] else "Sin libro",
+            'fecha': datetime.datetime.now().strftime("%Y-%m-%d")
+        }
+        
+        data['discusiones'].append(nueva_discusion)
+        self._guardar_bookclub(data)
+        return True, "Pregunta de discusión agregada"
+    
+    def ver_bookclub(self):
+        """Ver información completa del book club"""
+        return self._cargar_bookclub()
+    
+    def eliminar_reunion(self, reunion_id):
+        """Elimina una reunión"""
+        data = self._cargar_bookclub()
+        data['reuniones'] = [r for r in data['reuniones'] if r['id'] != reunion_id]
+        self._guardar_bookclub(data)
+        return True
+    
+    # === RETO DE LECTURA ANUAL ===
+    
+    def __init_reto_lectura(self):
+        """Inicializa archivo de reto de lectura"""
+        self.DATA_FOLDER = "data"
+        self.RETO_FILE = os.path.join(self.DATA_FOLDER, "reto_lectura.json")
+    
+    def _cargar_reto(self):
+        """Carga datos del reto de lectura"""
+        if not hasattr(self, 'RETO_FILE'):
+            self.__init_reto_lectura()
+        try:
+            data = cargar_json_mongo("reto_lectura")
+            if not data or len(data) == 0:
+                return None
+            # Si es una lista, tomar el primer elemento
+            if isinstance(data, list):
+                return data[0] if len(data) > 0 else None
+            return data
+        except:
+            return None
+    
+    def _guardar_reto(self, data):
+        """Guarda datos del reto"""
+        if not hasattr(self, 'RETO_FILE'):
+            self.__init_reto_lectura()
+        guardar_json_mongo("reto_lectura", [data])
+    
+    def establecer_reto_anual(self, meta_libros, anio=None):
+        """Establece meta de lectura anual"""
+        if not anio:
+            anio = datetime.datetime.now().year
+        
+        reto = {
+            'anio': anio,
+            'meta_libros': int(meta_libros),
+            'libros_leidos': [],
+            'fecha_creacion': datetime.datetime.now().strftime("%Y-%m-%d")
+        }
+        
+        self._guardar_reto(reto)
+        return True, f"Meta establecida: {meta_libros} libros en {anio}"
+    
+    def agregar_libro_al_reto(self, titulo, autor="", paginas=0):
+        """Agrega un libro completado al reto"""
+        reto = self._cargar_reto()
+        if not reto:
+            return False, "No hay reto activo. Crea uno primero."
+        
+        nuevo_libro = {
+            'id': len(reto['libros_leidos']) + 1,
+            'titulo': titulo,
+            'autor': autor,
+            'paginas': int(paginas) if paginas else 0,
+            'fecha_completado': datetime.datetime.now().strftime("%Y-%m-%d")
+        }
+        
+        reto['libros_leidos'].append(nuevo_libro)
+        self._guardar_reto(reto)
+        
+        return True, f"Libro agregado: {titulo}"
+    
+    def ver_progreso_reto(self):
+        """Ver progreso del reto actual"""
+        reto = self._cargar_reto()
+        if not reto:
+            return None
+        
+        completados = len(reto['libros_leidos'])
+        meta = reto['meta_libros']
+        progreso = (completados / meta * 100) if meta > 0 else 0
+        
+        # Calcular proyección
+        hoy = datetime.datetime.now()
+        dia_del_anio = hoy.timetuple().tm_yday
+        dias_totales = 366 if hoy.year % 4 == 0 else 365
+        
+        if completados > 0:
+            ritmo_actual = completados / dia_del_anio
+            proyeccion = ritmo_actual * dias_totales
+        else:
+            proyeccion = 0
+        
+        return {
+            'anio': reto['anio'],
+            'meta': meta,
+            'completados': completados,
+            'progreso': progreso,
+            'proyeccion': proyeccion,
+            'libros': reto['libros_leidos']
+        }
+    
+    def eliminar_libro_del_reto(self, libro_id):
+        """Elimina un libro del reto"""
+        reto = self._cargar_reto()
+        if not reto:
+            return False
+        
+        reto['libros_leidos'] = [l for l in reto['libros_leidos'] if l['id'] != int(libro_id)]
+        self._guardar_reto(reto)
+        return True
+    
+    def estadisticas_reto(self):
+        """Genera estadísticas del reto"""
+        reto = self._cargar_reto()
+        if not reto or not reto['libros_leidos']:
+            return None
+        
+        total_paginas = sum(l.get('paginas', 0) for l in reto['libros_leidos'])
+        completados = len(reto['libros_leidos'])
+        
+        # Calcular días transcurridos
+        hoy = datetime.datetime.now()
+        inicio_anio = datetime.datetime(hoy.year, 1, 1)
+        dias_transcurridos = (hoy - inicio_anio).days + 1
+        
+        libros_por_dia = completados / dias_transcurridos if dias_transcurridos > 0 else 0
+        
+        return {
+            'total_paginas': total_paginas,
+            'libros_por_dia': libros_por_dia,
+            'completados': completados
+        }
+
+
+class GestorEstantes:
+    def __init__(self):
+        """Constructor de la clase"""
+        self.DATA_FOLDER = "data"
+        self.ESTANTES_FILE = os.path.join(self.DATA_FOLDER, "estantes_libros.json")
+        self._init_estantes_data()
+
+    def _init_estantes_data(self):
+        """Inicializa la carpeta de datos si no existe"""
+        os.makedirs(self.DATA_FOLDER, exist_ok=True)
+        if not os.path.exists(self.ESTANTES_FILE):
+            self._guardar_estantes({
+                'por_leer': [],
+                'leyendo': [],
+                'leidos': []
+            })
+
+    def _cargar_estantes(self):
+        """Carga estantes de libros"""
+        try:
+            data = cargar_json_mongo("estantes_libros")
+            if not data or len(data) == 0:
+                return {'por_leer': [], 'leyendo': [], 'leidos': []}
+            # Si es una lista, tomar el primer elemento
+            if isinstance(data, list):
+                return data[0] if len(data) > 0 else {'por_leer': [], 'leyendo': [], 'leidos': []}
+            return data
+        except:
+            return {'por_leer': [], 'leyendo': [], 'leidos': []}
+
+    def _guardar_estantes(self, estantes):
+        """Guarda estantes en MongoDB"""
+        try:
+            guardar_json_mongo("estantes_libros", [estantes])
+        except Exception as e:
+            print(f"Error guardando estantes: {e}")
+
+    def agregar_libro_a_estante(self, estante, titulo, autor=""):
+        """Agrega libro a un estante específico"""
+        if estante not in ['por_leer', 'leyendo', 'leidos']:
+            return False, "Estante inválido"
+        
+        estantes = self._cargar_estantes()
+        
+        for est_nombre, est_lista in estantes.items():
+            if any(l['titulo'].strip().lower() == titulo.strip().lower() for l in est_lista):
+                return False, f"Este libro ya está en: {est_nombre.replace('_', ' ').title()}"
+        
+        all_ids = [libro['id'] for lista in estantes.values() for libro in lista]
+        nuevo_id = max(all_ids) + 1 if all_ids else 1
+
+        nuevo_libro = {
+            'id': nuevo_id,
+            'titulo': titulo.strip(),
+            'autor': autor.strip(),
+            'fecha_agregado': datetime.datetime.now().strftime("%Y-%m-%d")
+        }
+        
+        if estante == 'leyendo':
+            nuevo_libro['fecha_inicio'] = datetime.datetime.now().strftime("%Y-%m-%d")
+        
+        if estante == 'leidos':
+            nuevo_libro['fecha_finalizado'] = datetime.datetime.now().strftime("%Y-%m-%d")
+        
+        estantes[estante].append(nuevo_libro)
+        self._guardar_estantes(estantes)
+        return True, f"Libro agregado a: {estante.replace('_', ' ').title()}"
+
+    def mover_libro_entre_estantes(self, titulo, estante_destino):
+        """Mueve un libro de un estante a otro"""
+        if estante_destino not in ['por_leer', 'leyendo', 'leidos']:
+            return False, "Estante destino inválido"
+        
+        estantes = self._cargar_estantes()
+        
+        libro_encontrado = None
+        estante_origen = None
+        
+        titulo_busqueda = titulo.strip().lower()
+        for est_nombre, est_lista in estantes.items():
+            for libro in est_lista:
+                if libro['titulo'].lower() == titulo_busqueda:
+                    libro_encontrado = libro
+                    estante_origen = est_nombre
+                    break
+            if libro_encontrado:
+                break
+        
+        if not libro_encontrado:
+            return False, "Libro no encontrado en ningún estante"
+        
+        if estante_origen == estante_destino:
+            return False, f"El libro ya está en: {estante_destino.replace('_', ' ').title()}"
+        
+        estantes[estante_origen].remove(libro_encontrado)
+        
+        hoy = datetime.datetime.now().strftime("%Y-%m-%d")
+        
+        if estante_destino == 'leyendo':
+            if 'fecha_inicio' not in libro_encontrado:
+                libro_encontrado['fecha_inicio'] = hoy
+        
+        elif estante_destino == 'leidos':
+            libro_encontrado['fecha_finalizado'] = hoy
+            if 'fecha_inicio' not in libro_encontrado:
+                libro_encontrado['fecha_inicio'] = hoy
+
+        estantes[estante_destino].append(libro_encontrado)
+        
+        self._guardar_estantes(estantes)
+        return True, f"Libro movido a: {estante_destino.replace('_', ' ').title()}"
+
+    def ver_estantes(self):
+        """Ver todos los estantes con sus libros"""
+        return self._cargar_estantes()
+
+    def eliminar_libro_de_estante(self, titulo):
+        """Elimina un libro de cualquier estante"""
+        estantes = self._cargar_estantes()
+        titulo_busqueda = titulo.strip().lower()
+        
+        for est_nombre, est_lista in estantes.items():
+            for i, libro in enumerate(est_lista):
+                if libro['titulo'].lower() == titulo_busqueda:
+                    del estantes[est_nombre][i]
+                    self._guardar_estantes(estantes)
+                    return True, f"Libro eliminado de: {est_nombre.replace('_', ' ').title()}"
+        
+        return False, "Libro no encontrado"
+
+    def estadisticas_estantes(self):
+        """Genera estadísticas de los estantes"""
+        estantes = self._cargar_estantes()
+        
+        total_por_leer = len(estantes['por_leer'])
+        total_leyendo = len(estantes['leyendo'])
+        total_leidos = len(estantes['leidos'])
+        total_general = total_por_leer + total_leyendo + total_leidos
+        
+        anio_actual = str(datetime.datetime.now().year)
+        leidos_este_anio = sum(
+            1 for l in estantes['leidos'] 
+            if l.get('fecha_finalizado', '').startswith(anio_actual)
+        )
+        
+        return {
+            'por_leer': total_por_leer,
+            'leyendo': total_leyendo,
+            'leidos': total_leidos,
+            'total': total_general,
+            'leidos_este_anio': leidos_este_anio
+        }
+
+class LocalFrasesHandler:
+    def __init__(self):
+        self.DATA_FOLDER = "data"
+        self.FAVORITAS_FILE = os.path.join(self.DATA_FOLDER, "frases_favoritas.json")
+        self.JOURNAL_FILE = os.path.join(self.DATA_FOLDER, "journal_gratitud.json")
+        os.makedirs(self.DATA_FOLDER, exist_ok=True)
+        
+        self.OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+        self.openai_client = None
+        self.openai_enabled = False
+        self._inicializar_openai()
+        
+        self.CATEGORIAS_FRASES = {
+            "💪 Motivación": [
+                "Confía en el proceso, incluso cuando no entiendas el camino.",
+                "Eres más fuerte de lo que crees.",
+                "Cada día es una nueva oportunidad para empezar de nuevo.",
+                "No estás atrasada, estás justo donde tienes que estar.",
+                "Estás aprendiendo, creciendo y sanando. Eso es progreso.",
+                "Tu esfuerzo nunca es en vano, aunque aún no veas los resultados.",
+            ],
+            "💛 Amor Propio": [
+                "Te mereces todo lo bonito que estás esperando.",
+                "Eres suficiente, exactamente como eres.",
+                "Tu valor no disminuye por la incapacidad de alguien de verlo.",
+                "Mereces amor, respeto y gentileza, especialmente de ti misma.",
+                "No tienes que probarte ante nadie. Eres valiosa por existir.",
+            ],
+            "🌸 Paz": [
+                "Lo que es para ti, encuentra su camino.",
+                "Suelta lo que no puedes controlar y confía.",
+                "La paz comienza cuando las expectativas terminan.",
+                "Está bien no tener todo resuelto ahora mismo.",
+                "Respira. Estás a salvo. Todo está bien en este momento.",
+            ],
+            "✨ Abundancia": [
+                "Tu energía atrae. Vibra bonito.",
+                "Yo merezco abundancia, paz y amor.",
+                "Estoy abierta a recibir todas las bendiciones que el universo tiene para mí.",
+                "La abundancia fluye hacia mí desde todas las direcciones.",
+                "Hay suficiente para todos, incluyéndome a mí.",
+            ],
+            "🎯 Productividad": [
+                "Hoy elijo enfocarme en lo que sí puedo hacer.",
+                "Progreso sobre perfección, siempre.",
+                "Cada pequeño paso cuenta. Sigue avanzando.",
+                "Tengo todo lo que necesito para lograr mis metas.",
+                "Mi disciplina de hoy crea mi libertad de mañana.",
+            ],
+            "💔 Sanación": [
+                "Sanar no es lineal. Está bien tener días difíciles.",
+                "Tu dolor es válido y mereces tiempo para procesarlo.",
+                "Estás sanando aunque no se sienta así hoy.",
+                "No tienes que estar bien todo el tiempo. Date permiso de sentir.",
+                "De esta también sales, como de todo lo anterior.",
+            ],
+            "🦋 Transformación": [
+                "Estoy en proceso de convertirme en mi mejor versión.",
+                "Los finales son solo nuevos comienzos disfrazados.",
+                "Me permito crecer, cambiar y evolucionar.",
+                "Confío en los cambios que estoy atravesando.",
+                "Todo lo que necesito ya está dentro de mí.",
+            ],
+            "🌟 Espiritualidad": [
+                "Estoy exactamente donde debo estar.",
+                "Mi energía crea mi realidad.",
+                "Hoy elijo confiar.",
+                "Mi corazón se abre a nuevas bendiciones.",
+                "Estoy conectada con algo más grande que yo.",
+            ]
+        }
+
+    def _inicializar_openai(self):
+        try:
+            from openai import OpenAI
+            self.openai_client = OpenAI(api_key=self.OPENAI_API_KEY)
+            self.openai_enabled = True
+        except:
+            self.openai_enabled = False
+
+    def _cargar_favoritas(self):
+        try:
+            favoritas = cargar_json_mongo("frases_favoritas")
+            return favoritas if favoritas else []
+        except:
+            return []
+
+    def _guardar_favoritas(self, favoritas):
+        guardar_json_mongo("frases_favoritas", favoritas)
+
+    def _cargar_journal(self):
+        try:
+            journal = cargar_json_mongo("journal_frases")
+            return journal if journal else []
+        except:
+            return []
+
+    def _guardar_journal(self, journal):
+        guardar_json_mongo("journal_frases", journal)
+
+    def frase_por_categoria(self, categoria):
+        if categoria in self.CATEGORIAS_FRASES:
+            return random.choice(self.CATEGORIAS_FRASES[categoria])
+        return "✨ Categoría no encontrada"
+
+    def listar_categorias(self):
+        texto = "📚 *CATEGORÍAS DISPONIBLES* 📚\n\n"
+        for cat in self.CATEGORIAS_FRASES.keys():
+            texto += f"{cat}\n"
+        return texto
+
+    def frase_del_dia(self):
+        hoy = datetime.datetime.now().strftime("%Y-%m-%d")
+        random.seed(hoy)
+        categoria = random.choice(list(self.CATEGORIAS_FRASES.keys()))
+        frase = random.choice(self.CATEGORIAS_FRASES[categoria])
+        random.seed()
+        return f"✨ *FRASE DEL DÍA* ✨\n_{hoy}_\n\n{categoria}\n\n_{frase}_"
+
+    def generar_frase_personalizada(self, mood="", situacion="", personalidad_handler=None):
+        if not self.openai_enabled:
+            return "❌ OpenAI no está configurado"
+        contexto = ""
+        if mood: contexto += f"La persona se siente: {mood}. "
+        if situacion: contexto += f"Situación actual: {situacion}."
+        if not contexto: contexto = "La persona necesita motivación general."
+        
+        prompt = f"""Genera una frase motivacional personalizada, profunda y hermosa.
+
+Contexto: {contexto}
+
+La frase debe:
+- Ser específica a su situación
+- Validar sus emociones
+- Dar esperanza y fortaleza
+- Ser genuina, no cliché
+- Máximo 2-3 oraciones
+- Tono cálido, empático, como una mejor amiga
+
+No uses comillas. Solo la frase."""
+
+        instruccion_personalidad = personalidad_handler.obtener_instruccion() if personalidad_handler else ""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": f"Eres una coach espiritual y motivacional experta. Generas frases profundas, personalizadas y transformadoras. {instruccion_personalidad}"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=150,
+                temperature=0.9
+            )
+            frase = response.choices[0].message.content.strip()
+            return f"✨ *FRASE PARA TI* ✨\n\n_{frase}_\n\n💛"
+        except:
+            return "❌ Error al generar la frase. Intenta de nuevo 💛"
+
+    def generar_afirmaciones_personalizadas(self, area, cantidad=5, personalidad_handler=None):
+        if not self.openai_enabled:
+            return "❌ OpenAI no está configurado"
+        
+        prompt = f"""Genera {cantidad} afirmaciones positivas personalizadas para el área de: {area}
+
+Las afirmaciones deben:
+- Estar en primera persona ("Yo soy", "Yo merezco", etc.)
+- Ser específicas al área mencionada
+- Ser poderosas y transformadoras
+- Ser variadas entre sí
+- Ser cortas (1 frase cada una)
+
+Formato: Solo las afirmaciones numeradas, sin explicaciones."""
+
+        instruccion_personalidad = personalidad_handler.obtener_instruccion() if personalidad_handler else ""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": f"Eres experta en crear afirmaciones positivas poderosas y transformadoras. {instruccion_personalidad}"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=250,
+                temperature=0.8
+            )
+            afirmaciones = response.choices[0].message.content.strip()
+            return f"🎯 *AFIRMACIONES PARA: {area.upper()}* 🎯\n\n{afirmaciones}\n\n💛 _Repite la que más resuene contigo_"
+        except:
+            return "❌ Error al generar afirmaciones. Intenta de nuevo 💛"
+
+    def procesar_gratitud_con_ia(self, gratitud, personalidad_handler=None):
+        if not self.openai_enabled:
+            return "Qué hermoso que reconozcas esas bendiciones 💛 La gratitud transforma todo."
+        
+        prompt = f"""La persona escribió en su journal de gratitud:
+
+"{gratitud}"
+
+Responde de forma:
+- Validadora y empática
+- Profundizando en la gratitud
+- Haciendo 1-2 preguntas reflexivas
+- Tono cálido, como mejor amiga
+- Máximo 100 palabras
+- Incluye 1-2 emojis relevantes"""
+
+        instruccion_personalidad = personalidad_handler.obtener_instruccion() if personalidad_handler else ""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": f"Eres una coach de gratitud y bienestar emocional. Respondes con calidez, validación y preguntas reflexivas que profundizan la gratitud. {instruccion_personalidad}"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=200,
+                temperature=0.8
+            )
+            return response.choices[0].message.content.strip()
+        except:
+            return "Qué hermoso que reconozcas esas bendiciones 💛 La gratitud transforma todo."
+
+    def agregar_entrada_journal(self, gratitud, personalidad_handler=None):
+        journal = self._cargar_journal()
+        respuesta_ia = self.procesar_gratitud_con_ia(gratitud, personalidad_handler)
+        entrada = {
+            "id": len(journal) + 1,
+            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "gratitud": gratitud,
+            "respuesta_ia": respuesta_ia
+        }
+        journal.append(entrada)
+        self._guardar_journal(journal)
+        return f"📖 *JOURNAL DE GRATITUD* 📖\n\n_{gratitud}_\n\n💬 {respuesta_ia}\n\n✅ Guardado en tu journal 💛"
+
+    def ver_journal(self, filtro="todos"):
+        journal = self._cargar_journal()
+        if not journal: return "📭 Aún no tienes entradas en tu journal de gratitud 💛"
+        
+        if filtro == "hoy":
+            hoy = datetime.datetime.now().strftime("%Y-%m-%d")
+            journal = [e for e in journal if e["fecha"].startswith(hoy)]
+        elif filtro == "semana":
+            hace_semana = (datetime.datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+            journal = [e for e in journal if e["fecha"] >= hace_semana]
+        elif filtro == "mes":
+            mes_actual = datetime.datetime.now().strftime("%Y-%m")
+            journal = [e for e in journal if e["fecha"].startswith(mes_actual)]
+        
+        if not journal: return f"📭 No hay entradas en: {filtro}"
+        ultimas = journal[-5:]
+        texto = f"📖 *JOURNAL DE GRATITUD*\n"
+        if filtro != "todos": texto += f"({filtro})\n"
+        texto += "\n"
+        for entrada in reversed(ultimas):
+            texto += f"**{entrada['fecha']}**\n_{entrada['gratitud']}_\n\n"
+        texto += f"💛 Total de entradas: {len(journal)}"
+        return texto
+
+    def estadisticas_journal(self):
+        journal = self._cargar_journal()
+        if not journal: return "📭 Aún no tienes entradas en tu journal"
+        total = len(journal)
+        meses = {}
+        for entrada in journal:
+            mes = entrada["fecha"][:7]
+            meses[mes] = meses.get(mes, 0) + 1
+        mes_top = max(meses.items(), key=lambda x: x[1]) if meses else ("N/A", 0)
+        primera = journal[0]["fecha"][:10]
+        ultima = journal[-1]["fecha"][:10]
+        texto = "📊 *ESTADÍSTICAS DE GRATITUD* 📊\n\n"
+        texto += f"📖 Total de entradas: {total}\n"
+        texto += f"📅 Primera entrada: {primera}\n"
+        texto += f"📅 Última entrada: {ultima}\n"
+        texto += f"🏆 Mes con más entradas: {mes_top[0]} ({mes_top[1]})\n"
+        texto += f"\n💛 La gratitud transforma vidas"
+        return texto
+
+    def agregar_favorita(self, frase):
+        favoritas = self._cargar_favoritas()
+        nueva = {
+            "id": len(favoritas) + 1,
+            "frase": frase,
+            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+        favoritas.append(nueva)
+        self._guardar_favoritas(favoritas)
+        return "⭐ Frase guardada en favoritas 💛"
+
+    def ver_favoritas(self):
+        favoritas = self._cargar_favoritas()
+        if not favoritas: return "📭 No tienes frases favoritas guardadas aún 💛"
+        texto = "⭐ *TUS FRASES FAVORITAS* ⭐\n\n"
+        for fav in reversed(favoritas[-10:]):
+            texto += f"**#{fav['id']}**\n_{fav['frase']}_\n\n"
+        return texto
+
+    def favorita_aleatoria(self):
+        favoritas = self._cargar_favoritas()
+        if not favoritas: return "📭 No tienes frases favoritas guardadas aún 💛"
+        fav = random.choice(favoritas)
+        return f"⭐ *TU FRASE FAVORITA* ⭐\n\n_{fav['frase']}_"
+
+    def borrar_favorita(self, fav_id):
+        favoritas = self._cargar_favoritas()
+        fav = next((f for f in favoritas if f["id"] == int(fav_id)), None)
+        if not fav: return f"❌ No encontré la frase #{fav_id}"
+        favoritas = [f for f in favoritas if f["id"] != int(fav_id)]
+        self._guardar_favoritas(favoritas)
+        return f"🗑️ Frase #{fav_id} eliminada"
+
+class GestorPersonalidades:
+    PERSONALIDADES = {
+        "bestie": (
+            "Habla como una mejor amiga amorosa, tierna, cercana, con emojis, "
+            "validando emociones y usando frases como 'mi amor', 'bebé', "
+            "'mi cielo', 'bestie', 'mi vida'. Sé cálida y suave."
+        ),
+        "formal": (
+            "Habla de forma clara, profesional y estructurada. "
+            "No uses emojis. No uses diminutivos. Tono serio y respetuoso."
+        ),
+        "espiritual": (
+            "Habla como una guía espiritual. Usa un tono suave, canalizado, "
+            "con mensajes profundos, intuitivos y de luz. "
+            "Incluye energía, señales y sabiduría interior."
+        ),
+        "psicologa": (
+            "Habla como una psicóloga empática. "
+            "Valida emociones, explica procesos con suavidad, ofrece claridad emocional, "
+            "no juzga y no da órdenes. No uses emojis."
+        ),
+        "honesta": (
+            "Habla de forma directa, sincera y sin adornos. "
+            "No hieras, pero tampoco suavices demasiado. "
+            "Sé práctica, concreta y muy clara."
+        ),
+        "tecnico": (
+            "Habla como una experta en tecnología/análisis de datos. "
+            "Explica conceptos complejos con claridad, usa ejemplos técnicos y precisos. "
+            "No uses emojis."
+        )
+    }
+    
+    def __init__(self):
+        self._personalidad_actual = "bestie"
+    
+    @property
+    def personalidad_actual(self):
+        return self._personalidad_actual
+    
+    @personalidad_actual.setter
+    def personalidad_actual(self, nombre):
+        nombre = nombre.lower().strip()
+        if nombre in self.PERSONALIDADES:
+            self._personalidad_actual = nombre
+        else:
+            raise ValueError(f"Personalidad '{nombre}' no existe")
+    
+    def obtener_instruccion(self):
+        return self.PERSONALIDADES[self._personalidad_actual]
+    
+    def listar_personalidades(self):
+        return list(self.PERSONALIDADES.keys())
+    
+    def existe_personalidad(self, nombre):
+        return nombre.lower().strip() in self.PERSONALIDADES
+    
+    def cambiar_personalidad(self, nombre):
+        try:
+            self.personalidad_actual = nombre
+            return f"✨ Personalidad cambiada a *{nombre}*."
+        except ValueError:
+            disponibles = ", ".join(self.listar_personalidades())
+            return f"Personalidad desconocida. Las disponibles son: {disponibles}"
+    
+    def obtener_personalidad_actual(self):
+        return self._personalidad_actual
+    
+    def texto_menu_personalidades(self):
+        return (
+            "😎 *Modos disponibles:*\n\n"
+            "• Bestie (cálida y amorosa)\n"
+            "• Formal (profesional)\n"
+            "• Espiritual (guía intuitiva)\n"
+            "• Psicóloga (empática y validante)\n"
+            "• Honesta (directa y clara)\n"
+            "• Técnico (experta en tech)\n\n"
+            "💛 La personalidad afecta cómo responden las funciones de IA"
+        )
+    
+    def obtener_descripcion_personalidad(self, nombre):
+        nombre = nombre.lower().strip()
+        if nombre in self.PERSONALIDADES:
+            return self.PERSONALIDADES[nombre]
+        return "Personalidad no encontrada."
+
+import json, os, datetime, random, streamlit as st
+class RobustBibliaHandler:
+    def __init__(self):
+        self.BIBLIA_FILE = "data/es_rvr.json"
+        self.books = []
+        self.valid_data = False
+        
+        # MAPEO DE ABREVIATURAS REALES A NOMBRES COMPLETOS
+        self.book_names = {
+            "gn": "Génesis", "ex": "Éxodo", "lv": "Levítico", "nm": "Números",
+            "dt": "Deuteronomio", "js": "Josué", "jud": "Jueces", "rt": "Rut",
+            "1sm": "1 Samuel", "2sm": "2 Samuel", "1kgs": "1 Reyes", "2kgs": "2 Reyes",
+            "1ch": "1 Crónicas", "2ch": "2 Crónicas", "ezr": "Esdras", "ne": "Nehemías",
+            "et": "Ester", "job": "Job", "ps": "Salmos", "prv": "Proverbios",
+            "ec": "Eclesiastés", "so": "Cantares", "is": "Isaías", "jr": "Jeremías",
+            "lm": "Lamentaciones", "ez": "Ezequiel", "dn": "Daniel", "ho": "Oseas",
+            "jl": "Joel", "am": "Amós", "ob": "Abdías", "jn": "Jonás",
+            "mi": "Miqueas", "na": "Nahúm", "hk": "Habacuc", "zp": "Sofonías",
+            "hg": "Hageo", "zc": "Zacarías", "ml": "Malaquías",
+            "mt": "Mateo", "mk": "Marcos", "lk": "Lucas", "jo": "Juan",
+            "act": "Hechos", "rm": "Romanos", "1co": "1 Corintios", "2co": "2 Corintios",
+            "gl": "Gálatas", "eph": "Efesios", "ph": "Filipenses", "cl": "Colosenses",
+            "1ts": "1 Tesalonicenses", "2ts": "2 Tesalonicenses", "1tm": "1 Timoteo",
+            "2tm": "2 Timoteo", "tt": "Tito", "phm": "Filemón", "hb": "Hebreos",
+            "jm": "Santiago", "1pe": "1 Pedro", "2pe": "2 Pedro", "1jo": "1 Juan",
+            "2jo": "2 Juan", "3jo": "3 Juan", "jd": "Judas", "re": "Apocalipsis"
+        }
+        
+        # MAPEO INVERSO (nombre → abreviatura)
+        self.abbrev_map = {}
+        
+        # Mapeo automático básico
+        for abbrev, nombre in self.book_names.items():
+            nombre_lower = nombre.lower()
+            self.abbrev_map[nombre_lower] = abbrev
+            # Sin acentos
+            nombre_sin_acento = nombre_lower.replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u').replace('á', 'a')
+            self.abbrev_map[nombre_sin_acento] = abbrev
+        
+        # VARIACIONES MANUALES EXPANDIDAS
+        variaciones = {
+            "genesis": "gn", "génesis": "gn", "gen": "gn",
+            "exodo": "ex", "éxodo": "ex",
+            "levitico": "lv", "levítico": "lv",
+            "numeros": "nm", "números": "nm",
+            "deuteronomio": "dt", "deut": "dt",
+            "josue": "js", "josué": "js",
+            "jueces": "jud",
+            "rut": "rt",
+            "1 samuel": "1sm", "1samuel": "1sm", "primer samuel": "1sm",
+            "2 samuel": "2sm", "2samuel": "2sm", "segundo samuel": "2sm",
+            "1 reyes": "1kgs", "1reyes": "1kgs", "primer reyes": "1kgs",
+            "2 reyes": "2kgs", "2reyes": "2kgs", "segundo reyes": "2kgs",
+            "1 cronicas": "1ch", "1 crónicas": "1ch", "1cronicas": "1ch",
+            "2 cronicas": "2ch", "2 crónicas": "2ch", "2cronicas": "2ch",
+            "esdras": "ezr",
+            "nehemias": "ne", "nehemías": "ne",
+            "ester": "et",
+            "salmos": "ps", "salmo": "ps", "psalms": "ps",
+            "proverbios": "prv", "proverbio": "prv", "prov": "prv",
+            "eclesiastes": "ec", "eclesiástes": "ec",
+            "cantares": "so", "cantar de los cantares": "so",
+            "isaias": "is", "isaías": "is", "isa": "is",
+            "jeremias": "jr", "jeremías": "jr", "jer": "jr",
+            "lamentaciones": "lm",
+            "ezequiel": "ez", "eze": "ez",
+            "daniel": "dn", "dan": "dn",
+            "oseas": "ho",
+            "joel": "jl",
+            "amos": "am", "amós": "am",
+            "abdias": "ob", "abdías": "ob",
+            "jonas": "jn", "jonás": "jn",
+            "miqueas": "mi", "mic": "mi",
+            "nahum": "na", "nahúm": "na",
+            "habacuc": "hk", "hab": "hk",
+            "sofonias": "zp", "sofonías": "zp",
+            "hageo": "hg", "hag": "hg",
+            "zacarias": "zc", "zacarías": "zc", "zac": "zc",
+            "malaquias": "ml", "malaquías": "ml", "mal": "ml",
+            "mateo": "mt", "mat": "mt",
+            "marcos": "mk", "mar": "mk", "mc": "mk",
+            "lucas": "lk", "luc": "lk",
+            "juan": "jo",
+            "hechos": "act", "hch": "act",
+            "romanos": "rm", "rom": "rm",
+            "1 corintios": "1co", "1corintios": "1co",
+            "2 corintios": "2co", "2corintios": "2co",
+            "galatas": "gl", "gálatas": "gl", "gal": "gl",
+            "efesios": "eph", "efe": "eph",
+            "filipenses": "ph", "fil": "ph", "flp": "ph",
+            "colosenses": "cl", "col": "cl",
+            "1 tesalonicenses": "1ts", "1tesalonicenses": "1ts",
+            "2 tesalonicenses": "2ts", "2tesalonicenses": "2ts",
+            "1 timoteo": "1tm", "1timoteo": "1tm",
+            "2 timoteo": "2tm", "2timoteo": "2tm",
+            "tito": "tt",
+            "filemon": "phm", "filemón": "phm",
+            "hebreos": "hb", "heb": "hb",
+            "santiago": "jm", "sant": "jm", "stg": "jm",
+            "1 pedro": "1pe", "1pedro": "1pe",
+            "2 pedro": "2pe", "2pedro": "2pe",
+            "1 juan": "1jo", "1juan": "1jo",
+            "2 juan": "2jo", "2juan": "2jo",
+            "3 juan": "3jo", "3juan": "3jo",
+            "judas": "jd",
+            "apocalipsis": "re", "apo": "re", "revelacion": "re", "revelación": "re"
+        }
+        
+        self.abbrev_map.update(variaciones)
+
+        try:
+            with open(self.BIBLIA_FILE, "r", encoding="utf-8-sig") as f:
+                data = json.load(f)
+
+            if isinstance(data, dict) and "books" in data:
+                self.books = data["books"]
+            elif isinstance(data, list):
+                self.books = data
+            
+            self.books = [b for b in self.books if isinstance(b, dict)]
+
+            if self.books:
+                self.valid_data = True
+            else:
+                st.error("⚠️ El archivo JSON no contiene libros válidos.")
+                
+        except Exception as e:
+            st.error(f"❌ Error cargando la Biblia: {str(e)}")
+    
+    def _get_verse_text(self, capitulo, idx):
+        """Obtiene el texto sin importar si el capítulo es Lista o Diccionario"""
+        try:
+            # CASO A: El capítulo es una LISTA ["texto", "texto"] (Común en RVR)
+            if isinstance(capitulo, list):
+                if 0 <= idx < len(capitulo):
+                    return capitulo[idx]
+            
+            # CASO B: El capítulo es un DICCIONARIO {"verses": [...]}
+            elif isinstance(capitulo, dict):
+                verses = capitulo.get("verses", [])
+                if 0 <= idx < len(verses):
+                    v = verses[idx]
+                    # Si el verso es un objeto {"text": "hola"}, sacamos el texto. Si es string, lo devolvemos.
+                    return v.get("text", str(v)) if isinstance(v, dict) else str(v)
+        except Exception as e:
+            print(f"Error extrayendo verso: {e}")
+        return None
+
+    def versiculo_del_dia(self):
+        if not self.valid_data: return "⚠️ Datos no cargados."
+
+        # 1. Libro
+        libro = random.choice(self.books)
+        chapters = libro.get("chapters", [])
+        
+        if not chapters or not isinstance(chapters, list):
+            return "⚠️ Libro sin capítulos."
+
+        # 2. Capítulo
+        cap_idx = random.randint(0, len(chapters) - 1)
+        capitulo = chapters[cap_idx]
+
+        # 3. Contar versículos (Lógica Híbrida)
+        num_versiculos = 0
+        if isinstance(capitulo, list):
+            num_versiculos = len(capitulo)
+        elif isinstance(capitulo, dict):
+            num_versiculos = len(capitulo.get("verses", []))
+        
+        if num_versiculos == 0: return "⚠️ Capítulo vacío."
+
+        # 4. Texto
+        ver_idx = random.randint(0, num_versiculos - 1)
+        texto = self._get_verse_text(capitulo, ver_idx)
+
+        if not texto: return "⚠️ Error al leer texto."
+        
+        # Obtener nombre del libro
+        abbrev = libro.get('abbrev', '')
+        nombre_libro = self.book_names.get(abbrev, "Biblia")
+
+        return (
+            f"📖 **{nombre_libro} {cap_idx + 1}:{ver_idx + 1}**\n\n"
+            f"_{texto}_"
+        )
+
+    def buscar_versiculo_completo(self, ref):
+        if not self.valid_data: return "❌ Datos no cargados."
+        
+        if ":" not in ref: return "⚠️ Formato inválido (Ej: Juan 3:16)"
+
+        try:
+            libro_input, resto = ref.rsplit(" ", 1)
+            cap_num, ver_num = map(int, resto.split(":"))
+        except:
+            return "⚠️ Verifica los números del capítulo y versículo."
+
+        # Buscar abreviatura del libro
+        libro_lower = libro_input.lower()
+        abbrev = self.abbrev_map.get(libro_lower)
+        
+        if not abbrev:
+            return f"❌ No encontré el libro '{libro_input}'"
+        
+        # Buscar libro por abreviatura
+        libro_obj = next((l for l in self.books if l.get("abbrev", "").lower() == abbrev), None)
+        
+        if not libro_obj:
+            return f"❌ No encontré el libro '{libro_input}'"
+
+        chapters = libro_obj.get("chapters", [])
+        if cap_num < 1 or cap_num > len(chapters):
+            return f"❌ {libro_input} solo tiene {len(chapters)} capítulos."
+
+        # Obtener Capítulo (Índice humano vs máquina)
+        capitulo = chapters[cap_num - 1]
+
+        # Validación de rango segura
+        max_versos = 0
+        if isinstance(capitulo, list):
+            max_versos = len(capitulo)
+        elif isinstance(capitulo, dict):
+            max_versos = len(capitulo.get("verses", []))
+
+        if ver_num < 1 or ver_num > max_versos:
+            return f"❌ El capítulo {cap_num} solo tiene {max_versos} versículos."
+
+        # Obtener Texto
+        texto = self._get_verse_text(capitulo, ver_num - 1)
+        
+        # Usar el nombre completo del libro
+        nombre_libro = self.book_names.get(abbrev, libro_input)
+        
+        if texto:
+            return f"📖 **{nombre_libro} {cap_num}:{ver_num}**\n\n_{texto}_"
+        
+        return "❌ Error recuperando el texto."
+    def generar_devocional_personalizado(self, situacion):
+        """Genera un devocional profundo basado en la situación del usuario"""
+        if not self.valid_data:
+            return "⚠️ Datos de la Biblia no cargados correctamente."
+        
+        # BANCO EXPANDIDO DE VERSÍCULOS POR TEMA
+        temas = {
+            "ansiedad": ["Salmos 94:19", "Salmos 46:1", "Isaías 41:10", "Salmos 55:22"],
+            "tristeza": ["Salmos 34:18", "Salmos 147:3", "Isaías 61:3", "Salmos 42:11"],
+            "miedo": ["Isaías 41:10", "Salmos 23:4", "Salmos 27:1", "Isaías 43:1"],
+            "soledad": ["Salmos 68:6", "Isaías 41:10", "Salmos 73:23"],
+            "gratitud": ["Salmos 100:4", "Salmos 107:1", "Salmos 103:2"],
+            "esperanza": ["Salmos 42:11", "Isaías 40:31", "Salmos 130:5"],
+            "paz": ["Isaías 26:3", "Salmos 4:8", "Salmos 29:11"],
+            "fortaleza": ["Isaías 40:31", "Salmos 46:1", "Salmos 18:32"],
+            "perdón": ["Salmos 103:12", "Isaías 43:25", "Salmos 32:5"],
+            "amor": ["Salmos 136:1", "Salmos 86:5", "Salmos 103:8"],
+            "fe": ["Salmos 56:3", "Salmos 37:5", "Proverbios 3:5-6"],
+            "sabiduría": ["Proverbios 3:5-6", "Proverbios 9:10", "Proverbios 2:6", "Salmos 111:10"],
+            "propósito": ["Salmos 138:8", "Proverbios 19:21", "Salmos 37:4"],
+            "sanación": ["Salmos 103:2-3", "Salmos 147:3", "Isaías 53:5"],
+            "protección": ["Salmos 91:1-2", "Proverbios 18:10", "Salmos 121:7-8", "Salmos 32:7"],
+            "dirección": ["Proverbios 3:5-6", "Salmos 32:8", "Isaías 30:21", "Salmos 25:9"],
+            "paciencia": ["Salmos 27:14", "Salmos 37:7", "Isaías 40:31"],
+            "alabanza": ["Salmos 150:6", "Salmos 95:1-2", "Salmos 34:1", "Salmos 100:1"],
+            "transformación": ["Salmos 51:10", "Isaías 43:19", "Salmos 40:2"],
+            "consuelo": ["Salmos 23:4", "Isaías 40:1", "Salmos 34:18"]
+        }
+        
+        # REFLEXIONES PROFUNDAS POR TEMA (mantén las que ya tienes)
+        reflexiones = {
+            "ansiedad": """La ansiedad es una invitación a soltar el control y confiar en algo más grande que nosotros mismos. Cada preocupación que entregas es un espacio que abres para la paz. En el silencio de tu respiración, en la quietud de este momento presente, existe una paz que trasciende todo entendimiento. 
+
+No estás diseñado para cargar el peso del mañana sobre los hombros del hoy. Suelta. Respira. Confía.""",
+            "esperanza": """La esperanza es el hilo dorado que sostiene el universo unido. Incluso cuando todo parece perdido, la vida está conspirando a tu favor de maneras que aún no puedes ver. Las semillas germinan en la oscuridad antes de romper la tierra hacia la luz.
+
+Tú también estás germinando. Tu transformación está en proceso. Los mejores capítulos de tu historia aún no han sido escritos, y tú eres el autor con la pluma en la mano."""
+            # ... agrega el resto de reflexiones que ya tienes
+        }
+        
+        # ORACIONES (mantén las que ya tienes)
+        oraciones = {
+            "ansiedad": "Respiro profundo y suelto lo que no puedo controlar. En este momento, elijo la paz sobre la preocupación, la confianza sobre el miedo.",
+            "esperanza": "Planto semillas de esperanza en el jardín de mi corazón. Confío en el proceso invisible de germinación."
+            # ... agrega el resto de oraciones que ya tienes
+        }
+        
+        # PALABRAS CLAVE (mantén las que ya tienes)
+        palabras_clave = {
+            "ansiedad": ["ansiedad", "preocupación", "nervios", "estrés"],
+            "esperanza": ["esperanza", "futuro", "sueños", "metas"]
+            # ... agrega el resto que ya tienes
+        }
+        
+        # Buscar tema más relevante
+        situacion_lower = situacion.lower()
+        tema_encontrado = None
+        max_coincidencias = 0
+        
+        for tema, keywords in palabras_clave.items():
+            coincidencias = sum(1 for palabra in keywords if palabra in situacion_lower)
+            if coincidencias > max_coincidencias:
+                max_coincidencias = coincidencias
+                tema_encontrado = tema
+        
+        if not tema_encontrado or max_coincidencias == 0:
+            tema_encontrado = "esperanza"
+        
+        # Seleccionar versículo aleatorio del tema
+        ref = random.choice(temas[tema_encontrado])
+        versiculo_texto = self.buscar_versiculo_completo(ref)
+        
+        # Construir devocional completo
+        devocional = f"""✨ **DEVOCIONAL PERSONALIZADO** ✨
+
+🌙 **Tu Situación:** {situacion}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{versiculo_texto}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💭 **Reflexión Profunda:**
+
+{reflexiones.get(tema_encontrado, reflexiones['esperanza'])}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🙏 **Oración del Corazón:**
+
+{oraciones.get(tema_encontrado, oraciones['esperanza'])}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🕊️ *Que estas palabras sean bálsamo para tu alma y luz en tu camino. Amén.*
+"""
+        
+        return devocional
+
+    def ver_journal_biblico(self):
+        """Muestra las entradas del diario bíblico"""
+        try:
+            entradas = cargar_json_mongo("journal_biblico")
+            return entradas if isinstance(entradas, list) else []
+        except:
+            return []
+    def ver_favoritos(self):
+        """Muestra los versículos favoritos guardados"""
+        try:
+            favoritos = cargar_json_mongo("favoritos_biblicos")
+            return favoritos if isinstance(favoritos, list) else []
+        except:
+            return []
+    
+    def guardar_favorito(self, referencia, texto):
+        """Guarda un versículo en favoritos"""
+        # Leer favoritos existentes
+        try:
+            favoritos = cargar_json_mongo("favoritos_biblicos")
+            if not favoritos:
+                favoritos = []
+        except:
+            favoritos = []
+        
+        # Agregar nuevo favorito
+        favorito = {
+            "referencia": referencia,
+            "texto": texto,
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        favoritos.append(favorito)
+        
+        # Guardar
+        guardar_json_mongo("favoritos_biblicos", favoritos)
+        
+        return True
+
+    # ... (resto de métodos sin cambios: generar_devocional_personalizado, ver_journal_biblico)
+# =====================================================
+# HANDLER TAROT CON IA
+# =====================================================
+class TarotHandler:
+    def __init__(self, openai_api_key):
+        self.OPENAI_API_KEY = openai_api_key
+        self.openai_client = None
+        self.openai_enabled = False
+        self._inicializar_openai()
+        
+        self.DATA_FOLDER = "data"
+        self.TIRADAS_FILE = os.path.join(self.DATA_FOLDER, "historial_tiradas.json")
+        os.makedirs(self.DATA_FOLDER, exist_ok=True)
+        
+        # Mazo de Tarot completo
+        self.MAZO_TAROT = {
+            "El Loco": {
+                "derecha": "nuevos comienzos, espontaneidad, salto de fe, energía fresca",
+                "invertida": "imprudencia, caos, falta de dirección"
+            },
+            "El Mago": {
+                "derecha": "manifestación, enfoque, poder personal, decisión clara",
+                "invertida": "manipulación, bloqueo creativo, falta de enfoque"
+            },
+            "La Sacerdotisa": {
+                "derecha": "intuición profunda, secretos revelándose, sabiduría silenciosa",
+                "invertida": "secretos ocultos, desconexión intuitiva"
+            },
+            "La Emperatriz": {
+                "derecha": "creación, abundancia, autocuidado, florecimiento",
+                "invertida": "dependencia, creatividad bloqueada"
+            },
+            "El Emperador": {
+                "derecha": "estructura, orden, liderazgo, estabilidad",
+                "invertida": "tiranía, rigidez excesiva, autoritarismo"
+            },
+            "El Hierofante": {
+                "derecha": "tradición, lecciones, guía espiritual",
+                "invertida": "dogma, rebelión contra tradiciones"
+            },
+            "Los Enamorados": {
+                "derecha": "decisiones del corazón, conexiones profundas",
+                "invertida": "desamor, decisión equivocada, conflicto interno"
+            },
+            "El Carro": {
+                "derecha": "avance, determinación, victoria",
+                "invertida": "falta de dirección, pérdida de control"
+            },
+            "La Fuerza": {
+                "derecha": "dominio interior, compasión, coraje tranquilo",
+                "invertida": "debilidad, falta de control, inseguridad"
+            },
+            "El Ermitaño": {
+                "derecha": "búsqueda interna, introspección, retiro necesario",
+                "invertida": "aislamiento excesivo, soledad dolorosa"
+            },
+            "La Rueda de la Fortuna": {
+                "derecha": "cambios positivos, destino, cierres que abren caminos",
+                "invertida": "mala suerte, resistencia al cambio"
+            },
+            "La Justicia": {
+                "derecha": "equilibrio, verdad, resolución justa",
+                "invertida": "injusticia, deshonestidad, karma pendiente"
+            },
+            "El Colgado": {
+                "derecha": "nueva perspectiva, pausa necesaria, entrega",
+                "invertida": "resistencia, martirio, estancamiento"
+            },
+            "La Muerte": {
+                "derecha": "transformación profunda, cierre necesario, renacimiento",
+                "invertida": "resistencia al cambio, estancamiento"
+            },
+            "La Templanza": {
+                "derecha": "armonía, paciencia, integración, sanación",
+                "invertida": "desequilibrio, excesos, falta de moderación"
+            },
+            "El Diablo": {
+                "derecha": "apegos, patrones limitantes, tentaciones",
+                "invertida": "liberación de cadenas, romper patrones"
+            },
+            "La Torre": {
+                "derecha": "ruptura necesaria, revelación, sacudidas que liberan",
+                "invertida": "evitar cambios necesarios, crisis interna"
+            },
+            "La Estrella": {
+                "derecha": "esperanza renovada, guía divina, claridad",
+                "invertida": "desesperanza, falta de fe"
+            },
+            "La Luna": {
+                "derecha": "intuición profunda, miedos conscientes, ilusiones",
+                "invertida": "confusión extrema, engaños, paranoia"
+            },
+            "El Sol": {
+                "derecha": "vitalidad, éxito radiante, claridad absoluta",
+                "invertida": "optimismo bloqueado, éxito retrasado"
+            },
+            "El Juicio": {
+                "derecha": "despertar espiritual, llamado interno, decisiones finales",
+                "invertida": "autocrítica destructiva, negación del llamado"
+            },
+            "El Mundo": {
+                "derecha": "cierre perfecto, logro total, expansión",
+                "invertida": "incompletitud, falta de cierre"
+            }
+        }
+    
+    def _inicializar_openai(self):
+        try:
+            from openai import OpenAI
+            self.openai_client = OpenAI(api_key=self.OPENAI_API_KEY)
+            self.openai_enabled = True
+        except:
+            self.openai_enabled = False
+    
+    def _seleccionar_carta(self):
+        carta_nombre = random.choice(list(self.MAZO_TAROT.keys()))
+        invertida = random.choice([True, False])
+        carta_info = self.MAZO_TAROT[carta_nombre]
+        significado = carta_info["invertida"] if invertida else carta_info["derecha"]
+        return {
+            "nombre": carta_nombre,
+            "invertida": invertida,
+            "significado": significado
+        }
+    
+    def tirada_tres_cartas_ia(self, pregunta):
+        if not pregunta:
+            return "❌ Por favor escribe una pregunta"
+        
+        pasado = self._seleccionar_carta()
+        presente = self._seleccionar_carta()
+        futuro = self._seleccionar_carta()
+        
+        if not self.openai_enabled:
+            return f"""
+🔮 **TIRADA DE 3 CARTAS**
+
+**Pregunta:** _{pregunta}_
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**📜 PASADO**
+🃏 **{pasado['nombre']}** {"(Invertida)" if pasado['invertida'] else ""}
+_{pasado['significado']}_
+
+**🌟 PRESENTE**
+🃏 **{presente['nombre']}** {"(Invertida)" if presente['invertida'] else ""}
+_{presente['significado']}_
+
+**✨ FUTURO**
+🃏 **{futuro['nombre']}** {"(Invertida)" if futuro['invertida'] else ""}
+_{futuro['significado']}_
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💜 Las cartas han hablado. Confía en tu intuición.
+"""
+        
+        # Generar interpretación con IA
+        cartas_texto = f"Pasado: {pasado['nombre']} {'(Invertida)' if pasado['invertida'] else ''}, Presente: {presente['nombre']} {'(Invertida)' if presente['invertida'] else ''}, Futuro: {futuro['nombre']} {'(Invertida)' if futuro['invertida'] else ''}"
+        
+        prompt = f"""Eres una lectora de tarot experta. Interpreta esta tirada de 3 cartas:
+
+Pregunta: {pregunta}
+Cartas: {cartas_texto}
+
+Significados:
+- Pasado: {pasado['significado']}
+- Presente: {presente['significado']}
+- Futuro: {futuro['significado']}
+
+Genera una lectura profunda, personal y esperanzadora. Conecta las 3 cartas en una narrativa coherente. Máximo 200 palabras."""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una lectora de tarot sabia, compasiva y profunda. Ofreces guía esperanzadora."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=350,
+                temperature=0.8
+            )
+            interpretacion = response.choices[0].message.content.strip()
+        except:
+            interpretacion = "Las cartas revelan un mensaje poderoso. Confía en tu intuición para interpretarlo."
+        
+        return f"""
+🔮 **TIRADA DE 3 CARTAS**
+
+**Pregunta:** _{pregunta}_
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**📜 PASADO**
+🃏 **{pasado['nombre']}** {"(Invertida)" if pasado['invertida'] else ""}
+
+**🌟 PRESENTE**
+🃏 **{presente['nombre']}** {"(Invertida)" if presente['invertida'] else ""}
+
+**✨ FUTURO**
+🃏 **{futuro['nombre']}** {"(Invertida)" if futuro['invertida'] else ""}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💫 **INTERPRETACIÓN:**
+
+{interpretacion}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💜 Las cartas son guía, no destino. Tú tienes el poder final.
+"""
+    
+    def energia_del_dia(self):
+        carta = self._seleccionar_carta()
+        mensajes = [
+            "Tu energía hoy se mueve suave pero consciente.",
+            "Hay algo alineándose aunque no lo veas aún.",
+            "Tu intuición está más fina de lo normal.",
+            "Hay una señal escondida en lo cotidiano."
+        ]
+        
+        return f"""
+✨ **ENERGÍA DEL DÍA**
+
+🃏 **{carta['nombre']}** {"(Invertida)" if carta['invertida'] else ""}
+
+_{carta['significado']}_
+
+💜 {random.choice(mensajes)}
+"""
+    
+    def tirada_amor_ia(self, pregunta):
+        """Tirada de amor con 4 cartas"""
+        if not pregunta:
+            return "❌ Por favor escribe una pregunta sobre amor"
+        
+        tu_energia = self._seleccionar_carta()
+        su_energia = self._seleccionar_carta()
+        conexion = self._seleccionar_carta()
+        consejo = self._seleccionar_carta()
+        
+        if not self.openai_enabled:
+            return f"""
+
+💕 **TIRADA DE AMOR**
+
+**Pregunta:** _{pregunta}_
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**💖 TU ENERGÍA**
+🃏 **{tu_energia['nombre']}** {"(Invertida)" if tu_energia['invertida'] else ""}
+
+**💗 SU ENERGÍA**
+🃏 **{su_energia['nombre']}** {"(Invertida)" if su_energia['invertida'] else ""}
+
+**✨ LA CONEXIÓN**
+🃏 **{conexion['nombre']}** {"(Invertida)" if conexion['invertida'] else ""}
+
+**🌟 CONSEJO**
+🃏 **{consejo['nombre']}** {"(Invertida)" if consejo['invertida'] else ""}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💜 Las cartas hablan del amor. Confía en tu corazón.
+"""
+        
+        # Generar interpretación con IA
+        cartas_texto = f"Tu energía: {tu_energia['nombre']}, Su energía: {su_energia['nombre']}, Conexión: {conexion['nombre']}, Consejo: {consejo['nombre']}"
+        
+        prompt = f"""Interpreta esta tirada de amor con 4 cartas:
+
+Pregunta: {pregunta}
+
+Cartas:
+- Tu energía: {tu_energia['nombre']} {"(Invertida)" if tu_energia['invertida'] else ""} - {tu_energia['significado']}
+- Su energía: {su_energia['nombre']} {"(Invertida)" if su_energia['invertida'] else ""} - {su_energia['significado']}
+- La conexión: {conexion['nombre']} {"(Invertida)" if conexion['invertida'] else ""} - {conexion['significado']}
+- Consejo: {consejo['nombre']} {"(Invertida)" if consejo['invertida'] else ""} - {consejo['significado']}
+
+Genera una lectura de amor profunda, compasiva y esperanzadora. Máximo 200 palabras."""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una experta en tarot de amor. Ofreces lecturas compasivas, honestas y esperanzadoras sobre relaciones."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=350,
+                temperature=0.8
+            )
+            interpretacion = response.choices[0].message.content.strip()
+        except:
+            interpretacion = "Las cartas revelan las energías en juego. Confía en tu intuición para interpretar esta conexión."
+        
+        return f"""
+💕 **TIRADA DE AMOR**
+
+**Pregunta:** _{pregunta}_
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**💖 TU ENERGÍA**
+🃏 **{tu_energia['nombre']}** {"(Invertida)" if tu_energia['invertida'] else ""}
+
+**💗 SU ENERGÍA**
+🃏 **{su_energia['nombre']}** {"(Invertida)" if su_energia['invertida'] else ""}
+
+**✨ LA CONEXIÓN**
+🃏 **{conexion['nombre']}** {"(Invertida)" if conexion['invertida'] else ""}
+
+**🌟 CONSEJO**
+🃏 **{consejo['nombre']}** {"(Invertida)" if consejo['invertida'] else ""}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💫 **LECTURA:**
+
+{interpretacion}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💜 El amor es un viaje, no un destino. Honra tu corazón.
+"""
+    def tirada_de_la_semana(self):
+        """Tirada de 7 cartas para los próximos 7 días"""
+        dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+        cartas_semana = []
+        
+        for dia in dias_semana:
+            carta = self._seleccionar_carta()
+            cartas_semana.append({
+                'dia': dia,
+                'carta': carta
+            })
+        
+        # Construir mensaje
+        resultado = "📅 **TIRADA DE LA SEMANA**\n\n"
+        
+        for item in cartas_semana:
+            emoji_dia = {"Lunes": "🌟", "Martes": "🔥", "Miércoles": "💫", "Jueves": "✨", "Viernes": "🎉", "Sábado": "🌙", "Domingo": "☀️"}
+            
+            resultado += f"{emoji_dia.get(item['dia'], '📆')} **{item['dia']}**\n"
+            resultado += f"🃏 {item['carta']['nombre']}"
+            if item['carta']['invertida']:
+                resultado += " (Invertida)"
+            resultado += f"\n_{item['carta']['significado']}_\n\n"
+        
+        resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n💜 Usa esta guía para navegar tu semana con conciencia."
+        
+        return resultado
+    def interpretar_tirada_personal(self, cartas_seleccionadas, pregunta=""):
+        """Interpreta una tirada que el usuario hizo con su propio mazo"""
+        if not cartas_seleccionadas:
+            return "❌ No has seleccionado ninguna carta"
+        
+        if not self.openai_enabled:
+            # Respuesta básica sin IA
+            resultado = "🔮 **TU TIRADA PERSONAL**\n\n"
+            if pregunta:
+                resultado += f"**Pregunta:** _{pregunta}_\n\n"
+            resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n"
+            
+            for i, carta_info in enumerate(cartas_seleccionadas, 1):
+                resultado += f"**Carta {i}:** {carta_info['nombre']}"
+                if carta_info['invertida']:
+                    resultado += " (Invertida)"
+                resultado += f"\n_{carta_info['significado']}_\n\n"
+            
+            resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n💜 Confía en tu intuición para interpretar este mensaje."
+            return resultado
+        
+        # Preparar texto de cartas para IA
+        cartas_texto = ""
+        for i, carta_info in enumerate(cartas_seleccionadas, 1):
+            inv = "(Invertida)" if carta_info['invertida'] else ""
+            cartas_texto += f"{i}. {carta_info['nombre']} {inv} - {carta_info['significado']}\n"
+        
+        prompt = f"""Interpreta esta tirada de tarot que la persona hizo con su propio mazo:
+
+{"Pregunta: " + pregunta if pregunta else "Sin pregunta específica"}
+
+Cartas en orden:
+{cartas_texto}
+
+Genera una interpretación profunda que:
+- Conecte las cartas entre sí en una narrativa coherente
+- Sea personalizada y empática
+- Ofrezca guía clara y esperanzadora
+- Respete el orden de las cartas
+- Máximo 250 palabras
+
+Tono: Místico, sabio, compasivo."""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una lectora de tarot experta, sabia y compasiva. Interpretas tiradas con profundidad y claridad."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=400,
+                temperature=0.8
+            )
+            interpretacion = response.choices[0].message.content.strip()
+        except:
+            interpretacion = "Las cartas revelan un mensaje poderoso. Confía en tu intuición para descifrar su significado completo."
+        
+        # Construir respuesta final
+        resultado = "🔮 **INTERPRETACIÓN DE TU TIRADA**\n\n"
+        if pregunta:
+            resultado += f"**Pregunta:** _{pregunta}_\n\n"
+        resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        
+        for i, carta_info in enumerate(cartas_seleccionadas, 1):
+            resultado += f"**{i}.** {carta_info['nombre']}"
+            if carta_info['invertida']:
+                resultado += " (Invertida)"
+            resultado += "\n\n"
+        
+        resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        resultado += f"💫 **LECTURA:**\n\n{interpretacion}\n\n"
+        resultado += "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        resultado += "💜 Tu tirada es única. Las cartas hablan a través de tu intuición."
+        
+        return resultado
+    def tirada_trabajo_ia(self, pregunta):
+        """Tirada profesional con 4 cartas"""
+        if not pregunta:
+            return "❌ Por favor escribe una pregunta sobre trabajo"
+        
+        situacion = self._seleccionar_carta()
+        fortalezas = self._seleccionar_carta()
+        desafios = self._seleccionar_carta()
+        resultado = self._seleccionar_carta()
+        
+        if not self.openai_enabled:
+            return f"""
+💼 **TIRADA PROFESIONAL**
+
+**Pregunta:** _{pregunta}_
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**📊 SITUACIÓN ACTUAL**
+🃏 **{situacion['nombre']}** {"(Invertida)" if situacion['invertida'] else ""}
+
+**🎯 TUS FORTALEZAS**
+🃏 **{fortalezas['nombre']}** {"(Invertida)" if fortalezas['invertida'] else ""}
+
+**⚠️ DESAFÍOS**
+🃏 **{desafios['nombre']}** {"(Invertida)" if desafios['invertida'] else ""}
+
+**🚀 RESULTADO/CONSEJO**
+🃏 **{resultado['nombre']}** {"(Invertida)" if resultado['invertida'] else ""}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💜 Las cartas iluminan tu camino profesional.
+"""
+        
+        prompt = f"""Interpreta esta tirada profesional:
+
+Pregunta: {pregunta}
+
+Cartas:
+- Situación: {situacion['nombre']} {"(Inv.)" if situacion['invertida'] else ""} - {situacion['significado']}
+- Fortalezas: {fortalezas['nombre']} {"(Inv.)" if fortalezas['invertida'] else ""} - {fortalezas['significado']}
+- Desafíos: {desafios['nombre']} {"(Inv.)" if desafios['invertida'] else ""} - {desafios['significado']}
+- Resultado: {resultado['nombre']} {"(Inv.)" if resultado['invertida'] else ""} - {resultado['significado']}
+
+Genera una lectura profesional clara y práctica. Máximo 200 palabras."""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres experta en tarot profesional. Ofreces consejos prácticos y motivadores sobre carrera y trabajo."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=350,
+                temperature=0.8
+            )
+            interpretacion = response.choices[0].message.content.strip()
+        except:
+            interpretacion = "Las cartas revelan el panorama profesional. Confía en tus habilidades y avanza con propósito."
+        
+        return f"""
+💼 **TIRADA PROFESIONAL**
+
+**Pregunta:** _{pregunta}_
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**📊 SITUACIÓN ACTUAL**
+🃏 **{situacion['nombre']}** {"(Invertida)" if situacion['invertida'] else ""}
+
+**🎯 TUS FORTALEZAS**
+🃏 **{fortalezas['nombre']}** {"(Invertida)" if fortalezas['invertida'] else ""}
+
+**⚠️ DESAFÍOS**
+🃏 **{desafios['nombre']}** {"(Invertida)" if desafios['invertida'] else ""}
+
+**🚀 RESULTADO/CONSEJO**
+🃏 **{resultado['nombre']}** {"(Invertida)" if resultado['invertida'] else ""}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💫 **ANÁLISIS:**
+
+{interpretacion}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💜 Tu trabajo es tu contribución al mundo. Hónralo.
+"""
+    
+    def tirada_si_no_ia(self, pregunta):
+        """Tirada Sí/No con interpretación"""
+        if not pregunta:
+            return "❌ Por favor escribe una pregunta de sí/no"
+        
+        carta = self._seleccionar_carta()
+        
+        # Determinar respuesta según carta
+        si_fuerte = ["El Sol", "La Estrella", "El Mundo", "El Mago", "La Emperatriz", "El Emperador"]
+        no_fuerte = ["La Torre", "La Muerte", "El Diablo"]
+        
+        if carta['nombre'] in si_fuerte and not carta['invertida']:
+            respuesta = "SÍ"
+            emoji = "✅"
+        elif carta['nombre'] in no_fuerte or (carta['nombre'] in si_fuerte and carta['invertida']):
+            respuesta = "NO"
+            emoji = "❌"
+        else:
+            respuesta = "TAL VEZ / DEPENDE DE TI"
+            emoji = "🔄"
+        
+        if not self.openai_enabled:
+            return f"""
+🔮 **TIRADA SÍ/NO**
+
+**Pregunta:** _{pregunta}_
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🃏 **{carta['nombre']}** {"(Invertida)" if carta['invertida'] else ""}
+
+{emoji} **{respuesta}**
+
+━━━━━━━━━━━━━━━━━━━━━
+
+_{carta['significado']}_
+
+💜 El tarot es guía, no destino. Tú decides siempre.
+"""
+        
+        prompt = f"""Para la pregunta: {pregunta}
+
+Salió la carta: {carta['nombre']} {"(Invertida)" if carta['invertida'] else ""}
+Significado: {carta['significado']}
+
+La respuesta es: {respuesta}
+
+Explica brevemente por qué esta carta sugiere esta respuesta. Máximo 100 palabras. Tono empoderador."""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres experta en tarot. Explicas las respuestas sí/no con claridad y empoderamiento."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=200,
+                temperature=0.8
+            )
+            interpretacion = response.choices[0].message.content.strip()
+        except:
+            interpretacion = "Esta carta revela la energía alrededor de tu pregunta. Confía en tu intuición para decidir."
+        
+        return f"""
+🔮 **TIRADA SÍ/NO**
+
+**Pregunta:** _{pregunta}_
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🃏 **{carta['nombre']}** {"(Invertida)" if carta['invertida'] else ""}
+
+{emoji} **{respuesta}**
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💫 **LECTURA:**
+
+{interpretacion}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💜 El tarot es guía, no destino. Tú tienes el poder final.
+"""
+    
+    def _cargar_historial(self):
+        """Carga el historial de tiradas"""
+        try:
+            historial = cargar_json_mongo("historial_tiradas")
+            return historial if historial else []
+        except:
+            return []
+    
+    def _guardar_historial(self, historial):
+        """Guarda el historial de tiradas"""
+        guardar_json_mongo("historial_tiradas", historial)
+    
+    def guardar_tirada(self, tipo, cartas_info, interpretacion):
+        """Guarda una tirada en el historial"""
+        historial = self._cargar_historial()
+        
+        nueva_tirada = {
+            "id": len(historial) + 1,
+            "tipo": tipo,
+            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "cartas": cartas_info,
+            "interpretacion": interpretacion[:500]  # Limitar tamaño
+        }
+        
+        historial.append(nueva_tirada)
+        
+        # Mantener solo últimas 50 tiradas
+        if len(historial) > 50:
+            historial = historial[-50:]
+        
+        self._guardar_historial(historial)
+        return True
+    
+    def ver_historial(self):
+        """Ver historial de tiradas"""
+        historial = self._cargar_historial()
+        if not historial:
+            return []
+        # Retornar en orden inverso (más recientes primero)
+        return list(reversed(historial))
+
+
+# =====================================================
+# HANDLER ASTROLOGÍA
+# =====================================================
+class AstrologiaHandler:
+    def __init__(self):
+        self.SIGNOS_ZODIACALES = {
+            "aries": {
+                "fechas": "21 marzo - 19 abril",
+                "elemento": "Fuego",
+                "planeta": "Marte",
+                "fortalezas": "Valiente, directo, enérgico, pionero",
+                "simbolo": "♈ El Carnero"
+            },
+            "tauro": {
+                "fechas": "20 abril - 20 mayo",
+                "elemento": "Tierra",
+                "planeta": "Venus",
+                "fortalezas": "Leal, paciente, confiable, sensual",
+                "simbolo": "♉ El Toro"
+            },
+            "geminis": {
+                "fechas": "21 mayo - 20 junio",
+                "elemento": "Aire",
+                "planeta": "Mercurio",
+                "fortalezas": "Adaptable, comunicativo, inteligente",
+                "simbolo": "♊ Los Gemelos"
+            },
+            "cancer": {
+                "fechas": "21 junio - 22 julio",
+                "elemento": "Agua",
+                "planeta": "Luna",
+                "fortalezas": "Intuitivo, emocional, protector",
+                "simbolo": "♋ El Cangrejo"
+            },
+            "leo": {
+                "fechas": "23 julio - 22 agosto",
+                "elemento": "Fuego",
+                "planeta": "Sol",
+                "fortalezas": "Creativo, carismático, generoso",
+                "simbolo": "♌ El León"
+            },
+            "virgo": {
+                "fechas": "23 agosto - 22 septiembre",
+                "elemento": "Tierra",
+                "planeta": "Mercurio",
+                "fortalezas": "Analítico, servicial, perfeccionista",
+                "simbolo": "♍ La Virgen"
+            },
+            "libra": {
+                "fechas": "23 septiembre - 22 octubre",
+                "elemento": "Aire",
+                "planeta": "Venus",
+                "fortalezas": "Diplomático, justo, social",
+                "simbolo": "♎ La Balanza"
+            },
+            "escorpio": {
+                "fechas": "23 octubre - 21 noviembre",
+                "elemento": "Agua",
+                "planeta": "Plutón",
+                "fortalezas": "Intenso, magnético, transformador",
+                "simbolo": "♏ El Escorpión"
+            },
+            "sagitario": {
+                "fechas": "22 noviembre - 21 diciembre",
+                "elemento": "Fuego",
+                "planeta": "Júpiter",
+                "fortalezas": "Optimista, aventurero, filosófico",
+                "simbolo": "♐ El Arquero"
+            },
+            "capricornio": {
+                "fechas": "22 diciembre - 19 enero",
+                "elemento": "Tierra",
+                "planeta": "Saturno",
+                "fortalezas": "Ambicioso, disciplinado, responsable",
+                "simbolo": "♑ La Cabra"
+            },
+            "acuario": {
+                "fechas": "20 enero - 18 febrero",
+                "elemento": "Aire",
+                "planeta": "Urano",
+                "fortalezas": "Innovador, humanitario, independiente",
+                "simbolo": "♒ El Aguador"
+            },
+            "piscis": {
+                "fechas": "19 febrero - 20 marzo",
+                "elemento": "Agua",
+                "planeta": "Neptuno",
+                "fortalezas": "Empático, artístico, intuitivo",
+                "simbolo": "♓ Los Peces"
+            }
+        }
+    
+    def horoscopo_del_dia(self, signo):
+        signo = signo.lower().strip()
+        normalizaciones = {
+            "geminis": "geminis", "géminis": "geminis",
+            "cancer": "cancer", "cáncer": "cancer",
+            "escorpio": "escorpio", "escorpion": "escorpio"
+        }
+        signo = normalizaciones.get(signo, signo)
+        
+        if signo not in self.SIGNOS_ZODIACALES:
+            return "❌ Signo no válido. Elige: Aries, Tauro, Géminis, Cáncer, Leo, Virgo, Libra, Escorpio, Sagitario, Capricornio, Acuario, Piscis"
+        
+        info = self.SIGNOS_ZODIACALES[signo]
+        mensajes = [
+            f"Tu {info['elemento'].lower()} interior está activo hoy. Confía en tu intuición.",
+            f"Como {info['simbolo']}, hoy brillas con luz propia.",
+            f"Tu planeta regente {info['planeta']} te guía hacia nuevas oportunidades.",
+            f"Las estrellas te recuerdan tus fortalezas: {info['fortalezas'].split(',')[0]}."
+        ]
+        
+        consejos = [
+            "Escucha tu corazón hoy, sabe más de lo que crees.",
+            "Algo se alinea a tu favor, mantente atenta.",
+            "Tu energía está en punto perfecto para crear.",
+            "Las señales están ahí, solo necesitas verlas."
+        ]
+        
+        return f"""
+🌟 **HORÓSCOPO DEL DÍA**
+
+**{signo.upper()}** {info['simbolo']}
+{info['fechas']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💫 {random.choice(mensajes)}
+
+✨ {random.choice(consejos)}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🔥 **Tu elemento:** {info['elemento']}
+🪐 **Tu planeta:** {info['planeta']}
+
+💛 Recuerda tus fortalezas naturales hoy.
+"""
+    
+    def fase_lunar_actual(self):
+        hoy = datetime.datetime.now()
+        dias_desde_nueva = (hoy.day + hoy.month * 30) % 29.5
+        
+        if dias_desde_nueva < 1:
+            fase = "nueva"
+            emoji = "🌑"
+            consejo = "Establece intenciones claras. Comienza nuevos proyectos."
+        elif dias_desde_nueva < 7:
+            fase = "creciente"
+            emoji = "🌒"
+            consejo = "Toma acción hacia tus metas. Construye momentum."
+        elif dias_desde_nueva < 14:
+            fase = "cuarto creciente"
+            emoji = "🌓"
+            consejo = "Supera obstáculos con determinación. Toma decisiones."
+        elif dias_desde_nueva < 15:
+            fase = "llena"
+            emoji = "🌕"
+            consejo = "Celebra tus logros. Clarifica tu visión. Libera lo que no sirve."
+        elif dias_desde_nueva < 22:
+            fase = "menguante"
+            emoji = "🌖"
+            consejo = "Comparte tu conocimiento. Reflexiona sobre logros."
+        else:
+            fase = "menguante final"
+            emoji = "🌘"
+            consejo = "Descansa profundamente. Medita e introspecciona."
+        
+        return f"""
+🌙 **FASE LUNAR ACTUAL**
+
+{emoji} **Luna {fase.title()}**
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**QUÉ HACER EN ESTA FASE:**
+
+{consejo}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💫 La Luna influye en tus emociones y energía. Fluye con sus ciclos naturales.
+"""
+    
+    def listar_signos(self):
+        texto = "🌟 **SIGNOS ZODIACALES** 🌟\n\n"
+        for signo, info in self.SIGNOS_ZODIACALES.items():
+            texto += f"{info['simbolo']} **{signo.upper()}** - {info['fechas']}\n"
+        return texto
+    def compatibilidad_signos(self, signo1, signo2):
+        """Analiza compatibilidad detallada entre dos signos"""
+        signo1 = signo1.lower().strip()
+        signo2 = signo2.lower().strip()
+        
+        normalizaciones = {
+            "geminis": "geminis", "géminis": "geminis",
+            "cancer": "cancer", "cáncer": "cancer",
+            "escorpio": "escorpio", "escorpion": "escorpio"
+        }
+        signo1 = normalizaciones.get(signo1, signo1)
+        signo2 = normalizaciones.get(signo2, signo2)
+        
+        if signo1 not in self.SIGNOS_ZODIACALES or signo2 not in self.SIGNOS_ZODIACALES:
+            return "❌ Uno de los signos no es válido"
+        
+        info1 = self.SIGNOS_ZODIACALES[signo1]
+        info2 = self.SIGNOS_ZODIACALES[signo2]
+        
+        # Compatibilidad detallada por elementos
+        comp_detallada = {
+            ("Fuego", "Fuego"): {
+                "nivel": "🔥 85% - MUY ALTA",
+                "amor": "Pasión explosiva, química instantánea. Se entienden sin palabras.",
+                "amistad": "Aventuras épicas juntos. Nunca hay un momento aburrido.",
+                "trabajo": "Gran equipo si aprenden a no competir. Energía imparable.",
+                "fortalezas": "Entusiasmo compartido, valentía, espontaneidad, lealtad feroz",
+                "desafios": "Egos chocando, impulsividad, falta de paciencia mutua",
+                "consejo": "Aprendan a ceder el protagonismo. No todo es una competencia."
+            },
+            ("Fuego", "Aire"): {
+                "nivel": "✨ 90% - EXCELENTE",
+                "amor": "El aire aviva el fuego. Conexión mental y física perfecta.",
+                "amistad": "Se inspiran mutuamente. Conversaciones fascinantes sin fin.",
+                "trabajo": "Aire aporta ideas, Fuego las ejecuta. Dúo dinámico.",
+                "fortalezas": "Libertad mutua, crecimiento constante, diversión, innovación",
+                "desafios": "Fuego necesita más compromiso del que Aire da fácilmente",
+                "consejo": "Aire: Da más seguridad emocional. Fuego: Respeta su necesidad de espacio."
+            },
+            ("Fuego", "Tierra"): {
+                "nivel": "⚡ 55% - MEDIA CON ESFUERZO",
+                "amor": "Atracción inicial fuerte, pero mundos muy diferentes.",
+                "amistad": "Se complementan si Fuego aprende estabilidad y Tierra se suelta.",
+                "trabajo": "Fuego innova, Tierra materializa. Pueden ser poderosos.",
+                "fortalezas": "Balance entre sueños y realidad, pasión y estabilidad",
+                "desafios": "Ritmos totalmente opuestos, prioridades diferentes",
+                "consejo": "Tierra: Arriésgate más. Fuego: Aprecia la seguridad que Tierra ofrece."
+            },
+            ("Fuego", "Agua"): {
+                "nivel": "💫 50% - DESAFIANTE PERO TRANSFORMADORA",
+                "amor": "Intensidad emocional extrema. O se salvan mutuamente o se consumen.",
+                "amistad": "Difícil pero enriquecedora. Aprenden mucho del otro.",
+                "trabajo": "Fuego lidera, Agua humaniza. Requiere comunicación constante.",
+                "fortalezas": "Profundidad emocional única, crecimiento transformador",
+                "desafios": "Agua apaga a Fuego, Fuego hierve a Agua. Sensibilidades opuestas.",
+                "consejo": "Respeten profundamente sus diferencias. No intenten cambiarse."
+            },
+            ("Tierra", "Tierra"): {
+                "nivel": "🌱 80% - SÓLIDA Y CONFIABLE",
+                "amor": "Construyen un imperio juntos. Amor práctico pero profundo.",
+                "amistad": "Lealtad absoluta. Se apoyan en todo, siempre presentes.",
+                "trabajo": "Eficiencia máxima. Comparten ética de trabajo y valores.",
+                "fortalezas": "Estabilidad, confianza, metas compartidas, seguridad mutua",
+                "desafios": "Pueden estancarse, rutina excesiva, resistencia al cambio",
+                "consejo": "Salgan de su zona de confort. Agreguen espontaneidad a su vida."
+            },
+            ("Tierra", "Aire"): {
+                "nivel": "🌪️ 60% - COMPLEMENTARIA CON TRABAJO",
+                "amor": "Tierra ancla a Aire, Aire eleva a Tierra. Fascinación mutua.",
+                "amistad": "Aire expande el mundo de Tierra. Tierra da sustancia a ideas de Aire.",
+                "trabajo": "Aire visualiza, Tierra ejecuta. Necesitan comunicación clara.",
+                "fortalezas": "Balance entre ideas y acción, crecimiento intelectual",
+                "desafios": "Tierra frustra la libertad de Aire, Aire es demasiado volátil para Tierra",
+                "consejo": "Tierra: Confía más. Aire: Aterriza tus ideas en la realidad."
+            },
+            ("Tierra", "Agua"): {
+                "nivel": "💚 88% - NUTRICIÓN MUTUA HERMOSA",
+                "amor": "Amor profundo y duradero. Se cuidan como nadie más podría.",
+                "amistad": "Conexión del alma. Entienden el mundo emocional del otro.",
+                "trabajo": "Agua inspira, Tierra materializa. Equipo compasivo y efectivo.",
+                "fortalezas": "Lealtad inquebrantable, empatía, construcción emocional sólida",
+                "desafios": "Pueden estancarse en su zona de confort, exceso de cautela",
+                "consejo": "Anímense mutuamente a tomar riesgos. No teman al cambio."
+            },
+            ("Aire", "Aire"): {
+                "nivel": "💨 85% - CONEXIÓN MENTAL BRILLANTE",
+                "amor": "Mejores amigos primero, amantes después. Comunicación perfecta.",
+                "amistad": "Infinitas conversaciones. Se entienden sin juzgar.",
+                "trabajo": "Tormenta de ideas imparable. Innovación constante.",
+                "fortalezas": "Libertad total, crecimiento intelectual, comprensión mutua",
+                "desafios": "Falta de profundidad emocional, evitan conflictos necesarios",
+                "consejo": "Aprendan a conectar emocionalmente, no solo mentalmente."
+            },
+            ("Aire", "Agua"): {
+                "nivel": "🌊 58% - REQUIERE ESFUERZO CONSCIENTE",
+                "amor": "Aire racionaliza lo que Agua siente. Pueden frustrarse mutuamente.",
+                "amistad": "Interesante pero complicada. Mundos emocionales muy distintos.",
+                "trabajo": "Aire estratega, Agua intuye. Pueden sorprenderse positivamente.",
+                "fortalezas": "Aire aporta objetividad, Agua aporta profundidad emocional",
+                "desafios": "Aire es demasiado distante para Agua, Agua demasiado intenso para Aire",
+                "consejo": "Aire: Siente más, piensa menos. Agua: No tomes todo personal."
+            },
+            ("Agua", "Agua"): {
+                "nivel": "💧 82% - OCÉANO DE EMOCIONES COMPARTIDAS",
+                "amor": "Conexión psíquica. Se entienden sin palabras, amor incondicional.",
+                "amistad": "Almas gemelas. Sanación mutua, comprensión total.",
+                "trabajo": "Altamente intuitivos juntos. Excelentes en áreas creativas o de servicio.",
+                "fortalezas": "Empatía profunda, lealtad, intuición compartida, amor transformador",
+                "desafios": "Demasiada intensidad emocional, pueden hundirse juntos",
+                "consejo": "Establezcan límites sanos. No se pierdan en el otro completamente."
+            }
+        }
+        
+        # Obtener compatibilidad detallada
+        elem_pair = tuple(sorted([info1['elemento'], info2['elemento']]))
+        comp = comp_detallada.get(elem_pair, {
+            "nivel": "💫 Media", "amor": "Conexión única", "amistad": "Interesante",
+            "trabajo": "Funcional", "fortalezas": "Por descubrir", 
+            "desafios": "Requiere comunicación", "consejo": "Conócanse profundamente"
+        })
+        
+        return f"""
+💫 **COMPATIBILIDAD ASTROLÓGICA COMPLETA**
+
+**{signo1.upper()}** {info1['simbolo']} × **{signo2.upper()}** {info2['simbolo']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🎯 **COMPATIBILIDAD GENERAL:** {comp['nivel']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**💕 AMOR / ROMANCE:**
+{comp['amor']}
+
+**👥 AMISTAD:**
+{comp['amistad']}
+
+**💼 TRABAJO:**
+{comp['trabajo']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**✨ FORTALEZAS DE ESTA CONEXIÓN:**
+{comp['fortalezas']}
+
+**⚠️ DESAFÍOS POTENCIALES:**
+{comp['desafios']}
+
+**💡 CONSEJO CÓSMICO:**
+{comp['consejo']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌟 **{signo1.capitalize()}:** {info1['elemento']} | {info1['planeta']}
+🌟 **{signo2.capitalize()}:** {info2['elemento']} | {info2['planeta']}
+
+💛 Recuerda: Las estrellas muestran tendencias, pero el amor verdadero trasciende la astrología. ¡Tú tienes el poder final!
+"""
+    def retrogradaciones_actuales(self):
+        """Muestra planetas retrógrados actuales y sus efectos"""
+        import random
+        
+        hoy = datetime.datetime.now()
+        # Usar día del año para simular retrogradaciones
+        dia_anio = hoy.timetuple().tm_yday
+        
+        planetas_info = {
+            "Mercurio": {
+                "periodo": "3-4 veces al año por 3 semanas",
+                "afecta": "Comunicación, tecnología, viajes, contratos",
+                "consejo": "Revisa todo dos veces. Evita firmar contratos importantes. Haz backups.",
+                "emoji": "💬",
+                "retrogrado": (dia_anio % 90) < 21  # ~21 días cada 90
+            },
+            "Venus": {
+                "periodo": "Cada 18 meses por 6 semanas",
+                "afecta": "Amor, relaciones, dinero, valores, belleza",
+                "consejo": "Reflexiona sobre tus relaciones. No es momento de compromisos grandes.",
+                "emoji": "💕",
+                "retrogrado": (dia_anio % 180) < 42  # ~42 días cada 180
+            },
+            "Marte": {
+                "periodo": "Cada 2 años por 2-3 meses",
+                "afecta": "Energía, acción, conflictos, sexualidad",
+                "consejo": "Controla tu temperamento. Evita confrontaciones innecesarias.",
+                "emoji": "🔥",
+                "retrogrado": (dia_anio % 240) < 60  # ~60 días cada 240
+            },
+            "Júpiter": {
+                "periodo": "Anualmente por 4 meses",
+                "afecta": "Crecimiento, expansión, oportunidades, fe",
+                "consejo": "Momento de crecimiento interno. Revisa tus creencias y filosofía de vida.",
+                "emoji": "🎯",
+                "retrogrado": (dia_anio % 365) < 120  # ~120 días al año
+            },
+            "Saturno": {
+                "periodo": "Anualmente por 4.5 meses",
+                "afecta": "Responsabilidad, límites, estructura, karma",
+                "consejo": "Reevalúa tus responsabilidades. Tiempo de madurez y disciplina interior.",
+                "emoji": "⏳",
+                "retrogrado": (dia_anio % 365) < 135  # ~135 días al año
+            },
+            "Urano": {
+                "periodo": "Anualmente por 5 meses",
+                "afecta": "Cambios, innovación, libertad, rebeldía",
+                "consejo": "Cambios internos profundos. Libérate de lo que ya no sirve.",
+                "emoji": "⚡",
+                "retrogrado": (dia_anio % 365) < 150  # ~150 días al año
+            },
+            "Neptuno": {
+                "periodo": "Anualmente por 5 meses",
+                "afecta": "Intuición, sueños, espiritualidad, ilusiones",
+                "consejo": "Claridad espiritual. Cuidado con autoengaños. Medita más.",
+                "emoji": "🌊",
+                "retrogrado": (dia_anio % 365) < 150  # ~150 días al año
+            },
+            "Plutón": {
+                "periodo": "Anualmente por 5-6 meses",
+                "afecta": "Transformación profunda, poder, renacimiento",
+                "consejo": "Transformación desde las raíces. Suelta el control, confía en el proceso.",
+                "emoji": "🔮",
+                "retrogrado": (dia_anio % 365) < 180  # ~180 días al año
+            }
+        }
+        
+        retrogrados = [p for p, info in planetas_info.items() if info['retrogrado']]
+        
+        if not retrogrados:
+            return """
+🌟 **RETROGRADACIONES PLANETARIAS**
+
+✨ **¡Buenas noticias!**
+
+Actualmente no hay planetas personales importantes en retrogradación.
+
+Este es un momento de flujo y avance. Aprovecha esta energía para:
+- Iniciar proyectos nuevos
+- Tomar decisiones importantes
+- Firmar contratos
+- Hacer cambios significativos
+
+💫 Los planetas exteriores pueden estar retrógrados, pero su efecto es más sutil y generacional.
+"""
+        
+        resultado = f"""
+🔄 **RETROGRADACIONES PLANETARIAS ACTUALES**
+
+📅 **{hoy.strftime('%d de %B, %Y')}**
+
+━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ **HAY {len(retrogrados)} PLANETA(S) RETRÓGRADO(S) AHORA:**
+
+"""
+        
+        for planeta in retrogrados:
+            info = planetas_info[planeta]
+            resultado += f"""
+{info['emoji']} **{planeta.upper()} RETRÓGRADO**
+
+📊 **Período típico:** {info['periodo']}
+
+🎯 **Áreas afectadas:**
+{info['afecta']}
+
+💡 **Consejo:**
+{info['consejo']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+"""
+        
+        resultado += """
+🌟 **RECUERDA:**
+
+Las retrogradaciones NO son negativas - son momentos de:
+✨ Re-evaluación
+✨ Re-visión  
+✨ Re-flexión
+✨ Re-novación interna
+
+💜 Fluye con la energía cósmica, no contra ella.
+"""
+        
+        return resultado
+       
+    def revolucion_solar(self, fecha_nacimiento, signo):
+        """Análisis de revolución solar - tu nuevo año astrológico"""
+        try:
+            # Se convierte la fecha de nacimiento a objeto datetime para cálculos [cite: 427]
+            nac = datetime.datetime.strptime(fecha_nacimiento, "%Y-%m-%d")
+        except:
+            return "❌ Formato de fecha inválido. Usa: AAAA-MM-DD"
+        
+        hoy = datetime.datetime.now()
+        
+        # Se calcula la edad y el próximo cumpleaños [cite: 428]
+        edad_actual = hoy.year - nac.year
+        if (hoy.month, hoy.day) < (nac.month, nac.day):
+            edad_actual -= 1
+        
+        # Determinación de cuándo es el próximo cumpleaños [cite: 428]
+        proximo_cumple = datetime.datetime(hoy.year, nac.month, nac.day)
+        if proximo_cumple < hoy:
+            proximo_cumple = datetime.datetime(hoy.year + 1, nac.month, nac.day)
+        
+        dias_para_cumple = (proximo_cumple - hoy).days
+        signo = signo.lower().strip()
+        
+        # Normalización de signos para manejar tildes y variaciones [cite: 429]
+        normalizaciones = {
+            "geminis": "geminis", "géminis": "geminis",
+            "cancer": "cancer", "cáncer": "cancer",
+            "escorpio": "escorpio", "escorpion": "escorpio"
+        }
+        signo = normalizaciones.get(signo, signo)
+        
+        if signo not in self.SIGNOS_ZODIACALES:
+            return "❌ Signo no válido"
+        
+        info_signo = self.SIGNOS_ZODIACALES[signo]
+        
+        # --- Lógica de Fases del Ciclo Anual ---
+        if dias_para_cumple <= 30:
+            fase = "PREPARACIÓN"
+            energia = "🌱 Siembra Interna"
+            mensaje = "Te encuentras en la fase final de tu ciclo actual. Es momento de soltar lo viejo y prepararte para tu renacimiento."
+            enfoque = "Cierre de ciclos, reflexión y gratitud."
+        elif dias_para_cumple <= 120:
+            fase = "INICIO"
+            energia = "🌸 Florecimiento"
+            mensaje = "Tu ciclo acaba de renovarse. Tienes la energía fresca para sembrar nuevas intenciones y proyectos."
+            enfoque = "Acción, nuevos comienzos y vitalidad."
+        elif dias_para_cumple <= 240:
+            fase = "ESTABILIZACIÓN"
+            energia = "☀️ Plenitud"
+            mensaje = "Estás en el centro de tu año personal. Es el momento de nutrir lo que iniciaste para que crezca con fuerza."
+            enfoque = "Constancia, trabajo y consolidación."
+        else:
+            fase = "COSECHA"
+            energia = "🍂 Evaluación"
+            mensaje = "Empiezas a ver los frutos de tus esfuerzos anuales. Evalúa qué áreas han prosperado y cuáles necesitan ajustes."
+            enfoque = "Resultados, compartir y maduración."
+        
+        return f"""
+🎂 **REVOLUCIÓN SOLAR: TU AÑO PERSONAL**
+
+**Signo:** {info_signo['simbolo']} {signo.upper()}
+**Próximo Cumpleaños:** {proximo_cumple.strftime('%d de %B')} ({dias_para_cumple} días)
+
+━━━━━━━━━━━━━━━━━━━━━
+
+📊 **FASE ACTUAL:** {fase}
+{energia}
+
+✨ **MENSAJE CÓSMICO:**
+{mensaje}
+
+💡 **ENFOQUE RECOMENDADO:**
+{enfoque}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💛 **Sabiduría de {signo.capitalize()}:** Recuerda tus fortalezas naturales: {info_signo['fortalezas']}.
+    
+""" 
+    def carta_natal_basica(self, fecha_nacimiento, hora_nacimiento="12:00"):
+        """Genera una carta natal básica con signo solar, lunar aproximado y elementos"""
+        try:
+            # Parsear fecha
+            if "/" in fecha_nacimiento:
+                d, m, a = fecha_nacimiento.split("/")
+            elif "-" in fecha_nacimiento:
+                partes = fecha_nacimiento.split("-")
+                if len(partes[0]) == 4:
+                    a, m, d = partes
+                else:
+                    d, m, a = partes
+            else:
+                return "❌ Formato de fecha inválido"
+            
+            dia = int(d)
+            mes = int(m)
+            anio = int(a)
+            
+            # Parsear hora
+            try:
+                hora, minuto = hora_nacimiento.split(":")
+                hora = int(hora)
+                minuto = int(minuto)
+            except:
+                hora, minuto = 12, 0
+            
+            # Calcular Signo Solar
+            signo_solar = self._calcular_signo_solar(mes, dia)
+            
+            # Calcular Signo Lunar (aproximado)
+            signo_lunar = self._calcular_signo_lunar_aproximado(dia, mes, anio)
+            
+            # Calcular Ascendente (aproximado por hora)
+            ascendente = self._calcular_ascendente_aproximado(signo_solar, hora)
+            
+            # Obtener información de signos
+            info_solar = self.SIGNOS_ZODIACALES.get(signo_solar.lower(), {})
+            info_lunar = self.SIGNOS_ZODIACALES.get(signo_lunar.lower(), {})
+            info_asc = self.SIGNOS_ZODIACALES.get(ascendente.lower(), {})
+            
+            # Analizar elementos dominantes
+            elementos = [
+                info_solar.get('elemento', ''),
+                info_lunar.get('elemento', ''),
+                info_asc.get('elemento', '')
+            ]
+            
+            elemento_dominante = max(set(elementos), key=elementos.count)
+            
+            # Construir resultado
+            resultado = f"""
+🌟 **TU CARTA NATAL BÁSICA**
+
+📅 **Fecha:** {fecha_nacimiento}
+🕐 **Hora:** {hora_nacimiento}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+☀️ **SIGNO SOLAR: {signo_solar.upper()}** {info_solar.get('simbolo', '')}
+*Tu esencia, tu yo consciente*
+
+**Elemento:** {info_solar.get('elemento', '')}
+**Planeta Regente:** {info_solar.get('planeta', '')}
+**Fortalezas:** {info_solar.get('fortalezas', '')}
+
+💡 Tu signo solar representa tu identidad fundamental, tu voluntad y propósito de vida.
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌙 **SIGNO LUNAR: {signo_lunar.upper()}** {info_lunar.get('simbolo', '')}
+*Tus emociones, tu mundo interno*
+
+**Elemento:** {info_lunar.get('elemento', '')}
+**Planeta Regente:** {info_lunar.get('planeta', '')}
+**Fortalezas:** {info_lunar.get('fortalezas', '')}
+
+💡 Tu Luna rige tus emociones, necesidades internas y cómo procesas sentimientos.
+
+━━━━━━━━━━━━━━━━━━━━━
+
+⬆️ **ASCENDENTE: {ascendente.upper()}** {info_asc.get('simbolo', '')}
+*Tu máscara social, primera impresión*
+
+**Elemento:** {info_asc.get('elemento', '')}
+**Planeta Regente:** {info_asc.get('planeta', '')}
+**Fortalezas:** {info_asc.get('fortalezas', '')}
+
+💡 Tu Ascendente es cómo te perciben otros y cómo te presentas al mundo.
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🔥💧🌍💨 **ELEMENTO DOMINANTE: {elemento_dominante.upper()}**
+
+{self._interpretar_elemento_dominante(elemento_dominante)}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💫 **SÍNTESIS:**
+
+Tu combinación {signo_solar}-{signo_lunar}-{ascendente} crea una personalidad única.
+
+• **Sol en {signo_solar}:** Define tu propósito y voluntad
+• **Luna en {signo_lunar}:** Rige tus necesidades emocionales
+• **Ascendente {ascendente}:** Moldea tu expresión externa
+
+Esta es una carta natal simplificada. Para una lectura completa, necesitarías calcular las posiciones de todos los planetas, casas y aspectos con tu hora y lugar exactos de nacimiento.
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌟 Tu mapa estelar es único. Úsalo como guía de autoconocimiento.
+"""
+            
+            return resultado
+            
+        except Exception as e:
+            return f"❌ Error calculando carta natal: {str(e)}"
+    
+    def _calcular_signo_solar(self, mes, dia):
+        """Calcula el signo solar basado en fecha"""
+        if (mes == 3 and dia >= 21) or (mes == 4 and dia <= 19):
+            return "aries"
+        elif (mes == 4 and dia >= 20) or (mes == 5 and dia <= 20):
+            return "tauro"
+        elif (mes == 5 and dia >= 21) or (mes == 6 and dia <= 20):
+            return "geminis"
+        elif (mes == 6 and dia >= 21) or (mes == 7 and dia <= 22):
+            return "cancer"
+        elif (mes == 7 and dia >= 23) or (mes == 8 and dia <= 22):
+            return "leo"
+        elif (mes == 8 and dia >= 23) or (mes == 9 and dia <= 22):
+            return "virgo"
+        elif (mes == 9 and dia >= 23) or (mes == 10 and dia <= 22):
+            return "libra"
+        elif (mes == 10 and dia >= 23) or (mes == 11 and dia <= 21):
+            return "escorpio"
+        elif (mes == 11 and dia >= 22) or (mes == 12 and dia <= 21):
+            return "sagitario"
+        elif (mes == 12 and dia >= 22) or (mes == 1 and dia <= 19):
+            return "capricornio"
+        elif (mes == 1 and dia >= 20) or (mes == 2 and dia <= 18):
+            return "acuario"
+        else:
+            return "piscis"
+    
+    def _calcular_signo_lunar_aproximado(self, dia, mes, anio):
+        """Calcula el signo lunar de forma aproximada (ciclo de 28 días)"""
+        # Aproximación simple: La luna tarda ~2.5 días en cada signo
+        total_dias = dia + (mes * 30) + (anio % 19) * 20
+        posicion_lunar = (total_dias % 360) // 30
+        
+        signos = ["aries", "tauro", "geminis", "cancer", "leo", "virgo", 
+                 "libra", "escorpio", "sagitario", "capricornio", "acuario", "piscis"]
+        
+        return signos[posicion_lunar % 12]
+    
+    def _calcular_ascendente_aproximado(self, signo_solar, hora):
+        """Calcula ascendente aproximado basado en hora de nacimiento"""
+        # Aproximación: el ascendente cambia aproximadamente cada 2 horas
+        signos = ["aries", "tauro", "geminis", "cancer", "leo", "virgo", 
+                 "libra", "escorpio", "sagitario", "capricornio", "acuario", "piscis"]
+        
+        # Encontrar índice del signo solar
+        indice_solar = next((i for i, s in enumerate(signos) if s == signo_solar.lower()), 0)
+        
+        # El ascendente al amanecer (~6am) suele ser el mismo que el signo solar
+        # Ajustar según hora
+        horas_desde_amanecer = (hora - 6) if hora >= 6 else (hora + 18)
+        casas_avanzadas = horas_desde_amanecer // 2
+        
+        indice_ascendente = (indice_solar + int(casas_avanzadas)) % 12
+        
+        return signos[indice_ascendente]
+    
+    def _interpretar_elemento_dominante(self, elemento):
+        """Interpreta el elemento dominante"""
+        interpretaciones = {
+            "Fuego": "🔥 Tu carta tiene predominio de **FUEGO**. Eres apasionada, intuitiva, enérgica y orientada a la acción. Tu motivación viene de la inspiración y el entusiasmo.",
+            "Tierra": "🌍 Tu carta tiene predominio de **TIERRA**. Eres práctica, confiable, sensorial y orientada a resultados tangibles. Valoras la estabilidad y el trabajo constante.",
+            "Aire": "💨 Tu carta tiene predominio de **AIRE**. Eres mental, comunicativa, social y orientada a ideas. Vives en el mundo del pensamiento y la conexión intelectual.",
+            "Agua": "💧 Tu carta tiene predominio de **AGUA**. Eres emocional, intuitiva, empática y orientada a los sentimientos. Tu mundo interno es profundo y sensible."
+        }
+        
+        return interpretaciones.get(elemento, "Elemento balanceado")
+# HANDLER NUMEROLOGÍA
+# =====================================================
+class NumerologiaHandler:
+    def __init__(self):
+        self.NUMEROS_BASE = {
+            1: {
+                "nombre": "El Líder",
+                "energia": "Independencia, iniciativa, liderazgo",
+                "luz": "Pionero, creativo, valiente",
+                "consejo": "Confía en tu visión única. No temas destacar."
+            },
+            2: {
+                "nombre": "El Diplomático",
+                "energia": "Cooperación, sensibilidad, intuición",
+                "luz": "Empático, pacificador, intuitivo",
+                "consejo": "Tu sensibilidad es un don. Pon límites sanos."
+            },
+            3: {
+                "nombre": "El Creativo",
+                "energia": "Expresión, creatividad, comunicación",
+                "luz": "Artístico, optimista, carismático",
+                "consejo": "Tu luz es contagiosa. No la apagues por otros."
+            },
+            4: {
+                "nombre": "El Constructor",
+                "energia": "Estabilidad, estructura, trabajo",
+                "luz": "Confiable, organizado, práctico",
+                "consejo": "Descansa. El mundo no colapsa si te detienes."
+            },
+            5: {
+                "nombre": "El Aventurero",
+                "energia": "Libertad, cambio, aventura",
+                "luz": "Adaptable, curioso, valiente",
+                "consejo": "El cambio es tu naturaleza, pero crea raíces conscientes."
+            },
+            6: {
+                "nombre": "El Sanador",
+                "energia": "Amor, servicio, responsabilidad",
+                "luz": "Compasivo, protector, consejero",
+                "consejo": "Cuídate a ti primero. No puedes dar desde el vacío."
+            },
+            7: {
+                "nombre": "El Místico",
+                "energia": "Sabiduría, introspección, espiritualidad",
+                "luz": "Sabio, intuitivo, investigador",
+                "consejo": "El mundo necesita tu sabiduría. No te escondas."
+            },
+            8: {
+                "nombre": "El Poderoso",
+                "energia": "Abundancia, poder, autoridad",
+                "luz": "Exitoso, ambicioso, justo",
+                "consejo": "El poder es responsabilidad. Úsalo para elevar."
+            },
+            9: {
+                "nombre": "El Humanitario",
+                "energia": "Compasión universal, finalización",
+                "luz": "Compasivo, sabio, altruista",
+                "consejo": "Has vivido mucho internamente. Comparte tu luz."
+            },
+            11: {
+                "nombre": "El Visionario",
+                "energia": "Intuición elevada, misión espiritual",
+                "luz": "Visionario, inspirador, canal espiritual",
+                "consejo": "Tu sensibilidad es extrema. Ground yourself daily."
+            },
+            22: {
+                "nombre": "El Arquitecto Maestro",
+                "energia": "Manifestación masiva, construcción de legados",
+                "luz": "Constructor de imperios, visionario práctico",
+                "consejo": "Construyes imperios. Recuerda vivir mientras lo haces."
+            }
+        }
+        
+        self.NUMEROS_ANGELICALES = {
+            111: "Portal de manifestación abierto. Tus pensamientos se materializan rápido.",
+            222: "Todo se está alineando perfectamente. Confía en el proceso.",
+            333: "Los maestros ascendidos están contigo. Estás protegida divinamente.",
+            444: "Ángeles rodeándote. Estabilidad y protección.",
+            555: "Cambio masivo en camino. Suelta lo viejo.",
+            666: "Reequilibra lo material y espiritual.",
+            777: "Milagros y bendiciones descendiendo. Sincronicidades activadas.",
+            888: "Abundancia infinita fluyendo. Recibe sin culpa.",
+            999: "Ciclo completándose. Suelta con amor.",
+            1111: "Portal maestro abierto. Deseo masivo manifestándose."
+        }
+    
+    def numerologia_del_dia(self):
+        hoy = datetime.datetime.now()
+        suma = hoy.day + hoy.month + hoy.year
+        
+        while suma > 9 and suma not in (11, 22):
+            suma = sum(int(x) for x in str(suma))
+        
+        if suma in self.NUMEROS_BASE:
+            info = self.NUMEROS_BASE[suma]
+            return f"""
+🔢✨ **NUMEROLOGÍA DEL DÍA**
+
+**Número:** {suma} - *{info['nombre']}*
+
+🌟 **Energía del día:**
+{info['energia']}
+
+💫 **Tu luz hoy:**
+{info['luz']}
+
+💛 **Consejo:**
+{info['consejo']}
+"""
+        return f"🔢 Número del día: **{suma}**"
+    
+    def calcular_camino_de_vida(self, fecha_str):
+        try:
+            if "/" in fecha_str:
+                dia, mes, anio = fecha_str.split("/")
+            elif "-" in fecha_str:
+                dia, mes, anio = fecha_str.split("-")
+            else:
+                return "❌ Formato inválido. Usa: DD/MM/AAAA o DD-MM-AAAA"
+            
+            suma = int(dia) + int(mes) + int(anio)
+            
+            while suma > 9 and suma not in (11, 22):
+                suma = sum(int(x) for x in str(suma))
+            
+            if suma in self.NUMEROS_BASE:
+                info = self.NUMEROS_BASE[suma]
+                return f"""
+🔢💫 **TU CAMINO DE VIDA: {suma}**
+*{info['nombre']}*
+
+━━━━━━━━━━━━━━━━━━━━━
+
+✨ **ENERGÍA:** {info['energia']}
+
+🌟 **TU LUZ:** {info['luz']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💛 **CONSEJO:** {info['consejo']}
+"""
+            return f"Tu camino de vida es: {suma}"
+        except:
+            return "❌ Formato inválido. Usa: DD/MM/AAAA o DD-MM-AAAA"
+    
+    def significado_numero(self, numero_str):
+        try:
+            numero = int(numero_str)
+        except:
+            return "Por favor escribe un número válido 💛"
+        
+        if numero in self.NUMEROS_ANGELICALES:
+            return f"""
+👼✨ **NÚMERO ANGELICAL: {numero}**
+
+{self.NUMEROS_ANGELICALES[numero]}
+
+💫 Los ángeles te están enviando un mensaje. Presta atención a las señales.
+"""
+        
+        if numero in self.NUMEROS_BASE:
+            info = self.NUMEROS_BASE[numero]
+            return f"""
+🔢✨ **NÚMERO {numero}: {info['nombre']}**
+
+**Energía:** {info['energia']}
+
+**Luz:** {info['luz']}
+
+💛 **Consejo:** {info['consejo']}
+"""
+        
+        # Reducir número
+        suma = numero
+        while suma > 9 and suma not in (11, 22):
+            suma = sum(int(x) for x in str(suma))
+        
+        if suma in self.NUMEROS_BASE:
+            info = self.NUMEROS_BASE[suma]
+            return f"""
+🔢 **TU NÚMERO {numero}**
+
+Se reduce a: **{suma}** - {info['nombre']}
+
+**Energía:** {info['energia']}
+
+💛 {info['consejo']}
+"""
+        
+        return f"🔢 Número {numero} - Energía especial ✨"
+    def ano_personal(self, fecha_nacimiento):
+        """Calcula el año personal según la fecha de nacimiento"""
+        try:
+            # Parsear fecha
+            if "/" in fecha_nacimiento:
+                dia, mes, anio = fecha_nacimiento.split("/")
+            elif "-" in fecha_nacimiento:
+                partes = fecha_nacimiento.split("-")
+                if len(partes[0]) == 4:  # Formato YYYY-MM-DD
+                    anio, mes, dia = partes
+                else:  # Formato DD-MM-YYYY
+                    dia, mes, anio = partes
+            else:
+                return "❌ Formato inválido (Usa DD/MM/AAAA o DD-MM-AAAA)"
+            
+            anio_actual = datetime.datetime.now().year
+            
+            # Reducir día a un dígito
+            suma_dia = sum(int(d) for d in str(int(dia)))
+            while suma_dia > 9:
+                suma_dia = sum(int(d) for d in str(suma_dia))
+            
+            # Reducir mes a un dígito
+            suma_mes = sum(int(m) for m in str(int(mes)))
+            while suma_mes > 9:
+                suma_mes = sum(int(m) for m in str(suma_mes))
+            
+            # Reducir año actual a un dígito
+            suma_anio = sum(int(a) for a in str(anio_actual))
+            while suma_anio > 9:
+                suma_anio = sum(int(a) for a in str(suma_anio))
+            
+            # Sumar todo
+            suma_total = suma_dia + suma_mes + suma_anio
+            
+            # Reducir a número final (1-9, 11, 22)
+            while suma_total > 9 and suma_total not in (11, 22):
+                suma_total = sum(int(x) for x in str(suma_total))
+            
+            # Información completa por año
+            anos_info = {
+                1: {
+                    "ciclo": "NUEVOS COMIENZOS",
+                    "energia": "Este es tu año para comenzar de nuevo. Todo lo que inicies ahora tiene el poder de transformar tu vida.",
+                    "que_hacer": [
+                        "Iniciar proyectos nuevos que has estado postergando",
+                        "Tomar la iniciativa en todas las áreas de tu vida",
+                        "Ser valiente y atreverte a lo desconocido",
+                        "Confiar en tu visión y capacidad de liderazgo"
+                    ],
+                    "evitar": [
+                        "Dudar de ti mismo o esperar el momento perfecto",
+                        "Depender de otros para que tomen decisiones por ti",
+                        "Quedarte en tu zona de confort por miedo"
+                    ],
+                    "amor": "Nuevas conexiones románticas están en camino. Si estás en pareja, es momento de renovar el compromiso. Tu energía magnética atrae.",
+                    "trabajo": "Oportunidades de promoción, emprendimiento o cambio de carrera. Tu liderazgo será reconocido. Es tu momento de brillar.",
+                    "mensaje": "Este es TU año. El universo te está diciendo: Es hora de brillar. No esperes permiso, no busques validación externa. Tú eres el comienzo de algo grande."
+                },
+                2: {
+                    "ciclo": "COOPERACIÓN Y PACIENCIA",
+                    "energia": "Año de cultivar relaciones, trabajar en equipo y confiar en el proceso. Tu sensibilidad es tu superpoder.",
+                    "que_hacer": [
+                        "Fortalecer tus relaciones personales y profesionales",
+                        "Practicar la paciencia y confiar en el timing divino",
+                        "Escuchar tu intuición profundamente",
+                        "Colaborar en lugar de competir"
+                    ],
+                    "evitar": [
+                        "Forzar resultados o apurar procesos naturales",
+                        "Descuidar tus necesidades por complacer a otros",
+                        "Ignorar tu voz interior por seguir a la multitud"
+                    ],
+                    "amor": "Profundización emocional. Es tiempo de construir intimidad real, vulnerabilidad y confianza. Las relaciones superficiales se filtrarán naturalmente.",
+                    "trabajo": "Trabajo en equipo y colaboraciones. Tu diplomacia y habilidad para mediar serán clave. No es tu año para liderar, sino para apoyar.",
+                    "mensaje": "Tu paciencia no es debilidad, es sabiduría. Estás sembrando ahora lo que cosecharás después. Confía en el proceso, aunque no veas resultados inmediatos."
+                },
+                3: {
+                    "ciclo": "CREATIVIDAD Y EXPRESIÓN",
+                    "energia": "¡Es tu año para brillar creativamente! Comunicación, arte, alegría y autoexpresión son tu enfoque.",
+                    "que_hacer": [
+                        "Expresarte creativamente sin censura",
+                        "Socializar, conectar y expandir tu red",
+                        "Explorar nuevos hobbies artísticos o creativos",
+                        "Compartir tu voz y talentos con el mundo"
+                    ],
+                    "evitar": [
+                        "Silenciar tu voz por miedo al juicio",
+                        "Aislarte o esconder tus dones",
+                        "Tomarte todo demasiado en serio, necesitas ligereza"
+                    ],
+                    "amor": "Diversión, risas y romance ligero. Nuevas conexiones a través de eventos sociales. Si estás en pareja, traigan más alegría y espontaneidad.",
+                    "trabajo": "Proyectos creativos, comunicación, marketing, redes sociales. Tu carisma abre puertas. Es tiempo de vender tu visión con entusiasmo.",
+                    "mensaje": "Tu alegría es contagiosa y el mundo la necesita. No te disculpes por brillar, por reír alto, por ser 'demasiado'. Eres exactamente suficiente."
+                },
+                4: {
+                    "ciclo": "CONSTRUCCIÓN Y ESTABILIDAD",
+                    "energia": "Año de trabajo duro, disciplina y construir bases sólidas. Lo que construyas ahora durará décadas.",
+                    "que_hacer": [
+                        "Crear rutinas y estructuras que te sirvan",
+                        "Trabajar con disciplina hacia metas a largo plazo",
+                        "Invertir en tu salud, finanzas y educación",
+                        "Construir tu 'imperio' paso a paso"
+                    ],
+                    "evitar": [
+                        "Buscar atajos o resultados instantáneos",
+                        "Descuidar tu salud por trabajar en exceso",
+                        "Resistirte al trabajo duro necesario"
+                    ],
+                    "amor": "Compromiso serio, construir un hogar juntos, planear el futuro. Es año de solidificar, no de experimentar. Estabilidad sobre pasión.",
+                    "trabajo": "Trabajo intenso pero resultados tangibles. Construyes tu reputación profesional. Promociones vienen por mérito, no por suerte. Persiste.",
+                    "mensaje": "Cada día que trabajas en silencio, estás construyendo tu legado. Confía en el proceso lento. Los cimientos fuertes no se construyen rápido."
+                },
+                5: {
+                    "ciclo": "CAMBIO Y LIBERTAD",
+                    "energia": "¡Año de aventura, cambio y libertad! Todo lo que ha estado estancado finalmente se mueve. Abraza lo inesperado.",
+                    "que_hacer": [
+                        "Abrazar el cambio en lugar de resistirlo",
+                        "Viajar, explorar nuevos lugares y culturas",
+                        "Probar cosas nuevas fuera de tu zona de confort",
+                        "Ser flexible y adaptarte rápidamente"
+                    ],
+                    "evitar": [
+                        "Resistir lo nuevo por apego a lo conocido",
+                        "Quedarte en situaciones por miedo al cambio",
+                        "Caer en rutinas excesivas o aburrimiento"
+                    ],
+                    "amor": "Nuevas experiencias en el amor, quizás relaciones inesperadas. Si estás en pareja, viajen juntos, rompan la rutina. Necesitas libertad.",
+                    "trabajo": "Cambios de carrera, nuevas oportunidades, viajes de negocios. Tu versatilidad es tu mayor activo. No te ates a lo seguro, arriesga.",
+                    "mensaje": "El cambio que temes es exactamente lo que necesitas. Suelta el control. La vida te está llevando hacia algo mejor, confía en el viaje."
+                },
+                6: {
+                    "ciclo": "RESPONSABILIDAD Y AMOR",
+                    "energia": "Año de familia, hogar, relaciones y servicio. Te llamarán a ser pilar de apoyo para otros. Tu corazón se expande.",
+                    "que_hacer": [
+                        "Nutrir tus relaciones más cercanas",
+                        "Crear un hogar hermoso y acogedor",
+                        "Servir a tu comunidad desde el amor",
+                        "Sanar relaciones familiares o de pareja"
+                    ],
+                    "evitar": [
+                        "Sacrificarte hasta el punto de agotamiento",
+                        "Descuidar tus propias necesidades por cuidar a otros",
+                        "Cargar con responsabilidades que no te corresponden"
+                    ],
+                    "amor": "Compromiso profundo, matrimonio, hijos, construir familia. Tu capacidad de amar incondicionalmente se expande. Das y recibes amor puro.",
+                    "trabajo": "Roles de cuidado, educación, sanación, consejería. Tu empatía es tu fortaleza profesional. Trabajos que impactan vidas directamente.",
+                    "mensaje": "Tu amor sana mundos. Pero recuerda: no puedes servir desde un vaso vacío. Cuídate primero para poder cuidar a otros desde la plenitud."
+                },
+                7: {
+                    "ciclo": "INTROSPECCIÓN Y ESPIRITUALIDAD",
+                    "energia": "Año de retiro interno, búsqueda espiritual y profundización. No es año de acción externa, sino de sabiduría interna.",
+                    "que_hacer": [
+                        "Dedicar tiempo a la meditación y reflexión",
+                        "Estudiar temas espirituales o filosóficos profundos",
+                        "Confiar en tu intuición sobre la lógica",
+                        "Buscar soledad consciente para reconectarte"
+                    ],
+                    "evitar": [
+                        "Forzarte a socializar cuando necesitas soledad",
+                        "Ignorar tu voz interior por presión externa",
+                        "Llenar tu vida de ruido y distracciones"
+                    ],
+                    "amor": "Conexiones profundas del alma sobre romance superficial. Puede ser año de soledad necesaria o de conocer a alguien espiritualmente afín.",
+                    "trabajo": "Trabajo interno, investigación, escritura, estudios. No es año de grandes lanzamientos, sino de preparación silenciosa. Confía en el proceso.",
+                    "mensaje": "No todos te entenderán este año, y está bien. Estás en un viaje interno que pocos comprenden. Tu soledad no es aislamiento, es iniciación."
+                },
+                8: {
+                    "ciclo": "PODER Y ABUNDANCIA",
+                    "energia": "¡Año de manifestación material y poder personal! Todo tu trabajo previo se materializa. Es tiempo de recibir recompensas.",
+                    "que_hacer": [
+                        "Reclamar tu poder personal sin disculpas",
+                        "Negociar por lo que mereces (dinero, respeto, reconocimiento)",
+                        "Invertir inteligentemente en tu futuro",
+                        "Liderar con autoridad y confianza"
+                    ],
+                    "evitar": [
+                        "Abusar de tu poder o manipular a otros",
+                        "Volverte workaholic y descuidar tu alma",
+                        "Conformarte con menos de lo que mereces"
+                    ],
+                    "amor": "Relaciones de poder equilibrado. Atraes pareja exitosa y ambiciosa. Si estás en pareja, construyen imperio juntos. Respeto mutuo es clave.",
+                    "trabajo": "Promociones importantes, aumentos de salario, reconocimiento público. Tu liderazgo y ética de trabajo son recompensados. Cosechas lo sembrado.",
+                    "mensaje": "Mereces el éxito que llega. No lo minimices ni te disculpes por tu abundancia. Usa tu poder para elevar a otros, no para dominarlos."
+                },
+                9: {
+                    "ciclo": "FINALIZACIÓN Y LIBERACIÓN",
+                    "energia": "Año de cierres, finales y soltar. Lo que ya no te sirve se cae. Confía en los finales, son sagrados y necesarios.",
+                    "que_hacer": [
+                        "Soltar conscientemente lo que ya cumplió su propósito",
+                        "Perdonar profundamente (a ti y a otros)",
+                        "Cerrar capítulos con gratitud, no amargura",
+                        "Servir al mundo desde tu sabiduría acumulada"
+                    ],
+                    "evitar": [
+                        "Aferrarte a relaciones, trabajos o situaciones muertas",
+                        "Resistir los finales naturales por miedo",
+                        "Cargar resentimiento en lugar de liberar con amor"
+                    ],
+                    "amor": "Cierres de relaciones tóxicas necesarios. Si estás en pareja sana, profundizan desde sabiduría. Amor más maduro y compasivo.",
+                    "trabajo": "Terminar proyectos largos, transiciones de carrera, jubilaciones. No inicies cosas nuevas aún, finaliza lo pendiente con excelencia.",
+                    "mensaje": "Suelta con amor. Lo que se va hace espacio para lo nuevo. Cada final es un comienzo disfrazado. Confía en la muerte necesaria de ciclos."
+                },
+                11: {
+                    "ciclo": "ILUMINACIÓN ESPIRITUAL",
+                    "energia": "Año maestro de intuición elevada, misión espiritual y liderazgo inspirador. Eres canal de luz para otros.",
+                    "que_hacer": [
+                        "Confiar PROFUNDAMENTE en tu intuición",
+                        "Compartir tu luz y enseñanzas con el mundo",
+                        "Meditar y conectar con tu guía espiritual",
+                        "Ser ejemplo vivo de tus valores más altos"
+                    ],
+                    "evitar": [
+                        "Dudar de tus visiones o percepciones extrasensoriales",
+                        "Esconder tus dones espirituales por miedo al juicio",
+                        "Sobreestimularte, necesitas mucha paz"
+                    ],
+                    "amor": "Conexiones kármicas profundas, encuentros de almas gemelas. Relaciones que elevan tu vibración. Amor espiritual y trascendente.",
+                    "trabajo": "Liderazgo espiritual, enseñanza, sanación, guía. Inspiras a otros con tu presencia. Tu trabajo tiene propósito superior, no solo dinero.",
+                    "mensaje": "Tu sensibilidad extrema no es debilidad, es tu superpoder. Viniste a iluminar, no a encajar. Brilla sin disculpas, el mundo necesita tu luz."
+                },
+                22: {
+                    "ciclo": "MAESTRO CONSTRUCTOR",
+                    "energia": "Año maestro de manifestación material a gran escala. Construyes legados que trascienden tu vida. Poder máximo.",
+                    "que_hacer": [
+                        "Pensar en GRANDE, sin límites mentales",
+                        "Construir proyectos que sirvan a la humanidad",
+                        "Combinar espiritualidad con acción práctica",
+                        "Liderar con visión y ejecución impecable"
+                    ],
+                    "evitar": [
+                        "Abrumarte por la magnitud de tu misión",
+                        "Dudar de tu capacidad de materializar lo enorme",
+                        "Pensar pequeño por miedo o inseguridad"
+                    ],
+                    "amor": "Pareja que construye imperio contigo. Relaciones que transforman el mundo juntos. Amor como combustible para tu misión.",
+                    "trabajo": "Proyectos enormes, liderazgo visionario, construcción de imperios. Dejas legado duradero. Piensas en décadas, no en años.",
+                    "mensaje": "Naciste para construir imperios. No te asuste la grandeza de tu visión, es tu destino. Pero recuerda vivir mientras construyes."
+                }
+            }
+            
+            info_base = self.NUMEROS_BASE.get(suma_total, {"nombre": "Número Especial"})
+            info_ano = anos_info.get(suma_total, anos_info[1])
+            
+            return f"""
+🔢✨ **TU AÑO PERSONAL {anio_actual}: {suma_total}**
+*{info_base.get('nombre', 'Número Especial')}*
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌟 **CICLO: {info_ano['ciclo']}**
+
+**ENERGÍA DEL AÑO:**
+{info_ano['energia']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**✅ QUÉ HACER ESTE AÑO:**
+{chr(10).join(f"• {item}" for item in info_ano['que_hacer'])}
+
+**⚠️ QUÉ EVITAR:**
+{chr(10).join(f"• {item}" for item in info_ano['evitar'])}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**💕 AMOR Y RELACIONES:**
+{info_ano['amor']}
+
+**💼 TRABAJO Y CARRERA:**
+{info_ano['trabajo']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**💫 MENSAJE DEL UNIVERSO:**
+
+{info_ano['mensaje']}
+
+**🔮 CÁLCULO:**
+Día {dia} + Mes {mes} + Año {anio_actual} = {suma_total}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💛 Este ciclo dura hasta tu cumpleaños de {anio_actual + 1}.
+Después entrarás en Año Personal {(suma_total % 9) + 1 if suma_total <= 9 else 1}.
+"""
+        
+        except Exception as e:
+            return f"❌ Error: {str(e)}"
+    def compatibilidad_numerologica(self, fecha1, fecha2):
+        """Analiza compatibilidad entre dos personas según numerología"""
+        try:
+            # Calcular camino de vida de persona 1
+            if "/" in fecha1:
+                d1, m1, a1 = fecha1.split("/")
+            elif "-" in fecha1:
+                partes = fecha1.split("-")
+                if len(partes[0]) == 4:
+                    a1, m1, d1 = partes
+                else:
+                    d1, m1, a1 = partes
+            else:
+                return "❌ Formato inválido en fecha 1"
+            
+            suma1 = int(d1) + int(m1) + int(a1)
+            while suma1 > 9 and suma1 not in (11, 22):
+                suma1 = sum(int(x) for x in str(suma1))
+            
+            # Calcular camino de vida de persona 2
+            if "/" in fecha2:
+                d2, m2, a2 = fecha2.split("/")
+            elif "-" in fecha2:
+                partes = fecha2.split("-")
+                if len(partes[0]) == 4:
+                    a2, m2, d2 = partes
+                else:
+                    d2, m2, a2 = partes
+            else:
+                return "❌ Formato inválido en fecha 2"
+            
+            suma2 = int(d2) + int(m2) + int(a2)
+            while suma2 > 9 and suma2 not in (11, 22):
+                suma2 = sum(int(x) for x in str(suma2))
+            
+            # Reducir maestros para buscar en diccionario
+            lookup1 = 2 if suma1 == 11 else (4 if suma1 == 22 else suma1)
+            lookup2 = 2 if suma2 == 11 else (4 if suma2 == 22 else suma2)
+            
+            # Matriz de compatibilidad COMPLETA
+            compatibilidades = {
+                (1, 1): {"nivel": "🔥 80% - ALTA", "dinamica": "Dos líderes poderosos. Competencia o equipo imparable.", 
+                         "fortalezas": "Ambición compartida, energía intensa, respeto mutuo",
+                         "desafios": "Choque de egos, necesidad de liderar ambos",
+                         "consejo": "Definan roles claros. Compartan el liderazgo."},
+                (1, 2): {"nivel": "💫 70% - BUENA", "dinamica": "Uno lidera, otro apoya. Balance perfecto si hay respeto.",
+                         "fortalezas": "Complementariedad natural, balance acción-sensibilidad",
+                         "desafios": "1 puede dominar, 2 puede sentirse opacado",
+                         "consejo": "Valoren sus diferencias como fortalezas."},
+                (1, 3): {"nivel": "✨ 85% - MUY ALTA", "dinamica": "Energía creativa explosiva. Diversión y acción constante.",
+                         "fortalezas": "Optimismo, creatividad, aventura compartida",
+                         "desafios": "Pueden dispersarse, falta de practicidad",
+                         "consejo": "Agreguen estructura a su caos creativo."},
+                (1, 4): {"nivel": "⚡ 60% - MEDIA", "dinamica": "Choque entre libertad y estructura. Requiere trabajo.",
+                         "fortalezas": "1 aporta visión, 4 aporta ejecución",
+                         "desafios": "Ritmos muy diferentes, frustración mutua",
+                         "consejo": "Aprendan del otro. Encuentren punto medio."},
+                (1, 5): {"nivel": "🔥 90% - EXCELENTE", "dinamica": "Aventura y libertad compartida. Conexión magnética.",
+                         "fortalezas": "Independencia, aventura, cambio constante",
+                         "desafios": "Falta de compromiso, inestabilidad",
+                         "consejo": "Creen raíces conscientes en medio de la aventura."},
+                (1, 6): {"nivel": "💛 75% - ALTA", "dinamica": "1 es independiente, 6 es protector. Balance si hay respeto.",
+                         "fortalezas": "6 cuida, 1 lidera. Familia sólida.",
+                         "desafios": "1 necesita espacio, 6 necesita cercanía",
+                         "consejo": "Negocien espacio personal y tiempo juntos."},
+                (1, 7): {"nivel": "🌙 65% - MEDIA CON ESFUERZO", "dinamica": "Mundos diferentes. Uno externo, otro interno.",
+                         "fortalezas": "Respeto intelectual, crecimiento mutuo",
+                         "desafios": "7 necesita soledad que 1 no entiende",
+                         "consejo": "Respeten profundamente sus diferencias."},
+                (1, 8): {"nivel": "💰 85% - MUY ALTA", "dinamica": "Poder y ambición compartida. Imperio juntos.",
+                         "fortalezas": "Éxito material, metas compartidas, poder",
+                         "desafios": "Competencia, workaholics, conflictos de poder",
+                         "consejo": "Construyan juntos, no compitan."},
+                (1, 9): {"nivel": "🌟 70% - BUENA", "dinamica": "Uno inicia, otro finaliza. Ciclos complementarios.",
+                         "fortalezas": "1 aporta energía, 9 aporta sabiduría",
+                         "desafios": "9 suelta, 1 agarra. Ritmos opuestos.",
+                         "consejo": "Aprendan de los ciclos del otro."},
+                
+                (2, 2): {"nivel": "💕 85% - MUY ALTA", "dinamica": "Sensibilidad compartida. Se entienden sin palabras.",
+                         "fortalezas": "Empatía profunda, paz, intuición compartida",
+                         "desafios": "Demasiada sensibilidad, falta de acción",
+                         "consejo": "Necesitan alguien que tome decisiones. Túrnense."},
+                (2, 3): {"nivel": "🎨 80% - ALTA", "dinamica": "Creatividad y empatía. Conexión hermosa y ligera.",
+                         "fortalezas": "Comunicación, creatividad, alegría",
+                         "desafios": "Falta de practicidad, evitan conflictos",
+                         "consejo": "Enfrenten problemas en lugar de evitarlos."},
+                (2, 4): {"nivel": "🏡 75% - ALTA", "dinamica": "Estabilidad perfecta. 2 aporta amor, 4 seguridad.",
+                         "fortalezas": "Hogar sólido, lealtad, construcción conjunta",
+                         "desafios": "2 necesita emoción que 4 no da fácil",
+                         "consejo": "4: Muestra más afecto. 2: Valora la estabilidad."},
+                (2, 5): {"nivel": "💫 60% - MEDIA", "dinamica": "Sensibilidad vs libertad. Difícil pero enriquecedor.",
+                         "fortalezas": "2 ancla, 5 eleva. Balance posible.",
+                         "desafios": "5 necesita espacio, 2 necesita cercanía",
+                         "consejo": "Respeten necesidades opuestas con amor."},
+                (2, 6): {"nivel": "💚 90% - EXCELENTE", "dinamica": "Amor profundo y cuidado mutuo. Conexión del alma.",
+                         "fortalezas": "Familia, hogar, amor incondicional, empatía",
+                         "desafios": "Codependencia, pueden perderse en el otro",
+                         "consejo": "Mantengan identidad individual. Límites sanos."},
+                (2, 7): {"nivel": "🌊 85% - MUY ALTA", "dinamica": "Profundidad emocional y espiritual única.",
+                         "fortalezas": "Conexión mística, intuición compartida",
+                         "desafios": "Ambos necesitan soledad, comunicación limitada",
+                         "consejo": "Hablen más de lo que creen necesario."},
+                (2, 8): {"nivel": "⚖️ 65% - MEDIA CON ESFUERZO", "dinamica": "Sensibilidad vs poder. Mundos muy distintos.",
+                         "fortalezas": "2 humaniza a 8, 8 empodera a 2",
+                         "desafios": "Prioridades opuestas, falta de comprensión",
+                         "consejo": "Valoren lo que cada uno aporta."},
+                (2, 9): {"nivel": "💜 80% - ALTA", "dinamica": "Compasión compartida. Sanación mutua hermosa.",
+                         "fortalezas": "Empatía universal, crecimiento espiritual",
+                         "desafios": "Pueden hundirse en emociones juntos",
+                         "consejo": "Manténganse anclados. Busquen luz juntos."},
+                
+                (3, 3): {"nivel": "🎉 85% - MUY ALTA", "dinamica": "Fiesta constante. Creatividad y alegría sin fin.",
+                         "fortalezas": "Diversión, creatividad, optimismo, ligereza",
+                         "desafios": "Falta de seriedad, irresponsabilidad, dispersión",
+                         "consejo": "Agreguen estructura antes de que todo colapse."},
+                (3, 4): {"nivel": "🔧 60% - MEDIA", "dinamica": "Creatividad caótica vs estructura rígida.",
+                         "fortalezas": "3 inspira, 4 materializa. Pueden ser poderosos.",
+                         "desafios": "Frustración mutua constante, ritmos opuestos",
+                         "consejo": "Respeten tiempos diferentes. Paciencia."},
+                (3, 5): {"nivel": "🎈 90% - EXCELENTE", "dinamica": "Aventura, libertad y diversión máxima.",
+                         "fortalezas": "Cambio constante, alegría, espontaneidad",
+                         "desafios": "Inestabilidad extrema, falta de compromiso",
+                         "consejo": "Anclen su amor en algo sólido."},
+                (3, 6): {"nivel": "🌸 75% - ALTA", "dinamica": "Alegría y responsabilidad. Balance hermoso.",
+                         "fortalezas": "3 alivia a 6, 6 ancla a 3. Familia feliz.",
+                         "desafios": "6 se frustra con ligereza de 3",
+                         "consejo": "3: Sé más responsable. 6: Relájate más."},
+                (3, 7): {"nivel": "💭 55% - MEDIA BAJA", "dinamica": "Extraversión vs introversión. Muy diferentes.",
+                         "fortalezas": "3 saca a 7 de su cueva, 7 da profundidad a 3",
+                         "desafios": "Necesidades sociales opuestas",
+                         "consejo": "Respeten necesidades de espacio/compañía."},
+                (3, 8): {"nivel": "💼 70% - BUENA", "dinamica": "Creatividad y poder. Pueden construir algo grande.",
+                         "fortalezas": "3 inspira, 8 ejecuta. Negocios creativos.",
+                         "desafios": "8 muy serio para 3, 3 muy ligero para 8",
+                         "consejo": "Aprendan a balancear trabajo y diversión."},
+                (3, 9): {"nivel": "🌈 80% - ALTA", "dinamica": "Creatividad y compasión. Conexión hermosa.",
+                         "fortalezas": "Optimismo, crecimiento, humanidad",
+                         "desafios": "9 carga peso que 3 no entiende",
+                         "consejo": "3: Sé más profundo. 9: Sé más ligero."},
+                
+                (4, 4): {"nivel": "🏗️ 80% - ALTA", "dinamica": "Estabilidad absoluta. Construyen imperio juntos.",
+                         "fortalezas": "Lealtad, trabajo duro, metas compartidas",
+                         "desafios": "Rutina excesiva, rigidez, falta de espontaneidad",
+                         "consejo": "Agreguen aventura o se estancarán."},
+                (4, 5): {"nivel": "⚡ 50% - BAJA", "dinamica": "Estructura vs libertad. Conflicto constante.",
+                         "fortalezas": "4 ancla, 5 libera. Pueden balancearse.",
+                         "desafios": "Frustración mutua extrema, incomprensión",
+                         "consejo": "Necesitan mucha paciencia y compromiso."},
+                (4, 6): {"nivel": "💚 85% - MUY ALTA", "dinamica": "Familia y estabilidad perfecta. Hogar sólido.",
+                         "fortalezas": "Lealtad, hogar, responsabilidad compartida",
+                         "desafios": "Rutina excesiva, falta de pasión",
+                         "consejo": "Mantengan viva la chispa romántica."},
+                (4, 7): {"nivel": "📚 75% - ALTA", "dinamica": "Estructura y sabiduría. Respeto profundo.",
+                         "fortalezas": "Ambos valoran profundidad y calidad",
+                         "desafios": "Pueden ser demasiado serios juntos",
+                         "consejo": "Agreguen ligereza y diversión."},
+                (4, 8): {"nivel": "💰 90% - EXCELENTE", "dinamica": "Trabajo y éxito. Imperio material garantizado.",
+                         "fortalezas": "Ambición, éxito, construcción de legado",
+                         "desafios": "Workaholics, descuidan relación por trabajo",
+                         "consejo": "El éxito sin amor está vacío. Equilibren."},
+                (4, 9): {"nivel": "🌍 70% - BUENA", "dinamica": "Construcción y finalización. Ciclos complementarios.",
+                         "fortalezas": "4 construye, 9 da propósito profundo",
+                         "desafios": "9 suelta, 4 agarra. Ritmos diferentes.",
+                         "consejo": "Aprendan de las fases del otro."},
+                
+                (5, 5): {"nivel": "🎢 85% - MUY ALTA", "dinamica": "Montaña rusa constante. Aventura sin fin.",
+                         "fortalezas": "Libertad, cambio, aventura, pasión",
+                         "desafios": "Inestabilidad extrema, falta de compromiso",
+                         "consejo": "Anclen su amor o se perderán."},
+                (5, 6): {"nivel": "⚖️ 60% - MEDIA", "dinamica": "Libertad vs responsabilidad. Choque de valores.",
+                         "fortalezas": "5 libera a 6, 6 ancla a 5. Balance posible.",
+                         "desafios": "6 necesita compromiso, 5 necesita espacio",
+                         "consejo": "Negocien libertad y compromiso conscientemente."},
+                (5, 7): {"nivel": "🌙 70% - BUENA", "dinamica": "Libertad externa e interna. Respeto mutuo.",
+                         "fortalezas": "Ambos valoran independencia y crecimiento",
+                         "desafios": "Pueden distanciarse demasiado",
+                         "consejo": "Hagan tiempo intencional juntos."},
+                (5, 8): {"nivel": "💼 75% - ALTA", "dinamica": "Libertad y poder. Relación intensa y desafiante.",
+                         "fortalezas": "Ambición, energía, capacidad de cambio",
+                         "desafios": "5 resiste control de 8, 8 necesita estabilidad",
+                         "consejo": "Respeten necesidades opuestas con amor."},
+                (5, 9): {"nivel": "🌍 80% - ALTA", "dinamica": "Libertad y compasión. Viajes y crecimiento.",
+                         "fortalezas": "Aventura con propósito, humanitarismo",
+                         "desafios": "Falta de estabilidad material",
+                         "consejo": "Construyan algo estable entre tanto viaje."},
+                
+                (6, 6): {"nivel": "💕 85% - MUY ALTA", "dinamica": "Amor y cuidado mutuo extremo. Familia hermosa.",
+                         "fortalezas": "Hogar perfecto, amor incondicional, lealtad",
+                         "desafios": "Codependencia severa, pierden identidad",
+                         "consejo": "Mantengan vida individual. Límites sanos."},
+                (6, 7): {"nivel": "🏡 70% - BUENA", "dinamica": "Cuidado y profundidad. Conexión tranquila.",
+                         "fortalezas": "6 cuida, 7 profundiza. Hogar paz",
+                         "desafios": "7 necesita más soledad de la que 6 da",
+                         "consejo": "6: Respeta su necesidad de soledad."},
+                (6, 8): {"nivel": "💼 75% - ALTA", "dinamica": "Familia y éxito. Construyen legado juntos.",
+                         "fortalezas": "6 humaniza, 8 provee. Balance perfecto.",
+                         "desafios": "8 trabaja demasiado, 6 se siente solo",
+                         "consejo": "8: La familia necesita tu presencia, no solo dinero."},
+                (6, 9): {"nivel": "💜 90% - EXCELENTE", "dinamica": "Amor universal y compasión. Almas gemelas.",
+                         "fortalezas": "Servicio, amor profundo, familia y humanidad",
+                         "desafios": "Pueden perderse cuidando a todos menos a ellos",
+                         "consejo": "Cuídense entre ustedes primero."},
+                
+                (7, 7): {"nivel": "🔮 80% - ALTA", "dinamica": "Profundidad mística. Silencio compartido sagrado.",
+                         "fortalezas": "Conexión espiritual, comprensión sin palabras",
+                         "desafios": "Demasiado aislados del mundo, falta comunicación",
+                         "consejo": "Salgan de su cueva juntos a veces."},
+                (7, 8): {"nivel": "💰 70% - BUENA", "dinamica": "Sabiduría y poder. Respeto intelectual profundo.",
+                         "fortalezas": "7 asesora, 8 ejecuta. Negocios sabios.",
+                         "desafios": "Ambos pueden ser distantes emocionalmente",
+                         "consejo": "Conecten emocionalmente, no solo mentalmente."},
+                (7, 9): {"nivel": "🌟 85% - MUY ALTA", "dinamica": "Sabiduría y compasión. Maestros espirituales.",
+                         "fortalezas": "Crecimiento espiritual, propósito profundo",
+                         "desafios": "Pueden vivir demasiado en lo abstracto",
+                         "consejo": "Anclen su espiritualidad en lo terrenal."},
+                
+                (8, 8): {"nivel": "💰 85% - MUY ALTA", "dinamica": "Poder absoluto. Imperio o guerra.",
+                         "fortalezas": "Éxito masivo, ambición compartida, logros",
+                         "desafios": "Competencia destructiva, falta de ternura",
+                         "consejo": "El amor es más importante que ganar."},
+                (8, 9): {"nivel": "🌍 75% - ALTA", "dinamica": "Poder y compasión. Balance material-espiritual.",
+                         "fortalezas": "8 materializa visión de 9, 9 humaniza a 8",
+                         "desafios": "Valores diferentes, uno suelta y otro agarra",
+                         "consejo": "Respeten filosofías de vida diferentes."},
+                
+                (9, 9): {"nivel": "💜 90% - EXCELENTE", "dinamica": "Compasión universal. Almas viejas juntas.",
+                         "fortalezas": "Amor incondicional, propósito compartido, sabiduría",
+                         "desafios": "Pueden hundirse en dolor del mundo juntos",
+                         "consejo": "No carguen más peso del que pueden. Busquen luz."}
+            }
+            
+            # Obtener compatibilidad
+            key = tuple(sorted([lookup1, lookup2]))
+            comp = compatibilidades.get(key, {
+                "nivel": "💫 Única",
+                "dinamica": "Combinación especial.",
+                "fortalezas": "Por explorar juntos",
+                "desafios": "Los que ustedes decidan enfrentar",
+                "consejo": "Creen su propia historia."
+            })
+            
+            info1 = self.NUMEROS_BASE.get(suma1, {"nombre": "Especial"})
+            info2 = self.NUMEROS_BASE.get(suma2, {"nombre": "Especial"})
+            
+            return f"""
+🔢💕 **COMPATIBILIDAD NUMEROLÓGICA**
+
+**Persona 1:** Camino de Vida {suma1} - *{info1['nombre']}*
+**Persona 2:** Camino de Vida {suma2} - *{info2['nombre']}*
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🎯 **COMPATIBILIDAD:** {comp['nivel']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+**💫 DINÁMICA DE LA RELACIÓN:**
+{comp['dinamica']}
+
+**✨ FORTALEZAS:**
+{comp['fortalezas']}
+
+**⚠️ DESAFÍOS:**
+{comp['desafios']}
+
+**💡 CONSEJO CÓSMICO:**
+{comp['consejo']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💛 Recuerda: Los números muestran tendencias, pero el amor verdadero trasciende la numerología.
+"""
+        
+        except Exception as e:
+            return f"❌ Error: {str(e)}"
+
+    def mapa_de_vida(self, fecha_nacimiento):
+        """Detecta números kármicos y calcula el Regalo Divino"""
+        try:
+            # --- 1. PREPARAR FECHA ---
+            fecha_nacimiento = fecha_nacimiento.strip()
+            separador = "/" if "/" in fecha_nacimiento else "-"
+            partes = fecha_nacimiento.split(separador)
+            
+            if len(partes) != 3:
+                return "❌ Formato inválido. Usa DD/MM/AAAA."
+
+            # Ajustar si viene Año primero
+            if len(partes[0]) == 4: 
+                a, m, d = partes
+            else: 
+                d, m, a = partes
+                
+            dia_num = int(d)
+            mes_num = int(m)
+            anio_num = int(a)
+
+            # Validación básica
+            if not (1 <= mes_num <= 12) or not (1 <= dia_num <= 31):
+                 return "❌ Fecha incorrecta."
+
+            # --- 2. SIGNIFICADOS ---
+            
+            # Karma (Retos)
+            karmicos_dict = {
+                13: {"nombre": "El Trabajador", "leccion": "Disciplina y esfuerzo.", "trabajo": "Orden y terminar lo que empiezas."},
+                14: {"nombre": "El Buscador", "leccion": "Equilibrio y templanza.", "trabajo": "Moderación y evitar excesos."},
+                16: {"nombre": "El Renacido", "leccion": "Humildad y despertar.", "trabajo": "Soltar el control y el ego."},
+                19: {"nombre": "El Sol", "leccion": "Liderazgo y servicio.", "trabajo": "Ayudar sin imponer."}
+            }
+
+            # Regalo Divino (Dones)
+            regalos_dict = {
+                1: "Liderazgo e Iniciativa",
+                2: "Diplomacia y Unión",
+                3: "Comunicación y Alegría",
+                4: "Orden y Estructura",
+                5: "Adaptabilidad y Magnetismo",
+                6: "Amor y Protección",
+                7: "Sabiduría e Intuición",
+                8: "Poder y Abundancia",
+                9: "Compasión y Servicio",
+                11: "Maestría e Inspiración"
+            }
+
+            # --- 3. CALCULAR RETOS (KARMA) ---
+            karmicos_encontrados = []
+
+            # En Día
+            if dia_num in karmicos_dict:
+                karmicos_encontrados.append(('Tu Día', dia_num))
+
+            # En Misión (Suma Total)
+            suma_total = dia_num + mes_num + sum(int(c) for c in str(anio_num))
+            if suma_total in karmicos_dict:
+                karmicos_encontrados.append(('Tu Misión', suma_total))
+            else:
+                # Reducción extra por si acaso (ej. 49 -> 13)
+                suma_reducida = sum(int(c) for c in str(suma_total))
+                if suma_reducida in karmicos_dict:
+                    karmicos_encontrados.append(('Tu Misión', suma_reducida))
+
+            # --- 4. CALCULAR REGALO (DON) ---
+            # Últimos 2 dígitos del año
+            ultimos_dos = str(anio_num)[-2:] 
+            suma_regalo = int(ultimos_dos[0]) + int(ultimos_dos[1])
+            
+            if suma_regalo == 0: suma_regalo = 2 # Ajuste año 2000
+            
+            # Reducir a un dígito (excepto 11)
+            while suma_regalo > 9 and suma_regalo != 11:
+                suma_regalo = sum(int(c) for c in str(suma_regalo))
+
+            texto_regalo = regalos_dict.get(suma_regalo, "Evolución Constante")
+
+            # --- 5. RESULTADO FINAL ---
+            
+            resultado = f"""
+✨ **TU MAPA DE VIDA**
+📅 {fecha_nacimiento}
+━━━━━━━━━━━━━━━━━━━━━
+"""
+
+            # Parte A: Los Retos (Karma)
+            if not karmicos_encontrados:
+                resultado += "✅ **SIN CARGAS DEL PASADO:** Tu camino está libre de deudas kármicas. ¡Avanza ligero!\n"
+            else:
+                resultado += f"⚡ **TIENES {len(karmicos_encontrados)} RETO(S) POR SUPERAR:**\n"
+                for ubicacion, numero in karmicos_encontrados:
+                    info = karmicos_dict[numero]
+                    resultado += f"   • **{info['nombre']} ({numero})** en {ubicacion}: \n     💡 Aprende: {info['leccion']}\n"
+
+            # Parte B: El Regalo (Dharma)
+            resultado += f"""
+━━━━━━━━━━━━━━━━━━━━━
+🎁 **TU REGALO DIVINO:** Número {suma_regalo}
+🌟 *{texto_regalo}*
+
+Este es tu "superpoder" natural. Úsalo cuando tengas dudas o dificultades.
+━━━━━━━━━━━━━━━━━━━━━
+"""
+            
+            return resultado
+
+        except Exception as e:
+            return f"❌ Algo salió mal: {str(e)}"
+    def ciclos_de_vida(self, fecha_nacimiento):
+        """Calcula los 3 ciclos de vida numerológicos"""
+        try:
+            import datetime
+            
+            # Parsear fecha
+            if "/" in fecha_nacimiento:
+                d, m, a = fecha_nacimiento.split("/")
+            elif "-" in fecha_nacimiento:
+                partes = fecha_nacimiento.split("-")
+                if len(partes[0]) == 4:
+                    a, m, d = partes
+                else:
+                    d, m, a = partes
+            else:
+                return "❌ Formato inválido (Usa DD/MM/AAAA o DD-MM-AAAA)"
+            
+            # Calcular camino de vida para determinar edad de transición
+            suma_camino = int(d) + int(m) + int(a)
+            while suma_camino > 9 and suma_camino not in (11, 22):
+                suma_camino = sum(int(x) for x in str(suma_camino))
+            
+            # Edad de transición entre ciclos (basado en camino de vida)
+            transiciones = {
+                1: (36, 54), 2: (35, 53), 3: (33, 51), 4: (32, 50),
+                5: (31, 49), 6: (30, 48), 7: (29, 47), 8: (28, 46),
+                9: (27, 45), 11: (35, 53), 22: (32, 50)
+            }
+            edad1, edad2 = transiciones.get(suma_camino, (28, 54))
+            
+            # Calcular números de cada ciclo
+            primer_ciclo = int(m)
+            while primer_ciclo > 9:
+                primer_ciclo = sum(int(x) for x in str(primer_ciclo))
+            
+            segundo_ciclo = int(d)
+            while segundo_ciclo > 9:
+                segundo_ciclo = sum(int(x) for x in str(segundo_ciclo))
+            
+            tercer_ciclo = int(a)
+            while tercer_ciclo > 9:
+                tercer_ciclo = sum(int(x) for x in str(tercer_ciclo))
+            
+            # Significados
+            significados_ciclos = {
+                1: {"energia": "INDEPENDENCIA Y LIDERAZGO", "descripcion": "Este ciclo te impulsa a descubrir quién eres.", "desafios": "Soledad, miedo a destacar", "lecciones": "Confiar en tu visión única", "mensaje": "Tienes todo dentro de ti."},
+                2: {"energia": "COOPERACIÓN Y SENSIBILIDAD", "descripcion": "Este ciclo enseña el poder de las relaciones.", "desafios": "Codependencia, sensibilidad excesiva", "lecciones": "Equilibrar dar y recibir", "mensaje": "Tu sensibilidad es tu superpoder."},
+                3: {"energia": "EXPRESIÓN Y CREATIVIDAD", "descripcion": "Tiempo de expresarte y crear.", "desafios": "Dispersión, superficialidad", "lecciones": "Encontrar tu voz única", "mensaje": "Naciste para crear."},
+                4: {"energia": "CONSTRUCCIÓN Y ESTABILIDAD", "descripcion": "Tiempo de construir bases sólidas.", "desafios": "Rigidez, exceso de trabajo", "lecciones": "Balance trabajo-descanso", "mensaje": "Estás construyendo tu imperio."},
+                5: {"energia": "LIBERTAD Y CAMBIO", "descripcion": "Tiempo de explorar y experimentar.", "desafios": "Inestabilidad, impulsividad", "lecciones": "Usar libertad responsablemente", "mensaje": "El cambio es lo que necesitas."},
+                6: {"energia": "AMOR Y RESPONSABILIDAD", "descripcion": "Tiempo de amor incondicional.", "desafios": "Codependencia, mártir", "lecciones": "Amarte primero", "mensaje": "Llena tu copa primero."},
+                7: {"energia": "SABIDURÍA INTERIOR", "descripcion": "Tiempo de introspección profunda.", "desafios": "Aislamiento, frialdad", "lecciones": "Equilibrar soledad y conexión", "mensaje": "Tu sabiduría viene del silencio."},
+                8: {"energia": "PODER Y ABUNDANCIA", "descripcion": "Tiempo de manifestar abundancia.", "desafios": "Workaholism, apego al dinero", "lecciones": "Usar poder para servir", "mensaje": "Mereces el éxito."},
+                9: {"energia": "COMPASIÓN UNIVERSAL", "descripcion": "Tiempo de servicio y compasión.", "desafios": "Cargar dolor ajeno", "lecciones": "Compasión con límites", "mensaje": "Usa tu sabiduría para iluminar."}
+            }
+            
+            # Determinar edad y ciclo actual
+            hoy = datetime.datetime.now()
+            nac_dt = datetime.datetime(int(a), int(m), int(d))
+            edad_actual = (hoy - nac_dt).days // 365
+            
+            if edad_actual < edad1:
+                ciclo_actual = "PRIMERO"
+                num_actual = primer_ciclo
+            elif edad_actual < edad2:
+                ciclo_actual = "SEGUNDO"
+                num_actual = segundo_ciclo
+            else:
+                ciclo_actual = "TERCERO"
+                num_actual = tercer_ciclo
+            
+            info1 = significados_ciclos.get(primer_ciclo, significados_ciclos[1])
+            info2 = significados_ciclos.get(segundo_ciclo, significados_ciclos[1])
+            info3 = significados_ciclos.get(tercer_ciclo, significados_ciclos[1])
+            
+            return f"""
+🌀 **TUS 3 CICLOS DE VIDA**
+
+**Tu edad actual:** {edad_actual} años
+**Ciclo en el que estás:** {ciclo_actual}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌱 **PRIMER CICLO: FORMACIÓN** (0 - {edad1} años)
+**Número {primer_ciclo}:** *{info1['energia']}*
+
+{info1['descripcion']}
+
+**Lecciones:** {info1['lecciones']}
+**Desafíos:** {info1['desafios']}
+
+💫 {info1['mensaje']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🌳 **SEGUNDO CICLO: PRODUCTIVIDAD** ({edad1} - {edad2} años)
+**Número {segundo_ciclo}:** *{info2['energia']}*
+
+{info2['descripcion']}
+
+**Lecciones:** {info2['lecciones']}
+**Desafíos:** {info2['desafios']}
+
+💫 {info2['mensaje']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+🍂 **TERCER CICLO: COSECHA** ({edad2}+ años)
+**Número {tercer_ciclo}:** *{info3['energia']}*
+
+{info3['descripcion']}
+
+**Lecciones:** {info3['lecciones']}
+**Desafíos:** {info3['desafios']}
+
+💫 {info3['mensaje']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+💜 **COMPRENDE TUS CICLOS:**
+
+Cada ciclo trae energías diferentes. Fluye con ellas.
+
+🌟 Estás en tu ciclo {ciclo_actual}, número {num_actual}.
+"""
+            
+        except Exception as e:
+            return f"❌ Error: {str(e)}"    
+
+           
+# =====================================================
+# HANDLER IDEAS CON IA
+# =====================================================
+class IdeasHandler:
+    def __init__(self, openai_api_key):
+        self.OPENAI_API_KEY = openai_api_key
+        self.openai_client = None
+        self.openai_enabled = False
+        self._inicializar_openai()
+        
+        self.DATA_FOLDER = "data"
+        self.PROYECTOS_FILE = os.path.join(self.DATA_FOLDER, "proyectos_ideas.json")
+        os.makedirs(self.DATA_FOLDER, exist_ok=True)
+    
+    def _inicializar_openai(self):
+        try:
+            from openai import OpenAI
+            self.openai_client = OpenAI(api_key=self.OPENAI_API_KEY)
+            self.openai_enabled = True
+        except:
+            self.openai_enabled = False
+    
+    def _cargar_proyectos(self):
+        try:
+            proyectos = cargar_json_mongo("proyectos_ideas")
+            return proyectos if proyectos else []
+        except:
+            return []
+    
+    def _guardar_proyectos(self, proyectos):
+        """Guarda proyectos en MongoDB de forma segura"""
+        import json
+        
+        def serializar_seguro(obj):
+            """Convierte cualquier objeto a algo serializable"""
+            if obj is None:
+                return None
+            elif isinstance(obj, (str, int, float, bool)):
+                return obj
+            elif isinstance(obj, dict):
+                return {str(k): serializar_seguro(v) for k, v in obj.items()}
+            elif isinstance(obj, (list, tuple)):
+                return [serializar_seguro(item) for item in obj]
+            else:
+                # Si no es ninguno de los tipos anteriores, convertir a string
+                return str(obj)
+        
+        try:
+            # Limpiar proyectos de forma super segura
+            proyectos_limpios = []
+            
+            for proyecto in proyectos:
+                proyecto_limpio = {
+                    "id": int(proyecto.get("id", 0)),
+                    "nombre": str(proyecto.get("nombre", ""))[:500],
+                    "descripcion": str(proyecto.get("descripcion", ""))[:1000],
+                    "fecha_creacion": str(proyecto.get("fecha_creacion", "")),
+                    "items": [],
+                    "total_inspiracion": int(proyecto.get("total_inspiracion", 0)),
+                    "total_compras": int(proyecto.get("total_compras", 0)),
+                    "conseguidos": int(proyecto.get("conseguidos", 0)),
+                    "total_gastado": float(proyecto.get("total_gastado", 0.0))
+                }
+                
+                # Procesar items
+                for item in proyecto.get("items", []):
+                    try:
+                        item_limpio = {
+                            "id": int(item.get("id", 0)),
+                            "tipo": str(item.get("tipo", ""))[:50],
+                            "descripcion": str(item.get("descripcion", ""))[:1000],
+                            "fecha": str(item.get("fecha", "")),
+                            "conseguido": bool(item.get("conseguido", False)),
+                            "precio": None,
+                            "imagen": None
+                        }
+                        
+                        # Procesar precio
+                        if item.get("precio") is not None:
+                            try:
+                                precio_val = float(item["precio"])
+                                if precio_val > 0:
+                                    item_limpio["precio"] = round(precio_val, 2)
+                            except:
+                                pass
+                        
+                        # Procesar imagen - SOLO si es string y no vacío
+                        if item.get("imagen"):
+                            try:
+                                imagen_val = item["imagen"]
+                                if isinstance(imagen_val, str) and imagen_val.startswith("data:image"):
+                                    if len(imagen_val) < 3000000:
+                                        item_limpio["imagen"] = imagen_val
+                                    else:
+                                        print(f"⚠️ Imagen demasiado grande, no se guardará")
+                            except Exception as e:
+                                print(f"⚠️ Error procesando imagen: {e}")
+                        
+                        # Fecha conseguido
+                        if "fecha_conseguido" in item:
+                            item_limpio["fecha_conseguido"] = str(item["fecha_conseguido"])
+                        
+                        proyecto_limpio["items"].append(item_limpio)
+                        
+                    except Exception as e:
+                        print(f"⚠️ Error procesando item individual: {e}")
+                        continue
+                
+                proyectos_limpios.append(proyecto_limpio)
+            
+            # Serializar de forma segura
+            proyectos_serializables = serializar_seguro(proyectos_limpios)
+            
+            # Guardar en MongoDB
+            guardar_json_mongo("proyectos_ideas", proyectos_serializables)
+            
+            print(f"✅ Proyectos guardados exitosamente en MongoDB")
+            return True
+                
+        except Exception as e:
+            print(f"❌ ERROR guardando proyectos: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Intentar guardar versión mínima sin imágenes
+            try:
+                print("🔄 Intentando guardar sin imágenes...")
+                proyectos_sin_imagenes = []
+                for p in proyectos:
+                    p_copia = dict(p)
+                    p_copia["items"] = []
+                    for item in p.get("items", []):
+                        item_copia = dict(item)
+                        item_copia["imagen"] = None
+                        p_copia["items"].append(item_copia)
+                    proyectos_sin_imagenes.append(p_copia)
+                
+                guardar_json_mongo("proyectos_ideas", proyectos_sin_imagenes)
+                print("✅ Guardado sin imágenes exitoso")
+                return True
+            except:
+                print("❌ Fallo total al guardar")
+                return False
+    
+    def _imagen_a_base64(self, uploaded_file):
+        """Convierte archivo subido a base64"""
+        try:
+            import base64
+            
+            # Obtener los bytes de la imagen
+            bytes_data = uploaded_file.getvalue()
+            
+            # Convertir a base64
+            base64_str = base64.b64encode(bytes_data).decode('utf-8')
+            
+            # Detectar tipo MIME de forma segura
+            if hasattr(uploaded_file, 'type') and uploaded_file.type:
+                mime_type = uploaded_file.type
+            else:
+                # Default a PNG si no hay tipo
+                mime_type = 'image/png'
+            
+            # Retornar data URL
+            return f"data:{mime_type};base64,{base64_str}"
+            
+        except Exception as e:
+            print(f"Error convirtiendo imagen a base64: {e}")
+            return None
+    
+    def conversar_con_ia(self, mensaje_usuario, contexto=""):
+        """Conversa con IA sobre ideas"""
+        if not self.openai_enabled:
+            return "La IA no está disponible en este momento 💜"
+        
+        prompt = f"""Eres una amiga cercana que ayuda con ideas y proyectos personales.
+
+Contexto: {contexto if contexto else "Conversación nueva sobre ideas"}
+
+Usuario dice: "{mensaje_usuario}"
+
+Responde de forma:
+- Cálida y emocionada
+- Natural y conversacional
+- Empática y validadora
+- Proactiva con sugerencias
+- Usa emojis ocasionalmente 💛
+- Máximo 150 palabras
+
+Escribe en prosa natural."""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una amiga cercana que ayuda con ideas y proyectos personales. Conversas naturalmente, sin parecer robótica."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=300,
+                temperature=0.9
+            )
+            return response.choices[0].message.content.strip()
+        except:
+            return "Ayy perdón bebé, tuve un problemita técnico 🥺 ¿Me lo repites?"
+    
+    def generar_imagen_dalle(self, descripcion):
+        """Genera imagen con DALL-E 3"""
+        if not self.openai_enabled:
+            return {'success': False, 'error': 'IA no disponible'}
+        
+        prompt = f"{descripcion}, high quality, detailed, aesthetic, beautiful composition"
+        
+        try:
+            response = self.openai_client.images.generate(
+                model="dall-e-3",
+                prompt=prompt,
+                size="1024x1024",
+                quality="standard",
+                n=1
+            )
+            return {
+                'success': True,
+                'url': response.data[0].url,
+                'prompt': prompt
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def crear_proyecto(self, nombre, descripcion=""):
+        """Crea un nuevo proyecto"""
+        proyectos = self._cargar_proyectos()
+        nuevo_id = len(proyectos) + 1
+        
+        nuevo_proyecto = {
+            "id": nuevo_id,
+            "nombre": nombre,
+            "descripcion": descripcion,
+            "fecha_creacion": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "items": [],
+            "total_inspiracion": 0,
+            "total_compras": 0,
+            "conseguidos": 0,
+            "total_gastado": 0.0
+        }
+        
+        proyectos.append(nuevo_proyecto)
+        self._guardar_proyectos(proyectos)
+        return nuevo_proyecto
+    
+    def listar_proyectos(self):
+        """Lista todos los proyectos"""
+        return self._cargar_proyectos()
+    
+    def obtener_proyecto(self, proyecto_id):
+        """Obtiene un proyecto por ID"""
+        proyectos = self._cargar_proyectos()
+        try:
+            pid = int(proyecto_id)
+            return next((p for p in proyectos if p["id"] == pid), None)
+        except:
+            return None
+    
+    def eliminar_proyecto(self, proyecto_id):
+        """Elimina un proyecto completo"""
+        try:
+            proyectos = self._cargar_proyectos()
+            proyectos_filtrados = [p for p in proyectos if p["id"] != int(proyecto_id)]
+            self._guardar_proyectos(proyectos_filtrados)
+            return True
+        except Exception as e:
+            print(f"Error eliminando proyecto: {e}")
+            return False
+    
+    def agregar_item(self, proyecto_id, tipo, descripcion, precio=None, imagen_file=None, **kwargs):
+        """Agrega item a un proyecto con soporte para precio e imagen"""
+        proyectos = self._cargar_proyectos()
+        
+        try:
+            pid = int(proyecto_id)
+        except:
+            return None
+        
+        proyecto = next((p for p in proyectos if p["id"] == pid), None)
+        if not proyecto:
+            return None
+        
+        # Convertir imagen a base64 si existe
+        imagen_base64 = None
+        if imagen_file:
+            try:
+                imagen_base64 = self._imagen_a_base64(imagen_file)
+                if not imagen_base64:
+                    print("⚠️ No se pudo convertir la imagen")
+            except Exception as e:
+                print(f"Error procesando imagen: {e}")
+                imagen_base64 = None
+        
+        # Crear el nuevo item
+        nuevo_item = {
+            "id": len(proyecto['items']) + 1,
+            "tipo": tipo,
+            "descripcion": descripcion,
+            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "conseguido": False,
+            "precio": float(precio) if precio and precio > 0 else None,
+            "imagen": imagen_base64
+        }
+        
+        # Agregar al proyecto
+        proyecto['items'].append(nuevo_item)
+        
+        # Actualizar contadores
+        if tipo == 'inspiracion':
+            proyecto['total_inspiracion'] = proyecto.get('total_inspiracion', 0) + 1
+        else:
+            proyecto['total_compras'] = proyecto.get('total_compras', 0) + 1
+        
+        # Guardar con manejo de errores
+        try:
+            self._guardar_proyectos(proyectos)
+            return nuevo_item
+        except Exception as e:
+            print(f"Error guardando proyecto: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def eliminar_item(self, proyecto_id, item_id):
+        """Elimina un item de un proyecto"""
+        try:
+            proyectos = self._cargar_proyectos()
+            proyecto = next((p for p in proyectos if p["id"] == int(proyecto_id)), None)
+            
+            if not proyecto:
+                return False
+            
+            # Buscar el item
+            item = next((i for i in proyecto.get('items', []) if i["id"] == int(item_id)), None)
+            if not item:
+                return False
+            
+            # Actualizar contadores ANTES de eliminar
+            if item.get('conseguido'):
+                proyecto['conseguidos'] = max(0, proyecto.get('conseguidos', 0) - 1)
+            
+            if item.get('precio') and item['tipo'] == 'compra':
+                proyecto['total_gastado'] = max(0, proyecto.get('total_gastado', 0) - item['precio'])
+            
+            if item['tipo'] == 'inspiracion':
+                proyecto['total_inspiracion'] = max(0, proyecto.get('total_inspiracion', 0) - 1)
+            else:
+                proyecto['total_compras'] = max(0, proyecto.get('total_compras', 0) - 1)
+            
+            # Filtrar (eliminar) el item
+            proyecto['items'] = [i for i in proyecto['items'] if i["id"] != int(item_id)]
+            
+            # Guardar
+            self._guardar_proyectos(proyectos)
+            return True
+            
+        except Exception as e:
+            print(f"Error eliminando item: {e}")
+            return False
+    
+    def marcar_conseguido(self, proyecto_id, item_id):
+        """Marca un item como conseguido"""
+        proyectos = self._cargar_proyectos()
+        try:
+            pid = int(proyecto_id)
+            iid = int(item_id)
+        except:
+            return False
+        
+        proyecto = next((p for p in proyectos if p["id"] == pid), None)
+        if not proyecto:
+            return False
+        
+        item = next((i for i in proyecto['items'] if i["id"] == iid), None)
+        if not item:
+            return False
+        
+        item['conseguido'] = True
+        item['fecha_conseguido'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        proyecto['conseguidos'] = proyecto.get('conseguidos', 0) + 1
+        
+        # Sumar al total gastado si tiene precio
+        if item.get('precio'):
+            proyecto['total_gastado'] = proyecto.get('total_gastado', 0) + item['precio']
+        
+        self._guardar_proyectos(proyectos)
+        return True
+    
+    def expandir_idea(self, idea_usuario):
+        """Expande una idea con sugerencias de IA"""
+        if not self.openai_enabled:
+            return "La IA no está disponible 💜"
+        
+        prompt = f"""El usuario tiene esta idea: "{idea_usuario}"
+
+Ayúdale a expandirla. Genera:
+1. 3 variaciones interesantes de la idea
+2. 2 preguntas para profundizar
+3. 1 sugerencia práctica para empezar
+
+Máximo 200 palabras. Tono amigable y motivador."""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una amiga creativa que ayuda a expandir ideas de proyectos personales."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=350,
+                temperature=0.8
+            )
+            return response.choices[0].message.content.strip()
+        except:
+            return "No pude procesar la idea 🥺 Intenta de nuevo"
+    def editar_item(self, proyecto_id, item_id, **cambios):
+        """
+        Edita un item existente de un proyecto
+        
+        Args:
+            proyecto_id: ID del proyecto
+            item_id: ID del item a editar
+            **cambios: Campos a actualizar (descripcion, precio, etc.)
+        
+        Returns:
+            True si se editó correctamente, False en caso contrario
+        """
+        proyectos = self._cargar_proyectos()
+        
+        try:
+            pid = int(proyecto_id)
+            iid = int(item_id)
+        except:
+            return False
+        
+        # Buscar el proyecto
+        proyecto = next((p for p in proyectos if p["id"] == pid), None)
+        
+        if not proyecto:
+            return False
+        
+        # Buscar el item
+        item = next((i for i in proyecto['items'] if i["id"] == iid), None)
+        
+        if not item:
+            return False
+        
+        # Guardar precio anterior si existe
+        precio_anterior = item.get('precio', 0)
+        
+        # Actualizar los campos que se pasaron
+        for campo, valor in cambios.items():
+            if valor is not None:  # Solo actualizar si el valor no es None
+                item[campo] = valor
+        
+        # Si cambió el precio, actualizar presupuesto del proyecto
+        if 'precio' in cambios and item['tipo'] == 'compra' and not item.get('conseguido'):
+            precio_nuevo = cambios['precio']
+            diferencia = precio_nuevo - precio_anterior
+            proyecto['presupuesto_estimado'] = proyecto.get('presupuesto_estimado', 0) + diferencia
+        
+        # Agregar fecha de última edición
+        import datetime
+        item['fecha_editado'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        
+        self._guardar_proyectos(proyectos)
+        
+        return True
+    
+# =====================================================
+# HANDLER PROFESIONAL CON IA
+# =====================================================
+class ProfesionalHandler:
+    def __init__(self, openai_api_key):
+        self.OPENAI_API_KEY = openai_api_key
+        self.openai_client = None
+        self.openai_enabled = False
+        self._inicializar_openai()
+        
+        self.DATA_FOLDER = "data"
+        self.VACANTES_FILE = os.path.join(self.DATA_FOLDER, "vacantes.json")
+        os.makedirs(self.DATA_FOLDER, exist_ok=True)
+        
+        self.PREGUNTAS_COMUNES = [
+            "Cuéntame sobre ti",
+            "¿Por qué quieres trabajar aquí?",
+            "¿Cuáles son tus fortalezas?",
+            "¿Cuál es tu mayor debilidad?",
+            "Cuéntame sobre un desafío que hayas superado",
+            "¿Dónde te ves en 5 años?",
+            "¿Por qué dejaste tu último trabajo?",
+            "¿Cómo manejas la presión?",
+            "Cuéntame sobre un error que cometiste",
+            "¿Por qué deberíamos contratarte?"
+        ]
+    
+    def _inicializar_openai(self):
+        try:
+            from openai import OpenAI
+            self.openai_client = OpenAI(api_key=self.OPENAI_API_KEY)
+            self.openai_enabled = True
+        except:
+            self.openai_enabled = False
+    
+    def _cargar_vacantes(self):
+        try:
+            vacantes = cargar_json_mongo("vacantes")
+            return vacantes if vacantes else []
+        except:
+            return []
+    
+    def _guardar_vacantes(self, vacantes):
+        guardar_json_mongo("vacantes", vacantes)
+    
+    def generar_correo_profesional(self, tipo, contexto=""):
+        """Genera correos profesionales con IA"""
+        if not self.openai_enabled:
+            return "La IA no está disponible 💜"
+        
+        prompts = {
+            "agradecimiento": f"""Genera un correo profesional de agradecimiento después de una entrevista.
+Contexto: {contexto if contexto else "entrevista reciente para un puesto"}
+
+El correo debe:
+- Agradecer por el tiempo
+- Reafirmar interés en la posición
+- Ser conciso (máximo 150 palabras)
+- Tono profesional pero cálido
+
+Formato:
+Asunto: [línea de asunto]
+---
+[Cuerpo del correo]""",
+
+            "seguimiento": f"""Genera un correo profesional de seguimiento para una aplicación.
+Contexto: {contexto if contexto else "aplicación enviada hace 1-2 semanas"}
+
+El correo debe:
+- Recordar brevemente la aplicación
+- Reafirmar interés
+- Preguntar sobre el estado del proceso
+- Ser breve y respetuoso (máximo 120 palabras)
+
+Formato:
+Asunto: [línea de asunto]
+---
+[Cuerpo del correo]""",
+
+            "networking": f"""Genera un mensaje profesional para LinkedIn/networking.
+Contexto: {contexto if contexto else "contacto profesional en la industria"}
+
+El mensaje debe:
+- Presentarte brevemente
+- Explicar por qué te contactas
+- Solicitar conexión de forma natural
+- Ser conciso (máximo 100 palabras)
+
+[Mensaje]""",
+
+            "feedback": f"""Genera un correo solicitando feedback después de un proceso.
+Contexto: {contexto if contexto else "proceso de selección que no avanzó"}
+
+El correo debe:
+- Agradecer por la oportunidad
+- Solicitar feedback constructivo
+- Mantener profesionalismo
+- Ser breve (máximo 120 palabras)
+
+Formato:
+Asunto: [línea de asunto]
+---
+[Cuerpo del correo]""",
+
+            "negociacion": f"""Genera un correo profesional para negociar oferta/salario.
+Contexto: {contexto if contexto else "oferta recibida, quiero negociar"}
+
+El correo debe:
+- Agradecer por la oferta
+- Expresar entusiasmo
+- Presentar contra-propuesta profesionalmente
+- Ser asertivo pero respetuoso (máximo 150 palabras)
+
+Formato:
+Asunto: [línea de asunto]
+---
+[Cuerpo del correo]"""
+        }
+        
+        if tipo not in prompts:
+            return "❌ Tipo de correo no válido"
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una experta en comunicación profesional y recursos humanos. Generas correos profesionales, claros y efectivos en español."},
+                    {"role": "user", "content": prompts[tipo]}
+                ],
+                max_tokens=400,
+                temperature=0.7
+            )
+            
+            correo = response.choices[0].message.content.strip()
+            return f"📧 **CORREO GENERADO**\n\n{correo}\n\n💡 Personalízalo con tus datos antes de enviar 💛"
+        except:
+            return "❌ Error al generar el correo. Intenta de nuevo 💛"
+    
+    def obtener_pregunta_entrevista(self):
+        """Retorna pregunta aleatoria para practicar"""
+        pregunta = random.choice(self.PREGUNTAS_COMUNES)
+        return f"""💬 **PREGUNTA DE PRÁCTICA**
+
+_{pregunta}_
+
+💡 Responde usando el método STAR:
+• **S**ituación - Contexto
+• **T**area - Qué debías lograr
+• **A**cción - Qué hiciste
+• **R**esultado - Qué lograste
+
+✍️ Escribe tu respuesta y te daré feedback 💛"""
+    
+    def analizar_respuesta_entrevista(self, pregunta, respuesta):
+        """Analiza respuesta y da feedback con IA"""
+        if not self.openai_enabled:
+            return "La IA no está disponible 💜"
+        
+        prompt = f"""Eres una coach de entrevistas de trabajo experta.
+
+Pregunta: "{pregunta}"
+Respuesta del candidato: "{respuesta}"
+
+Analiza y proporciona:
+1. Aspectos positivos (2-3 puntos)
+2. Áreas de mejora (2-3 puntos)
+3. Sugerencia de mejora (1 párrafo)
+
+Sé constructiva, específica y motivadora. Máximo 200 palabras."""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una coach de entrevistas profesional, empática y constructiva."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=350,
+                temperature=0.7
+            )
+            
+            feedback = response.choices[0].message.content.strip()
+            return f"📋 **FEEDBACK DE TU RESPUESTA**\n\n{feedback}\n\n💛 ¡Sigue practicando!"
+        except:
+            return "❌ Error al analizar tu respuesta 💛"
+    
+    def agregar_vacante(self, empresa, cargo, fecha_aplicacion, contacto="", notas=""):
+        """Agrega vacante al seguimiento"""
+        vacantes = self._cargar_vacantes()
+        
+        nueva = {
+            "id": len(vacantes) + 1,
+            "empresa": empresa,
+            "cargo": cargo,
+            "fecha_aplicacion": fecha_aplicacion,
+            "contacto": contacto,
+            "estado": "aplicado",
+            "notas": notas,
+            "fecha_actualizacion": datetime.datetime.now().strftime("%Y-%m-%d")
+        }
+        
+        vacantes.append(nueva)
+        self._guardar_vacantes(vacantes)
+        return nueva
+    
+    def listar_vacantes(self):
+        """Lista todas las vacantes"""
+        return self._cargar_vacantes()
+    
+    def actualizar_estado_vacante(self, vacante_id, nuevo_estado, notas=""):
+        """Actualiza estado de vacante"""
+        vacantes = self._cargar_vacantes()
+        estados_validos = ["aplicado", "entrevista", "oferta", "rechazado", "retirado"]
+        
+        if nuevo_estado.lower() not in estados_validos:
+            return None
+        
+        vacante = next((v for v in vacantes if v["id"] == int(vacante_id)), None)
+        if not vacante:
+            return None
+        
+        vacante["estado"] = nuevo_estado.lower()
+        vacante["fecha_actualizacion"] = datetime.datetime.now().strftime("%Y-%m-%d")
+        if notas:
+            vacante["notas"] = notas
+        
+        self._guardar_vacantes(vacantes)
+        return vacante
+    
+    def borrar_vacante(self, vacante_id):
+        """Elimina vacante"""
+        vacantes = self._cargar_vacantes()
+        vacante = next((v for v in vacantes if v["id"] == int(vacante_id)), None)
+        
+        if not vacante:
+            return None
+        
+        vacantes = [v for v in vacantes if v["id"] != int(vacante_id)]
+        self._guardar_vacantes(vacantes)
+        return vacante
+    
+    def verificar_vacantes_pendientes_seguimiento(self):
+        """Verifica vacantes que necesitan seguimiento (7+ días)"""
+        vacantes = self._cargar_vacantes()
+        pendientes = []
+        
+        for v in vacantes:
+            if v.get('estado') != 'aplicado':
+                continue
+            
+            try:
+                fecha_app = datetime.datetime.strptime(v['fecha_aplicacion'], "%Y-%m-%d")
+                dias = (datetime.datetime.now() - fecha_app).days
+                
+                if dias >= 7:
+                    pendientes.append({
+                        'id': v['id'],
+                        'empresa': v['empresa'],
+                        'cargo': v['cargo'],
+                        'dias': dias
+                    })
+            except:
+                continue
+        
+        return pendientes
+    
+    def generar_estadisticas_vacantes(self):
+        """Genera estadísticas de vacantes"""
+        vacantes = self._cargar_vacantes()
+        
+        if not vacantes:
+            return None
+        
+        total = len(vacantes)
+        
+        # Contar por estado
+        estados = {
+            'aplicado': 0,
+            'entrevista': 0,
+            'oferta': 0,
+            'rechazado': 0,
+            'retirado': 0
+        }
+        
+        for v in vacantes:
+            estado = v.get('estado', 'aplicado')
+            if estado in estados:
+                estados[estado] += 1
+        
+        # Calcular tasa de respuesta (entrevistas + ofertas / total)
+        respuestas = estados['entrevista'] + estados['oferta']
+        tasa_respuesta = (respuestas / total * 100) if total > 0 else 0
+        
+        # Calcular tasa de éxito (ofertas / total)
+        tasa_exito = (estados['oferta'] / total * 100) if total > 0 else 0
+        
+        # Empresas más contactadas (top 3)
+        empresas = {}
+        for v in vacantes:
+            emp = v.get('empresa', 'N/A')
+            empresas[emp] = empresas.get(emp, 0) + 1
+        
+        top_empresas = sorted(empresas.items(), key=lambda x: x[1], reverse=True)[:3]
+        
+        # Tiempo promedio por estado (días)
+        try:
+            dias_totales = []
+            for v in vacantes:
+                if v.get('fecha_aplicacion'):
+                    fecha_app = datetime.datetime.strptime(v['fecha_aplicacion'], "%Y-%m-%d")
+                    fecha_actual = datetime.datetime.strptime(v.get('fecha_actualizacion', datetime.datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")
+                    dias = (fecha_actual - fecha_app).days
+                    dias_totales.append(dias)
+            
+            dias_promedio = sum(dias_totales) / len(dias_totales) if dias_totales else 0
+        except:
+            dias_promedio = 0
+        
+        return {
+            'total': total,
+            'estados': estados,
+            'tasa_respuesta': tasa_respuesta,
+            'tasa_exito': tasa_exito,
+            'top_empresas': top_empresas,
+            'dias_promedio': dias_promedio,
+            'activas': estados['aplicado'] + estados['entrevista']
+        }
+
+    
+    def marcar_conseguido(self, proyecto_id, item_id):
+        """Marca un item como conseguido"""
+        proyectos = self._cargar_proyectos()
+        try:
+            pid = int(proyecto_id)
+            iid = int(item_id)
+        except:
+            return False
+        
+        proyecto = next((p for p in proyectos if p["id"] == pid), None)
+        if not proyecto:
+            return False
+        
+        item = next((i for i in proyecto['items'] if i["id"] == iid), None)
+        if not item:
+            return False
+        
+        item['conseguido'] = True
+        item['fecha_conseguido'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        proyecto['conseguidos'] = proyecto.get('conseguidos', 0) + 1
+        
+        self._guardar_proyectos(proyectos)
+        return True
+    
+    def expandir_idea(self, idea_usuario):
+        """Expande una idea con sugerencias de IA"""
+        if not self.openai_enabled:
+            return "La IA no está disponible 💜"
+        
+        prompt = f"""El usuario tiene esta idea: "{idea_usuario}"
+
+Ayúdale a expandirla. Genera:
+1. 3 variaciones interesantes de la idea
+2. 2 preguntas para profundizar
+3. 1 sugerencia práctica para empezar
+
+Máximo 200 palabras. Tono amigable y motivador."""
+        
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Eres una amiga creativa que ayuda a expandir ideas de proyectos personales."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=350,
+                temperature=0.8
+            )
+            return response.choices[0].message.content.strip()
+        except:
+            return "No pude procesar la idea 🥺 Intenta de nuevo"
+
+
+class MockHandler:
+    def listar_proyectos(self): return []
+    def conversacion_ia(self, m, c=""): return "🔮 El oráculo descansa."
+    def conversar_con_ia(self, m, c=""): return "🔮 El oráculo descansa."
+    def energia_del_dia(self): return "✨ Energía no disponible"
+    def horoscopo_del_dia(self, s): return "✨ Horóscopo no disponible"
+    def numerologia_del_dia(self): return "🔢 Nume no disponible"
+    def tirada_tres_cartas_ia(self, p): return "🃏 Pasado: El Loco\nPresente: La Fuerza\nFuturo: El Mundo"
+    def ver_journal_tarot(self): return "Journal vacío"
+    def carta_natal_basica(self, f): return "Carta no disponible"
+    def fase_lunar_actual(self): return "Luna no disponible"
+    def transitos_actuales(self): return "Tránsitos no disponibles"
+    def listar_signos(self): return "Signos no disponibles"
+    def compatibilidad_signos(self, a, b): return "Compatibilidad no disponible"
+    def calcular_camino_de_vida(self, f): return "Camino no disponible"
+    def ano_personal(self, f): return "Año no disponible"
+    def significado_numero(self, n): return "Significado no disponible"
+    def compatibilidad_numerologica(self, a, b): return "Compatibilidad no disponible"
+    def ver_proyecto_detallado(self, i): return "Detalle no disponible"
+    def crear_proyecto(self, n, d): pass
+    def agregar_item(self, i, t, d): pass
+    def eliminar_proyecto(self, i): pass
+    def tirada_amor_ia(self, p): return "Tirada amor no disponible"
+    def tirada_trabajo_ia(self, p): return "Tirada trabajo no disponible"
+    def tirada_si_no_ia(self, p): return "Tirada si/no no disponible"
+
+# =====================================================
+# FUNCIONES DE UTILIDAD
+# =====================================================
+def crear_backup_datos():
+    """Crea un backup ZIP de todos los archivos de datos"""
+    import zipfile
+    from io import BytesIO
+    
+    # Crear nombre de archivo con timestamp
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    nombre_backup = f"portal_backup_{timestamp}.zip"
+    
+    # Crear archivo ZIP en memoria
+    zip_buffer = BytesIO()
+    
+    try:
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Agregar todos los archivos JSON de la carpeta data/
+            data_folder = "data"
+            if os.path.exists(data_folder):
+                for archivo in os.listdir(data_folder):
+                    if archivo.endswith('.json'):
+                        ruta_completa = os.path.join(data_folder, archivo)
+                        zip_file.write(ruta_completa, archivo)
+        
+        zip_buffer.seek(0)
+        return zip_buffer, nombre_backup, True
+    
+    except Exception as e:
+        return None, str(e), False
+# =====================================================
+# FUNCIÓN SPOTIFY PERSISTENTE (VERSIÓN SIMPLE)
+# =====================================================
+def render_spotify_persistente():
+    """Renderiza Spotify flotante en la parte inferior"""
+    
+    spotify_html = """
+    <style>
+        #spotify-fixed {
+            position: fixed !important;
+            bottom: 50px !important;              /* 👈 ARRIBA del footer */
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            z-index: 999999 !important;
+            width: 300px !important;
+            box-shadow: 0 4px 20px rgba(147, 51, 234, 0.5) !important;
+            border-radius: 12px !important;
+            background: rgba(2, 6, 23, 0.98) !important;
+            padding: 5px !important;
+            pointer-events: auto !important;
+        }
+        
+        #spotify-fixed iframe {
+            width: 100% !important;
+            height: 152px !important;
+            border-radius: 12px !important;
+        }
+        
+        #spotify-fixed:hover {
+            transform: translateX(-50%) translateY(-5px) !important;
+            box-shadow: 0 6px 30px rgba(147, 51, 234, 0.7) !important;
+        }
+        
+        @media (max-width: 768px) {
+            #spotify-fixed {
+                width: 250px !important;
+                bottom: 50px !important;
+            }
+        }
+    </style>
+    
+    <div id="spotify-fixed">
+        <iframe 
+            style="border-radius:12px" 
+            src="https://open.spotify.com/embed/playlist/37i9dQZF1DX4sWSpwq3LiO?utm_source=generator&theme=0" 
+            width="100%" 
+            height="152" 
+            frameBorder="0" 
+            allowfullscreen="" 
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+            loading="lazy">
+        </iframe>
+    </div>
+    """
+    
+    components.html(spotify_html, height=180, scrolling=False)
+# =====================================================
+# 5. INICIALIZACIÓN DE HANDLERS (OPTIMIZADO CON CACHÉ)
+# =====================================================
+@st.cache_resource
+def get_handlers():
+    fin = LocalFinanzasHandler()
+    not_h = LocalNotasHandler()
+    libros_handler = LocalLibrosHandler()
+    gestor_estantes = GestorEstantes()
+    fra = LocalFrasesHandler()
+    pers = GestorPersonalidades()
+    bib = RobustBibliaHandler()
+    metas = MetasAhorroHandler()
+    
+    try:
+        OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+    except:
+        OPENAI_API_KEY = ""
+        st.error("⚠️ No se encontró OPENAI_API_KEY")
+
+    tarot = TarotHandler(OPENAI_API_KEY)
+    astro = AstrologiaHandler()
+    nume = NumerologiaHandler()
+    ideas = IdeasHandler(OPENAI_API_KEY)
+    profesional = ProfesionalHandler(OPENAI_API_KEY)
+
+    return (fin, not_h, libros_handler, gestor_estantes, fra, 
+            pers, bib, metas, ideas, tarot, astro, nume, profesional)
+
+# Desempaquetar con nombres que coincidan con el uso en el código
+(finanzas_handler, notas_handler, libros_handler, gestor_estantes, 
+ frases_handler, personalidades_handler, biblia, metas, 
+ ideas_handler, tarot, astrologia, numerologia, 
+ profesional) = get_handlers()
+
+metas_ahorro_handler = metas
+profesional_handler = profesional
+# =====================================================
+# 6. NAVEGACIÓN PRINCIPAL
+# =====================================================
+
+# =====================================================
+# FUNCIONES AUXILIARES PARA MONGODB
+# =====================================================
+
+def cargar_json_mongo(nombre_coleccion):
+    """Carga datos desde MongoDB (reemplaza json.load())"""
+    try:
+        datos = st.session_state.db.cargar_datos(nombre_coleccion)
+        return datos if datos else []
+    except:
+        return []
+
+def guardar_json_mongo(nombre_coleccion, datos):
+    """Guarda datos en MongoDB (reemplaza json.dump())"""
+    try:
+        return st.session_state.db.guardar_datos(nombre_coleccion, datos)
+    except:
+        return False
+
+# =====================================================
+# FUNCIONES DE AUTENTICACIÓN CON MONGODB
+# =====================================================
+
+def _cargar_auth_config():
+    """Carga la configuración de autenticación desde MongoDB"""
+    return st.session_state.db.cargar_auth_config()
+
+def _guardar_auth_config(config):
+    """Guarda la configuración de autenticación en MongoDB"""
+    return st.session_state.db.guardar_auth_config(config)
+
+def verificar_contrasena(password_ingresada):
+    """Verifica si la contraseña ingresada es correcta"""
+    config = _cargar_auth_config()
+    return password_ingresada == config.get("password", "portal1058*")
+
+def cambiar_contrasena(password_actual, password_nueva, confirmar_nueva):
+    """Cambia la contraseña del portal"""
+    
+    # Validaciones
+    if not password_actual or not password_nueva or not confirmar_nueva:
+        return False, "⚠️ Todos los campos son obligatorios"
+    
+    if not verificar_contrasena(password_actual):
+        return False, "❌ La contraseña actual es incorrecta"
+    
+    if password_nueva != confirmar_nueva:
+        return False, "❌ Las contraseñas nuevas no coinciden"
+    
+    if len(password_nueva) < 6:
+        return False, "❌ La nueva contraseña debe tener al menos 6 caracteres"
+    
+    if password_nueva == password_actual:
+        return False, "⚠️ La nueva contraseña debe ser diferente a la actual"
+    
+    # Cambiar contraseña
+    config = _cargar_auth_config()
+    config["password"] = password_nueva
+    config["ultima_actualizacion"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    _guardar_auth_config(config)
+    
+    return True, "✅ Contraseña cambiada exitosamente. Usa tu nueva contraseña en el próximo inicio de sesión."
+
+st.markdown('<div class="top-banner">✨ Tu refugio de magia, intuición y energía ✨</div>', unsafe_allow_html=True)
+
+if not st.session_state.login:
+    st.markdown("<div class='title-glow'>Bienvenida<br>al Portal</div>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2: password = st.text_input("Clave", type="password", label_visibility="collapsed", placeholder="🔑 Clave sagrada...")
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([3.5, 2, 3.5])
+    with c2:
+        if st.button("✨ Entrar al Reino", key="btn_login", use_container_width=True):
+            if verificar_contrasena(password): 
+                st.session_state.login = True
+                st.rerun()
+            elif password: 
+                st.error("❌ Clave incorrecta")
+    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+
+else:
+    # === SPOTIFY FLOTANTE CON TU PLAYLIST ===
+    st.markdown("""
+        <style>
+            .spotify-bottom-fixed {
+                position: fixed !important;
+                bottom: 60px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                z-index: 999999 !important;
+                width: 380px !important;
+                box-shadow: 0 8px 32px rgba(147, 51, 234, 0.6) !important;
+                border-radius: 12px !important;
+                background: rgba(2, 6, 23, 0.95) !important;
+                padding: 5px !important;
+                pointer-events: auto !important;
+            }
+            
+            .spotify-bottom-fixed iframe {
+                border-radius: 12px !important;
+            }
+            
+            .spotify-bottom-fixed:hover {
+                transform: translateX(-50%) translateY(-5px) !important;
+                box-shadow: 0 12px 40px rgba(147, 51, 234, 0.8) !important;
+            }
+            
+            @media (max-width: 768px) {
+                .spotify-bottom-fixed {
+                    width: 280px !important;
+                    bottom: 60px !important;
+                }
+            }
+        </style>
+        
+        <div class="spotify-bottom-fixed">
+            <iframe 
+                style="border-radius:12px" 
+                src="https://open.spotify.com/embed/playlist/2yxT1JzZF0LdQsvu7zuNrj?utm_source=generator&theme=0" 
+                width="100%" 
+                height="152" 
+                frameBorder="0" 
+                allowfullscreen="" 
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                loading="lazy">
+            </iframe>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Función para mostrar breadcrumbs
+    def mostrar_breadcrumbs():
+        view = st.session_state.current_view
+        
+        # Nombres amigables
+        nombres = {
+            "menu": "Inicio",
+            "lo_oculto": "Lo Oculto",
+            "ideas": "Ideas",
+            "biblia": "Biblia",
+            "finanzas": "Finanzas",
+            "notas": "Notas",
+            "libros": "Libros",
+            "frases": "Frases",
+            "personalidades": "Personas",
+            "profesional": "Profesional",
+            "tarot": "Tarot",
+            "astrologia": "Astrología",
+            "numerologia": "Numerología"
+        }
+        
+        if view == "menu":
+            return
+        
+        breadcrumb = f"🏠 Inicio"
+        
+        # Agregar vista actual
+        if view in nombres:
+            breadcrumb += f" → {nombres[view]}"
+        
+        # Agregar subvista si existe
+        subview_keys = [
+            ("finanzas_subview", view == "finanzas"),
+            ("notas_subview", view == "notas"),
+            ("libros_subview", view == "libros"),
+            ("frases_subview", view == "frases"),
+            ("ideas_subview", view == "ideas"),
+            ("tarot_subview", view == "tarot"),
+            ("astro_subview", view == "astrologia"),
+            ("nume_subview", view == "numerologia"),
+            ("profesional_subview", view == "profesional"),
+            ("biblia_subview", view == "biblia"),
+            ("oculto_subview", view == "lo_oculto")
+        ]
+        
+        for key, condition in subview_keys:
+            if condition and key in st.session_state and st.session_state[key] != "menu":
+                subview = st.session_state[key].replace("_", " ").title()
+                breadcrumb += f" → {subview}"
+                break
+        
+        st.caption(breadcrumb)
+        st.markdown("<br>", unsafe_allow_html=True)
+    
+    # --- MENÚ PRINCIPAL ---
+    if st.session_state.current_view == "menu":
+        st.markdown("<div class='title-glow'>💜 Acceso Concedido</div>", unsafe_allow_html=True)
+        st.markdown("<p class='subtitle-text'>Bienvenida, Sacerdotisa.</p>", unsafe_allow_html=True)
+        opciones = [("🌙", "Lo Oculto", "lo_oculto", "oculto-icon"), ("💡", "Ideas", "ideas", "ideas-icon"), 
+                    ("📖", "Biblia", "biblia", "biblia-icon"), ("💰", "Finanzas", "finanzas", "finanzas-icon"), 
+                    ("📝", "Notas", "notas", "notas-icon"), ("📚", "Libros", "libros", "libros-icon"),
+                    ("💬", "Frases", "frases", "frases-icon"), ("👤", "Personas", "personalidades", "personalidades-icon"), 
+                    ("💼", "Pro", "profesional", "profesional-icon")]
+        rows = [opciones[i:i+3] for i in range(0, len(opciones), 3)]
+        for row in rows:
+            cols = st.columns(3, gap="small")
+            for idx, (icon, label, key, css) in enumerate(row):
+                with cols[idx]:
+                    st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
+                    if st.button(f"Abrir {label}", key=f"btn_menu_{key}", use_container_width=True):
+                        st.session_state.current_view = key
+                        st.rerun()
+            st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Botón de Backup
+        st.markdown("<br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([3, 2, 3])
+        with col2:
+            if st.button("💾 Crear Backup", key="btn_backup", use_container_width=True):
+                zip_buffer, nombre, exito = crear_backup_datos()
+                if exito:
+                    st.download_button(
+                        label="📥 Descargar Backup",
+                        data=zip_buffer,
+                        file_name=nombre,
+                        mime="application/zip",
+                        use_container_width=True,
+                        key="btn_download_backup"
+                    )
+                    st.success("✅ Backup creado correctamente")
+                else:
+                    st.error(f"❌ Error al crear backup: {nombre}")
+        # Botón de Cambiar Contraseña
+        st.markdown("<br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([3, 2, 3])
+        with col2:
+            if st.button("🔐 Cambiar Contraseña", key="btn_cambiar_password", use_container_width=True):
+                st.session_state.mostrar_cambio_password = True
+        
+        # Modal de cambio de contraseña
+        if st.session_state.get("mostrar_cambio_password", False):
+            st.markdown("---")
+            st.markdown("### 🔐 Cambiar Contraseña")
+            
+            password_actual = st.text_input("Contraseña actual:", type="password", key="input_pass_actual")
+            password_nueva = st.text_input("Nueva contraseña:", type="password", key="input_pass_nueva")
+            password_confirmar = st.text_input("Confirmar nueva contraseña:", type="password", key="input_pass_confirmar")
+            
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("✅ Confirmar Cambio", use_container_width=True, key="btn_confirmar_cambio"):
+                    exito, mensaje = cambiar_contrasena(password_actual, password_nueva, password_confirmar)
+                    if exito:
+                        st.success(mensaje)
+                        st.session_state.mostrar_cambio_password = False
+                        st.balloons()
+                    else:
+                        st.error(mensaje)
+            
+            with col_b:
+                if st.button("❌ Cancelar", use_container_width=True, key="btn_cancelar_cambio"):
+                    st.session_state.mostrar_cambio_password = False
+                    st.rerun()
+            
+            st.markdown("---")
+        
+        # Botón de Cerrar Sesión
+        st.markdown("<br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([3, 2, 3])
+        with col2:
+            if st.button("🚪 Cerrar Sesión", key="btn_logout", use_container_width=True):
+                st.session_state.login = False
+                st.session_state.current_view = "menu"
+                st.rerun()
+
+
+    # --- MÓDULO BIBLIA ---
+    elif st.session_state.current_view == "biblia":
+        mostrar_breadcrumbs()
+        st.markdown("<div class='title-glow'>📖 Biblia</div>", unsafe_allow_html=True)
+        
+        if st.session_state.biblia_subview == "menu":
+            st.markdown("<p class='subtitle-text'>Tu refugio de luz y palabra sagrada.</p>", unsafe_allow_html=True)
+            
+            opciones_biblia = [
+                ("🌅", "Versículo del Día", "vdia", "biblia-icon"),
+                ("🔍", "Buscar Versículo", "buscar", "libros-icon"),
+                ("📿", "Devocional", "devocional", "frases-icon"),
+                ("📔", "Mi Diario", "journal", "notas-icon"),
+                ("⭐", "Favoritos", "favoritos", "tarot-icon")
+            ]
+            
+            rows_biblia = [opciones_biblia[i:i+3] for i in range(0, len(opciones_biblia), 3)]
+            for row in rows_biblia:
+                cols = st.columns(3, gap="small")
+                for idx, (icon, label, sub_key, css) in enumerate(row):
+                    with cols[idx]:
+                        st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
+                        if st.button(f"Abrir {label}", key=f"btn_biblia_{sub_key}", use_container_width=True):
+                            st.session_state.biblia_subview = sub_key
+                            st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🏠 Menú Principal", key="btn_biblia_home", use_container_width=True):
+                st.session_state.current_view = "menu"
+                st.rerun()
+        
+        elif st.session_state.biblia_subview == "vdia":
+            st.markdown("### 🌅 Versículo del Día")
+            resultado = biblia.versiculo_del_dia()
+            st.markdown(f'<div class="result-card">{resultado}</div>', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_biblia_volver_vdia"):
+                st.session_state.biblia_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.biblia_subview == "buscar":
+            st.markdown("### 🔍 Buscar Versículo")
+            st.markdown("<p style='color:#d8c9ff; font-size:0.95rem;'>Ejemplo: Juan 3:16, Salmos 23:1</p>", unsafe_allow_html=True)
+            referencia = st.text_input("Escribe la referencia:", placeholder="Ej: Juan 3:16", key="input_biblia_ref")
+            if st.button("📖 Buscar", use_container_width=True, key="btn_buscar_versiculo"):
+                if referencia:
+                    resultado = biblia.buscar_versiculo_completo(referencia)
+                    st.markdown(f'<div class="result-card">{resultado}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Escribe una referencia primero")
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_biblia_volver_buscar"):
+                st.session_state.biblia_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.biblia_subview == "devocional":
+            st.markdown("### 📿 Devocional Personalizado")
+            situacion = st.text_area("¿Qué estás atravesando hoy?", height=100, key="input_devocional")
+            if st.button("🙏 Generar Devocional", use_container_width=True, key="btn_generar_devocional"):
+                if situacion:
+                    resultado = biblia.generar_devocional_personalizado(situacion)
+                    st.markdown(f'<div class="result-card">{resultado}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Comparte tu situación primero")
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_biblia_volver_devocional"):
+                st.session_state.biblia_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.biblia_subview == "journal":
+            st.markdown("### 📔 Mi Diario Bíblico")
+            st.markdown("<p style='color:#d8c9ff;'>Registra tus reflexiones y aprendizajes</p>", unsafe_allow_html=True)
+            
+            # Tabs
+            tab1, tab2, tab3 = st.tabs(["📖 Ver Entradas", "✍️ Nueva Entrada", "📊 Estadísticas"])
+            
+            # Cargar entradas desde MongoDB
+            try:
+                entradas = cargar_json_mongo("journal_biblico")
+                if not entradas:
+                    entradas = []
+            except:
+                entradas = []
+            
+            # TAB 1: Ver Entradas
+            with tab1:
+                if entradas:
+                    st.markdown(f"**{len(entradas)} entradas en total**")
+                    st.markdown("---")
+                    
+                    # Ordenar por fecha (más reciente primero)
+                    entradas_ordenadas = sorted(entradas, key=lambda x: x.get('fecha', ''), reverse=True)
+                    
+                    for i, entrada in enumerate(entradas_ordenadas):
+                        with st.expander(f"📅 {entrada.get('fecha', 'Sin fecha')} - {entrada.get('titulo', 'Sin título')}", expanded=i==0):
+                            if entrada.get('versiculo'):
+                                st.markdown(f"**📖 Versículo:** {entrada['versiculo']}")
+                            
+                            if entrada.get('reflexion'):
+                                st.markdown("**💭 Reflexión:**")
+                                st.write(entrada['reflexion'])
+                            
+                            if entrada.get('aplicacion'):
+                                st.markdown("**🎯 Aplicación:**")
+                                st.write(entrada['aplicacion'])
+                            
+                            # Botón eliminar
+                            if st.button(f"🗑️ Eliminar", key=f"del_journal_{i}"):
+                                entradas_ordenadas.remove(entrada)
+                                guardar_json_mongo("journal_biblico", entradas_ordenadas)
+                                st.success("✅ Entrada eliminada")
+                                st.rerun()
+                else:
+                    st.info("📝 Aún no tienes entradas. ¡Crea tu primera reflexión!")
+            
+            # TAB 2: Nueva Entrada
+            with tab2:
+                st.markdown("#### ✍️ Crear Nueva Entrada")
+                
+                nueva_fecha = st.date_input("📅 Fecha:", value=datetime.datetime.now())
+                nuevo_titulo = st.text_input("📌 Título de la entrada:", placeholder="Ej: Reflexión sobre la fe")
+                nuevo_versiculo = st.text_input("📖 Versículo (opcional):", placeholder="Ej: Juan 3:16")
+                nueva_reflexion = st.text_area("💭 ¿Qué te habló Dios hoy?", height=150, placeholder="Escribe tu reflexión...")
+                nueva_aplicacion = st.text_area("🎯 ¿Cómo lo aplicarás a tu vida?", height=100, placeholder="¿Qué cambiarás o harás diferente?")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                if st.button("💾 Guardar Entrada", use_container_width=True):
+                    if nuevo_titulo.strip() and nueva_reflexion.strip():
+                        nueva_entrada = {
+                            "fecha": str(nueva_fecha),
+                            "titulo": nuevo_titulo.strip(),
+                            "versiculo": nuevo_versiculo.strip(),
+                            "reflexion": nueva_reflexion.strip(),
+                            "aplicacion": nueva_aplicacion.strip()
+                        }
+                        
+                        entradas.append(nueva_entrada)
+                        
+                        guardar_json_mongo("journal_biblico", entradas)
+                        
+                        st.success("✅ ¡Entrada guardada exitosamente!")
+                        st.balloons()
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ Por favor completa al menos el título y la reflexión")
+            
+            # TAB 3: Estadísticas
+            with tab3:
+                if entradas:
+                    st.markdown("#### 📊 Tus Estadísticas")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.metric("📝 Total Entradas", len(entradas))
+                    
+                    with col2:
+                        # Entradas este mes
+                        mes_actual = datetime.datetime.now().strftime("%Y-%m")
+                        entradas_mes = sum(1 for e in entradas if e.get('fecha', '').startswith(mes_actual))
+                        st.metric("📅 Este Mes", entradas_mes)
+                    
+                    with col3:
+                        # Racha (días consecutivos)
+                        fechas = sorted([e.get('fecha', '') for e in entradas if e.get('fecha')], reverse=True)
+                        racha = 1
+                        if fechas:
+                            for i in range(len(fechas)-1):
+                                fecha1 = datetime.datetime.strptime(fechas[i], "%Y-%m-%d")
+                                fecha2 = datetime.datetime.strptime(fechas[i+1], "%Y-%m-%d")
+                                diff = (fecha1 - fecha2).days
+                                if diff == 1:
+                                    racha += 1
+                                else:
+                                    break
+                        st.metric("🔥 Racha", f"{racha} días")
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    
+                    # Últimas 5 entradas
+                    st.markdown("### 📌 Últimas Reflexiones")
+                    ultimas = sorted(entradas, key=lambda x: x.get('fecha', ''), reverse=True)[:5]
+                    for entrada in ultimas:
+                        st.markdown(f"• **{entrada.get('fecha')}**: {entrada.get('titulo', 'Sin título')}")
+                    
+                else:
+                    st.info("📊 Las estadísticas aparecerán cuando tengas entradas")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_journal"):
+                st.session_state.biblia_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.biblia_subview == "favoritos":
+            st.markdown("### ⭐ Versículos Favoritos")
+            
+            favoritos = biblia.ver_favoritos()
+            
+            if favoritos:
+                st.success(f"✅ Tienes {len(favoritos)} versículo(s) favorito(s)")
+                for fav in favoritos:
+                    with st.expander(f"📖 {fav['referencia']}", expanded=False):
+                        st.markdown(f"**{fav['texto']}**")
+                        st.caption(f"Agregado: {fav['fecha_agregado']}")
+                        if st.button("🗑️ Eliminar", key=f"btn_eliminar_fav_{fav['id']}"):
+                            biblia.eliminar_favorito(fav['id'])
+                            st.success("Eliminado de favoritos")
+                            st.rerun()
+            else:
+                st.info("No tienes versículos favoritos aún. ¡Agrega algunos desde Versículo del Día o Buscar!")
+            
+            # Agregar nuevo favorito manualmente
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("### ➕ Agregar Favorito")
+            ref_fav = st.text_input("Referencia:", placeholder="Ej: Juan 3:16", key="input_ref_fav")
+            texto_fav = st.text_area("Texto del versículo:", height=100, key="input_texto_fav")
+            
+            if st.button("⭐ Agregar a Favoritos", use_container_width=True, key="btn_agregar_fav"):
+                if ref_fav and texto_fav:
+                    exito, mensaje = biblia.agregar_favorito(ref_fav, texto_fav)
+                    if exito:
+                        st.success(mensaje)
+                        st.rerun()
+                    else:
+                        st.warning(mensaje)
+                else:
+                    st.warning("⚠️ Completa referencia y texto")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_biblia_volver_favoritos"):
+                st.session_state.biblia_subview = "menu"
+                st.rerun()
+
+    # --- MÓDULO FINANZAS ---
+    elif st.session_state.current_view == "finanzas":
+        mostrar_breadcrumbs()
+        st.markdown("<div class='title-glow'>💰 Finanzas</div>", unsafe_allow_html=True)
+        
+        if st.session_state.finanzas_subview == "menu":
+            st.markdown("<p class='subtitle-text'>Tu centro de control financiero.</p>", unsafe_allow_html=True)
+            
+            opciones_finanzas = [
+                ("💸", "Gastos", "gastos", "finanzas-icon"),
+                ("💵", "Ingresos", "ingresos", "ideas-icon"),
+                ("📊", "Reportes", "reportes", "libros-icon"),
+                ("🎯", "Presupuestos", "presupuestos", "tarot-icon"),
+                ("💎", "Metas Ahorro", "metas", "ideas-icon"),
+                ("🏷️", "Categorías", "categorias", "frases-icon"),
+                ("📈", "Estadísticas", "estadisticas", "biblia-icon")
+            ]
+            
+            rows_finanzas = [opciones_finanzas[i:i+3] for i in range(0, len(opciones_finanzas), 3)]
+            for row in rows_finanzas:
+                cols = st.columns(3, gap="small")
+                for idx, (icon, label, sub_key, css) in enumerate(row):
+                    if idx < len(row):
+                        with cols[idx]:
+                            st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
+                            if st.button(f"Ver {label}", key=f"btn_finanzas_{sub_key}", use_container_width=True):
+                                st.session_state.finanzas_subview = sub_key
+                                st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Botón de exportar
+            col1, col2, col3 = st.columns([2, 2, 2])
+            with col1:
+                if st.button("📥 Exportar a CSV", key="btn_exportar_finanzas", use_container_width=True):
+                    csv_data = finanzas_handler.exportar_a_csv()
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    st.download_button(
+                        label="💾 Descargar CSV",
+                        data=csv_data,
+                        file_name=f"finanzas_{timestamp}.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                        key="btn_download_csv_finanzas"
+                    )
+            with col3:
+                if st.button("🏠 Menú Principal", key="btn_finanzas_home", use_container_width=True):
+                    st.session_state.current_view = "menu"
+                    st.rerun()
+        
+        elif st.session_state.finanzas_subview == "gastos":
+            st.markdown("### 💸 Gestión de Gastos")
+            
+            tab1, tab2, tab3, tab4 = st.tabs(["➕ Agregar", "📋 Ver Todos", "🔍 Buscar", "🗑️ Borrar"])
+            
+            with tab1:
+                monto = st.number_input("Monto del gasto:", min_value=0.0, step=0.01, key="input_monto_gasto")
+                categoria = st.selectbox("Categoría (auto si dejas vacío):", [""] + list(finanzas_handler.CATEGORIAS.keys()), key="select_categoria_gasto")
+                descripcion = st.text_input("Descripción:", placeholder="Ej: Almuerzo en restaurante", key="input_desc_gasto")
+                if st.button("💰 Agregar Gasto", use_container_width=True, key="btn_agregar_gasto"):
+                    if monto > 0 and descripcion:
+                        res = finanzas_handler.agregar_gasto(monto, categoria, descripcion)
+                        st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                    else:
+                        st.warning("⚠️ Completa todos los campos")
+            
+            with tab2:
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    if st.button("📘 Todos", use_container_width=True, key="btn_ver_todos_gastos"):
+                        res = finanzas_handler.listar_gastos()
+                        st.markdown(f'<div class="result-card" style="text-align:left; max-height:400px; overflow-y:auto;">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                with col2:
+                    if st.button("📅 Hoy", use_container_width=True, key="btn_gastos_hoy"):
+                        res = finanzas_handler.gastos_de_hoy()
+                        st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                with col3:
+                    if st.button("🏷️ Por Categoría", use_container_width=True, key="btn_gastos_cat"):
+                        cat_buscar = st.selectbox("Elige categoría:", list(finanzas_handler.CATEGORIAS.keys()), key="select_cat_buscar")
+                        if cat_buscar:
+                            res = finanzas_handler.gastos_por_categoria(cat_buscar)
+                            st.markdown(f'<div class="result-card" style="text-align:left;">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            with tab3:
+                palabra = st.text_input("Buscar por palabra clave:", placeholder="Ej: restaurante", key="input_buscar_gasto")
+                if st.button("🔍 Buscar", use_container_width=True, key="btn_buscar_gasto"):
+                    if palabra:
+                        res = finanzas_handler.buscar_gastos(palabra)
+                        st.markdown(f'<div class="result-card" style="text-align:left;">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                    else:
+                        st.warning("⚠️ Escribe una palabra primero")
+            
+            with tab4:
+                id_gasto = st.number_input("ID del gasto a borrar:", min_value=1, step=1, key="input_id_gasto_borrar")
+                confirmar_borrar_gasto = st.checkbox("⚠️ Confirmo que quiero eliminar este gasto", key="check_confirmar_borrar_gasto")
+                if st.button("🗑️ Confirmar Borrado", use_container_width=True, key="btn_borrar_gasto", disabled=not confirmar_borrar_gasto):
+                    res = finanzas_handler.borrar_gasto(id_gasto)
+                    st.markdown(f'<div class="result-card">{res}</div>', unsafe_allow_html=True)
+                if not confirmar_borrar_gasto:
+                    st.caption("✋ Marca la casilla para habilitar el botón")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_gastos"):
+                st.session_state.finanzas_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.finanzas_subview == "ingresos":
+            st.markdown("### 💵 Gestión de Ingresos")
+            
+            tab1, tab2, tab3 = st.tabs(["➕ Agregar", "📋 Ver Todos", "🗑️ Borrar"])
+            
+            with tab1:
+                monto_ing = st.number_input("Monto del ingreso:", min_value=0.0, step=0.01, key="input_monto_ingreso")
+                desc_ing = st.text_input("Descripción:", placeholder="Ej: Salario mensual", key="input_desc_ingreso")
+                if st.button("💵 Agregar Ingreso", use_container_width=True, key="btn_agregar_ingreso"):
+                    if monto_ing > 0 and desc_ing:
+                        res = finanzas_handler.agregar_ingreso(monto_ing, desc_ing)
+                        st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                    else:
+                        st.warning("⚠️ Completa todos los campos")
+            
+            with tab2:
+                if st.button("📘 Ver Todos", use_container_width=True, key="btn_ver_ingresos"):
+                    res = finanzas_handler.listar_ingresos()
+                    st.markdown(f'<div class="result-card" style="text-align:left; max-height:400px; overflow-y:auto;">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            with tab3:
+                id_ing = st.number_input("ID del ingreso a borrar:", min_value=1, step=1, key="input_id_ingreso_borrar")
+                st.warning("⚠️ Esta acción no se puede deshacer")
+                if st.button("🗑️ Confirmar Borrado", use_container_width=True, key="btn_borrar_ingreso"):
+                    res = finanzas_handler.borrar_ingreso(id_ing)
+                    st.markdown(f'<div class="result-card">{res}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_ingresos"):
+                st.session_state.finanzas_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.finanzas_subview == "reportes":
+            st.markdown("### 📊 Reportes Financieros")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("📅 Resumen Mensual", use_container_width=True, key="btn_resumen_mes"):
+                    res = finanzas_handler.resumen_mensual()
+                    st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            with col2:
+                if st.button("📈 Comparar Meses", use_container_width=True, key="btn_comparar_meses"):
+                    res = finanzas_handler.comparar_meses()
+                    st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_reportes"):
+                st.session_state.finanzas_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.finanzas_subview == "presupuestos":
+            st.markdown("### 🎯 Gestión de Presupuestos")
+            
+            tab1, tab2 = st.tabs(["➕ Establecer", "📊 Ver Estado"])
+            
+            with tab1:
+                cat_pres = st.selectbox("Categoría:", list(finanzas_handler.CATEGORIAS.keys()), key="select_cat_presupuesto")
+                monto_pres = st.number_input("Presupuesto mensual:", min_value=0.0, step=0.01, key="input_monto_presupuesto")
+                if st.button("✅ Establecer Presupuesto", use_container_width=True, key="btn_set_presupuesto"):
+                    if monto_pres > 0:
+                        res = finanzas_handler.establecer_presupuesto(cat_pres, monto_pres)
+                        st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                    else:
+                        st.warning("⚠️ El monto debe ser mayor a 0")
+            
+            with tab2:
+                if st.button("📊 Ver Presupuestos", use_container_width=True, key="btn_ver_presupuestos"):
+                    res = finanzas_handler.ver_presupuestos()
+                    st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_presupuestos"):
+                st.session_state.finanzas_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.finanzas_subview == "categorias":
+            st.markdown("### 🏷️ Categorías Disponibles")
+            res = finanzas_handler.ver_categorias()
+            st.markdown(f'<div class="result-card" style="text-align:left;">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_categorias"):
+                st.session_state.finanzas_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.finanzas_subview == "estadisticas":
+            st.markdown("### 📈 Estadísticas Avanzadas")
+            
+            stats = finanzas_handler.estadisticas_avanzadas()
+            
+            if stats:
+                # Métricas principales
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Este Mes", f"${stats['total_mes']:.2f}")
+                with col2:
+                    st.metric("Promedio Diario", f"${stats['promedio_diario']:.2f}")
+                with col3:
+                    st.metric("Balance", f"${stats['balance']:.2f}",
+                             delta=f"${stats['balance']:.2f}" if stats['balance'] >= 0 else None)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Proyección y comparación
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**📊 Proyección del Mes:**")
+                    st.metric("Proyección", f"${stats['proyeccion_mes']:.2f}",
+                             help=f"Basado en ${stats['promedio_diario']:.2f}/día × 30 días")
+                    st.caption(f"Llevamos {stats['dia_actual']} días del mes")
+                
+                with col2:
+                    st.markdown("**📉 Comparación con Mes Anterior:**")
+                    cambio_emoji = "📈" if stats['diferencia'] > 0 else "📉" if stats['diferencia'] < 0 else "➡️"
+                    st.metric(
+                        "Diferencia", 
+                        f"${abs(stats['diferencia']):.2f}",
+                        delta=f"{stats['porcentaje_cambio']:+.1f}%"
+                    )
+                    if stats['diferencia'] > 0:
+                        st.caption(f"{cambio_emoji} Gastaste MÁS que el mes pasado")
+                    elif stats['diferencia'] < 0:
+                        st.caption(f"{cambio_emoji} Gastaste MENOS que el mes pasado")
+                    else:
+                        st.caption(f"{cambio_emoji} Gasto similar al mes pasado")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Top categorías
+                st.markdown("**🏆 Top 3 Categorías Este Mes:**")
+                for i, (cat, monto) in enumerate(stats['top_categorias'], 1):
+                    porcentaje = (monto / stats['total_mes'] * 100) if stats['total_mes'] > 0 else 0
+                    st.progress(porcentaje / 100, text=f"{i}. {cat}: ${monto:.2f} ({porcentaje:.1f}%)")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Métricas adicionales
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Ingresos Este Mes", f"${stats['ingresos_mes']:.2f}")
+                with col2:
+                    st.metric("Número de Gastos", stats['num_gastos'])
+                with col3:
+                    st.metric("Gasto Promedio", f"${stats['gasto_promedio']:.2f}")
+                
+                # Recomendaciones
+                st.markdown("<br>", unsafe_allow_html=True)
+                if stats['balance'] < 0:
+                    st.warning(f"⚠️ Estás gastando ${abs(stats['balance']):.2f} más de lo que ingresas")
+                elif stats['balance'] > 0:
+                    st.success(f"✨ ¡Excelente! Tienes un superávit de ${stats['balance']:.2f}")
+                else:
+                    st.info("➡️ Tus ingresos y gastos están equilibrados")
+                
+            else:
+                st.info("No hay suficientes datos para generar estadísticas. ¡Agrega algunos gastos!")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_stats_finanzas"):
+                st.session_state.finanzas_subview = "menu"
+                st.rerun()
+        elif st.session_state.finanzas_subview == "metas":
+            st.markdown("### 💎 Metas de Ahorro")
+            
+            # Ver metas existentes
+            metas = metas_ahorro_handler.listar_metas()
+            
+            if metas:
+                st.success(f"✅ Tienes {len(metas)} meta(s) de ahorro")
+                
+                for meta in metas:
+                    progreso = (meta['monto_actual'] / meta['monto_objetivo'] * 100) if meta['monto_objetivo'] > 0 else 0
+                    emoji = "🎉" if meta['completada'] else "💎"
+                    
+                    with st.expander(f"{emoji} {meta['nombre']} - {progreso:.0f}%", expanded=not meta['completada']):
+                        st.markdown(f"**Objetivo:** ${meta['monto_objetivo']:.2f}")
+                        st.markdown(f"**Ahorrado:** ${meta['monto_actual']:.2f}")
+                        st.markdown(f"**Faltan:** ${meta['monto_objetivo'] - meta['monto_actual']:.2f}")
+                        
+                        # Barra de progreso
+                        st.progress(min(progreso / 100, 1.0))
+                        
+                        if meta['completada']:
+                            st.success(f"🎉 ¡Meta completada el {meta['fecha_completada']}!")
+                        else:
+                            # Aportar a la meta
+                            col1, col2 = st.columns([2, 1])
+                            with col1:
+                                monto_aporte = st.number_input(
+                                    "Monto a aportar:",
+                                    min_value=0.0,
+                                    step=0.01,
+                                    key=f"aporte_{meta['id']}"
+                                )
+                            with col2:
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                if st.button("💰 Aportar", key=f"btn_aportar_{meta['id']}", use_container_width=True):
+                                    if monto_aporte > 0:
+                                        meta_actualizada = metas_ahorro_handler.aportar_a_meta(meta['id'], monto_aporte)
+                                        if meta_actualizada['completada']:
+                                            st.balloons()
+                                            st.success("🎉 ¡META COMPLETADA! ¡Felicidades!")
+                                        else:
+                                            st.success(f"✅ Aporte registrado: ${monto_aporte:.2f}")
+                                        st.rerun()
+                        
+                        # Botón eliminar
+                        if st.button("🗑️ Eliminar Meta", key=f"btn_eliminar_meta_{meta['id']}"):
+                            metas_ahorro_handler.borrar_meta(meta['id'])
+                            st.success("Meta eliminada")
+                            st.rerun()
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+            else:
+                st.info("No tienes metas de ahorro aún. ¡Crea la primera!")
+            
+            # Crear nueva meta
+            st.markdown("### ✨ Crear Nueva Meta")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                nombre_meta = st.text_input("Nombre de la meta:", placeholder="Ej: Viaje a Europa", key="input_nombre_meta")
+            with col2:
+                monto_meta = st.number_input("Monto objetivo:", min_value=0.0, step=0.01, key="input_monto_meta")
+            
+            desc_meta = st.text_area("Descripción (opcional):", height=80, key="input_desc_meta")
+            
+            if st.button("💎 Crear Meta", use_container_width=True, key="btn_crear_meta"):
+                if nombre_meta and monto_meta > 0:
+                    metas_ahorro_handler.crear_meta(nombre_meta, monto_meta, desc_meta)
+                    st.success(f"✅ Meta '{nombre_meta}' creada")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Completa nombre y monto objetivo")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_metas"):
+                st.session_state.finanzas_subview = "menu"
+                st.rerun()
+    # --- MÓDULO NOTAS ---
+    elif st.session_state.current_view == "notas":
+        st.markdown("<div class='title-glow'>📝 Notas</div>", unsafe_allow_html=True)
+        
+        if st.session_state.notas_subview == "menu":
+            st.markdown("<p class='subtitle-text'>Tu espacio de pensamientos y recordatorios.</p>", unsafe_allow_html=True)
+            
+            opciones_notas = [
+                ("➕", "Agregar Nota", "agregar", "notas-icon"),
+                ("📘", "Ver Notas", "ver", "libros-icon"),
+                ("⭐", "Importantes", "importantes", "tarot-icon"),
+                ("🔍", "Buscar", "buscar", "ideas-icon"),
+                ("📊", "Estadísticas", "stats", "finanzas-icon"),
+                ("⏰", "Recordatorios", "recordatorios", "frases-icon")
+            ]
+            
+            rows_notas = [opciones_notas[i:i+3] for i in range(0, len(opciones_notas), 3)]
+            for row in rows_notas:
+                cols = st.columns(3, gap="small")
+                for idx, (icon, label, sub_key, css) in enumerate(row):
+                    with cols[idx]:
+                        st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
+                        if st.button(f"Ver {label}", key=f"btn_notas_{sub_key}", use_container_width=True):
+                            st.session_state.notas_subview = sub_key
+                            st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🏠 Menú Principal", key="btn_notas_home", use_container_width=True):
+                st.session_state.current_view = "menu"
+                st.rerun()
+        
+        elif st.session_state.notas_subview == "agregar":
+            st.markdown("### ➕ Agregar Nueva Nota")
+            texto_nota = st.text_area("Contenido de la nota:", height=150, key="input_texto_nota")
+            categoria_nota = st.selectbox("Categoría:", notas_handler.CATEGORIAS, key="select_categoria_nota")
+            importante = st.checkbox("⭐ Marcar como importante", key="check_importante")
+            recordatorio = st.text_input("Recordatorio (opcional):", placeholder="Ej: 2024-12-31 14:00", key="input_recordatorio")
+            
+            if st.button("✅ Guardar Nota", use_container_width=True, key="btn_guardar_nota"):
+                if texto_nota:
+                    res = notas_handler.agregar_nota(texto_nota, categoria_nota, importante, recordatorio if recordatorio else None)
+                    st.markdown(f'<div class="result-card">{res}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Escribe algo en la nota primero")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_agregar_nota"):
+                st.session_state.notas_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.notas_subview == "ver":
+            st.markdown("### 📘 Ver Notas")
+            
+            filtro_opciones = ["Todas", "Hoy", "Esta semana", "Este mes"]
+            filtro = st.selectbox("Filtrar por:", filtro_opciones, key="select_filtro_notas")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("📋 Ver Notas", use_container_width=True, key="btn_ver_notas_filtradas"):
+                    filtro_map = {"Todas": None, "Hoy": "hoy", "Esta semana": "semana", "Este mes": "mes"}
+                    res = notas_handler.ver_notas(filtro_map[filtro])
+                    st.markdown(f'<div class="result-card" style="text-align:left; max-height:400px; overflow-y:auto;">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            with col2:
+                if st.button("📂 Por Categoría", use_container_width=True, key="btn_notas_por_cat"):
+                    res = notas_handler.ver_notas_por_categoria()
+                    st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("### 🔧 Acciones con Notas")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                id_ver = st.number_input("ID nota:", min_value=1, step=1, key="input_id_ver_completa")
+                if st.button("👁️ Ver Completa", key="btn_ver_completa"):
+                    res = notas_handler.ver_nota_completa(id_ver)
+                    st.markdown(f'<div class="result-card" style="text-align:left;">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            with col2:
+                id_importancia = st.number_input("ID nota:", min_value=1, step=1, key="input_id_importancia")
+                if st.button("⭐ Marcar Importante", key="btn_marcar_importante"):
+                    res = notas_handler.marcar_importante(id_importancia, True)
+                    st.markdown(f'<div class="result-card">{res}</div>', unsafe_allow_html=True)
+            
+            with col3:
+                id_borrar = st.number_input("ID nota:", min_value=1, step=1, key="input_id_borrar_nota")
+                confirmar_borrar = st.checkbox("⚠️ Confirmo que quiero eliminar", key="check_confirmar_borrar_nota")
+                if st.button("🗑️ Borrar", key="btn_borrar_nota", disabled=not confirmar_borrar):
+                    res = notas_handler.borrar_nota(id_borrar)
+                    st.markdown(f'<div class="result-card">{res}</div>', unsafe_allow_html=True)
+                if not confirmar_borrar:
+                    st.caption("✋ Marca la casilla para habilitar")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_ver_notas"):
+                st.session_state.notas_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.notas_subview == "importantes":
+            st.markdown("### ⭐ Notas Importantes")
+            res = notas_handler.ver_notas("importantes")
+            st.markdown(f'<div class="result-card" style="text-align:left; max-height:400px; overflow-y:auto;">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_importantes"):
+                st.session_state.notas_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.notas_subview == "buscar":
+            st.markdown("### 🔍 Buscar Notas")
+            
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                palabra_clave = st.text_input("Palabra clave:", placeholder="Ej: reunión", key="input_palabra_clave_nota")
+            with col2:
+                categoria_filtro = st.selectbox("Categoría:", ["Todas"] + notas_handler.CATEGORIAS, key="select_categoria_filtro")
+            
+            if palabra_clave or categoria_filtro != "Todas":
+                # Buscar por palabra clave primero
+                if palabra_clave:
+                    resultados = notas_handler.buscar_notas(palabra_clave)
+                else:
+                    resultados = notas_handler._cargar_notas()
+                
+                # Filtrar por categoría si no es "Todas"
+                if categoria_filtro != "Todas":
+                    resultados = [n for n in resultados if n.get('categoria', '') == categoria_filtro]
+                
+                if resultados:
+                    st.success(f"✅ {len(resultados)} nota(s) encontrada(s)")
+                    for nota in resultados:
+                        with st.expander(f"📝 {nota['texto'][:50]}..." if len(nota['texto']) > 50 else f"📝 {nota['texto']}", expanded=False):
+                            st.markdown(f"**Contenido:** {nota['texto']}")
+                            st.markdown(f"**Categoría:** {nota.get('categoria', '📄 Otros')}")
+                            st.markdown(f"**Fecha:** {nota.get('fecha_creacion', 'N/A')}")
+                            if nota.get('importante'):
+                                st.markdown("⭐ **Importante**")
+                else:
+                    if palabra_clave and categoria_filtro != "Todas":
+                        st.info(f"No se encontraron notas con '{palabra_clave}' en categoría '{categoria_filtro}'")
+                    elif palabra_clave:
+                        st.info(f"No se encontraron notas con '{palabra_clave}'")
+                    else:
+                        st.info(f"No hay notas en la categoría '{categoria_filtro}'")
+            else:
+                st.info("💡 Escribe una palabra clave y/o selecciona una categoría para buscar")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_buscar_nota"):
+                st.session_state.notas_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.notas_subview == "stats":
+            st.markdown("### 📊 Estadísticas de Notas")
+            res = notas_handler.estadisticas_notas()
+            st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_stats"):
+                st.session_state.notas_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.notas_subview == "recordatorios":
+            st.markdown("### ⏰ Recordatorios Pendientes")
+            res = notas_handler.ver_recordatorios()
+            st.markdown(f'<div class="result-card" style="text-align:left;">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_recordatorios"):
+                st.session_state.notas_subview = "menu"
+                st.rerun()
+
+ # --- MÓDULO LIBROS ---
+    elif st.session_state.current_view == "libros":
+        st.markdown("<div class='title-glow'>📚 Libros</div>", unsafe_allow_html=True)
+        
+        if st.session_state.libros_subview == "menu":
+            st.markdown("<p class='subtitle-text'>Tu biblioteca personal y generador de arte.</p>", unsafe_allow_html=True)
+            
+            opciones_libros = [
+                ("🎲", "Randomizer", "randomizer", "libros-icon"),
+                ("🎨", "Generar Arte", "arte", "ideas-icon"),
+                ("⭐", "Mis Reseñas", "resenas", "frases-icon"),
+                ("🎯", "Reto Anual", "reto", "ideas-icon"),
+                ("📚", "Mis Estantes", "estantes", "libros-icon"),
+                ("📚", "Book Club", "bookclub", "biblia-icon"),
+            
+            ]
+            
+            rows_libros = [opciones_libros[i:i+3] for i in range(0, len(opciones_libros), 3)]
+            for row in rows_libros:
+                cols = st.columns(3, gap="small")
+                for idx, (icon, label, sub_key, css) in enumerate(row):
+                    if idx < len(row):
+                        with cols[idx]:
+                            st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
+                            if st.button(f"Abrir {label}", key=f"btn_libros_{sub_key}", use_container_width=True):
+                                st.session_state.libros_subview = sub_key
+                                st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🏠 Menú Principal", key="btn_libros_home", use_container_width=True):
+                st.session_state.current_view = "menu"
+                st.rerun()
+        
+        elif st.session_state.libros_subview == "randomizer":
+            st.markdown("### 🎲 Randomizer")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre tu próxima lectura perfecta</p>", unsafe_allow_html=True)
+            
+            st.markdown("#### ✨ ¿Qué te gustaría leer?")
+            descripcion = st.text_area(
+                "Describe el tipo de libro que buscas:",
+                placeholder="Ej: Una novela de fantasía oscura con una protagonista fuerte, magia y misterio",
+                height=100,
+                key="input_randomizer"
+            )
+            
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                generar = st.button("🎲 Generar Sugerencias", use_container_width=True, key="btn_generar_random")
+            with col2:
+                if st.button("🔄 Otra Ronda", use_container_width=True, key="btn_otra_ronda"):
+                    st.rerun()
+            
+            if generar and descripcion.strip():
+                with st.spinner("🔮 Generando tus sugerencias mágicas..."):
+                    resultado = libros_handler.randomizer_libros(descripcion)
+                    
+                    if resultado.get("success"):
+                        libros = resultado.get("libros", [])
+                        imagenes = resultado.get("imagenes", [])
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        st.markdown("### 📚 Tus 3 Sugerencias:")
+                        st.markdown("---")
+                        
+                        # Mostrar en 3 columnas
+                        cols = st.columns(3)
+                        
+                        for i, libro in enumerate(libros):
+                            with cols[i]:
+                                # Portada
+                                if i < len(imagenes) and imagenes[i]:
+                                    st.image(imagenes[i], use_container_width=True)
+                                else:
+                                    st.markdown("🖼️ *Portada no disponible*")
+                                
+                                # Título y autor
+                                st.markdown(f"**📖 {libro['titulo']}**")
+                                st.markdown(f"*✍️ {libro['autor']}*")
+                                
+                                # Descripción
+                                st.markdown(f"<p style='color:#d8c9ff; font-size:0.9em;'>{libro['descripcion']}</p>", unsafe_allow_html=True)
+                                
+                                # Botón agregar a estantes
+                                if st.button(f"➕ A Por Leer", key=f"add_random_{i}", use_container_width=True):
+                                    exito, msg = gestor_estantes.agregar_libro_a_estante(
+                                        "por_leer",
+                                        libro['titulo'],
+                                        libro['autor']
+                                    )
+                                    if exito:
+                                        st.success("✅ Agregado!")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    else:
+                                        st.warning(msg)
+                        
+                        st.balloons()
+                    else:
+                        st.error(f"❌ {resultado.get('error', 'Error desconocido')}")
+            
+            elif generar and not descripcion.strip():
+                st.warning("⚠️ Por favor describe qué tipo de libro quieres leer")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_randomizer"):
+                st.session_state.libros_subview = "menu"
+                st.rerun()
+                
+
+        elif st.session_state.libros_subview == "arte":
+            st.markdown("### 🎨 Generar Arte Inspirado")
+            
+            tipo_arte = st.selectbox("Tipo de arte:", [
+                "Ilustración del libro",
+                "Fanart del libro",
+                "Estética del libro",
+                "Arte por género",
+                "Arte por autor"
+            ], key="select_tipo_arte")
+            
+            if tipo_arte in ["Ilustración del libro", "Fanart del libro", "Estética del libro"]:
+                titulo_arte = st.text_input("Título del libro:", key="input_titulo_arte")
+            elif tipo_arte == "Arte por género":
+                titulo_arte = st.text_input("Género literario:", placeholder="Ej: ciencia ficción", key="input_genero_arte")
+            else:
+                titulo_arte = st.text_input("Nombre del autor:", key="input_autor_arte")
+            
+            if st.button("🎨 Generar Imagen", use_container_width=True, key="btn_generar_arte"):
+                if titulo_arte:
+                    with st.spinner("🎨 Generando arte con DALL-E 3... (puede tardar 30-60 seg)"):
+                        if tipo_arte == "Ilustración del libro":
+                            url = libros_handler.imagen_de_libro(titulo_arte)
+                        elif tipo_arte == "Fanart del libro":
+                            url = libros_handler.fanart_libro(titulo_arte)
+                        elif tipo_arte == "Estética del libro":
+                            url = libros_handler.estetica_libro(titulo_arte)
+                        elif tipo_arte == "Arte por género":
+                            url = libros_handler.imagen_genero(titulo_arte)
+                        else:
+                            url = libros_handler.imagen_autor(titulo_arte)
+                        
+                        if url:
+                            st.session_state.libros_imagen = url
+                            st.image(url, caption=f"Arte generado para: {titulo_arte}", use_container_width=True)
+                        else:
+                            st.error("❌ No se pudo generar la imagen. Verifica tu API key de OpenAI.")
+                else:
+                    st.warning("⚠️ Completa el campo primero")
+            
+            if st.session_state.get("libros_imagen"):
+                st.markdown(f"[🔗 Descargar imagen]({st.session_state.libros_imagen})")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_arte"):
+                st.session_state.libros_subview = "menu"
+                st.session_state.libros_imagen = None
+                st.rerun()
+        elif st.session_state.libros_subview == "resenas":
+            st.markdown("### ⭐ Mis Reseñas de Libros")
+            
+            # Ver reseñas existentes
+            libros = libros_handler.ver_libros_con_resenas()
+            
+            if libros:
+                st.success(f"✅ Tienes {len(libros)} libro(s) reseñado(s)")
+                for libro in libros:
+                    with st.expander(f"📚 {libro['titulo']} - {'⭐' * libro['rating']}", expanded=False):
+                        st.markdown(f"**Rating:** {'⭐' * libro['rating']} ({libro['rating']}/5)")
+                        st.markdown(f"**Reseña:** {libro['resena']}")
+                        st.caption(f"Fecha: {libro.get('fecha_resena', 'N/A')}")
+                        if st.button("🗑️ Eliminar", key=f"btn_eliminar_resena_{libro['id']}"):
+                            libros_handler.eliminar_resena(libro['id'])
+                            st.success("Reseña eliminada")
+                            st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+            else:
+                st.info("No tienes reseñas aún. ¡Agrega la primera!")
+            
+            # Agregar nueva reseña
+            st.markdown("### ➕ Agregar Reseña")
+            
+            titulo_libro = st.text_input("Título del libro:", key="input_titulo_resena")
+            rating = st.select_slider("Rating:", options=[1, 2, 3, 4, 5], value=3, key="slider_rating")
+            texto_resena = st.text_area("Tu reseña:", height=120, 
+                                        placeholder="¿Qué te pareció este libro?", 
+                                        key="input_texto_resena")
+            
+            if st.button("⭐ Guardar Reseña", use_container_width=True, key="btn_guardar_resena"):
+                if titulo_libro and texto_resena:
+                    exito, mensaje = libros_handler.agregar_resena(titulo_libro, rating, texto_resena)
+                    if exito:
+                        st.success(mensaje)
+                        st.rerun()
+                else:
+                    st.warning("⚠️ Completa título y reseña")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_resenas"):
+                st.session_state.libros_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.libros_subview == "bookclub":
+            st.markdown("### 📚 Book Club")
+            st.markdown("<p style='color:#d8c9ff;'>Tu espacio de lectura consciente - Ritual personal cada jueves</p>", unsafe_allow_html=True)
+            
+            bookclub = libros_handler.ver_bookclub()
+            
+            # Libro actual
+            st.markdown("### 📖 Libro Actual")
+            if bookclub.get('libro_actual'):
+                libro = bookclub['libro_actual']
+                st.success(f"📚 **{libro['titulo']}**")
+                if libro.get('autor'):
+                    st.caption(f"Autor: {libro['autor']}")
+                st.caption(f"Inicio: {libro.get('fecha_inicio', 'N/A')}")
+            else:
+                st.info("No hay libro actual. ¡Establece uno!")
+            
+            # Establecer nuevo libro
+            with st.expander("📖 Establecer Nuevo Libro", expanded=False):
+                titulo_club = st.text_input("Título del libro:", key="input_titulo_bookclub")
+                autor_club = st.text_input("Autor (opcional):", key="input_autor_bookclub")
+                if st.button("📚 Establecer como Libro Actual", use_container_width=True, key="btn_establecer_libro"):
+                    if titulo_club:
+                        exito, mensaje = libros_handler.establecer_libro_actual(titulo_club, autor_club)
+                        if exito:
+                            st.success(mensaje)
+                            st.rerun()
+                    else:
+                        st.warning("⚠️ Escribe el título del libro")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Tabs para diferentes secciones
+            tab1, tab2, tab3 = st.tabs(["📅 Check-ins", "🎭 Facetas", "💭 Preguntas"])
+            
+            with tab1:
+                st.markdown("### 📅 Mis Check-ins de Lectura")
+                
+                reuniones = bookclub.get('reuniones', [])
+                if reuniones:
+                    # Mostrar últimas 5 reuniones
+                    for reunion in sorted(reuniones, key=lambda x: x.get('fecha', ''), reverse=True)[:5]:
+                        with st.expander(f"📅 {reunion.get('fecha', 'N/A')} - {reunion.get('tema', 'Sin tema')}", expanded=False):
+                            st.markdown(f"**Libro:** {reunion.get('libro', 'N/A')}")
+                            st.markdown(f"**Procesando:** {reunion.get('tema', 'N/A')}")
+                            if reunion.get('notas'):
+                                st.markdown(f"**Reflexiones:** {reunion['notas']}")
+                            st.caption(f"Creada: {reunion.get('fecha_creacion', 'N/A')}")
+                            if st.button("🗑️ Eliminar", key=f"btn_eliminar_reunion_{reunion['id']}"):
+                                libros_handler.eliminar_reunion(reunion['id'])
+                                st.success("Check-in eliminado")
+                                st.rerun()
+                else:
+                    st.info("No tienes check-ins registrados aún")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("### ✨ Registrar Check-in")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    fecha_reunion = st.date_input("Fecha de mi check-in:", key="input_fecha_reunion")
+                with col2:
+                    tema_reunion = st.text_input("¿Qué estoy procesando?", key="input_tema_reunion", 
+                                                 placeholder="Ej: Capítulos 1-5: Resistencia al cambio")
+                
+                notas_reunion = st.text_area("Cómo me sentí / Qué descubrí:", height=100, key="input_notas_reunion",
+                                            placeholder="Mis reflexiones, emociones, insights...")
+                
+                if st.button("✨ Registrar Check-in", use_container_width=True, key="btn_agregar_reunion"):
+                    if tema_reunion:
+                        fecha_str = fecha_reunion.strftime("%Y-%m-%d")
+                        exito, mensaje = libros_handler.agregar_reunion(fecha_str, tema_reunion, notas_reunion)
+                        if exito:
+                            st.success("Check-in registrado")
+                            st.rerun()
+                    else:
+                        st.warning("⚠️ Escribe qué estás procesando")
+            
+            with tab2:
+                st.markdown("### 🎭 Mis Facetas Lectoras")
+                
+                miembros = bookclub.get('miembros', [])
+                if miembros:
+                    st.success(f"✅ {len(miembros)} faceta(s) lectora(s)")
+                    for miembro in miembros:
+                        with st.expander(f"🎭 {miembro.get('nombre', 'N/A')}", expanded=False):
+                            if miembro.get('email'):
+                                st.markdown(f"**Intención:** {miembro['email']}")
+                            st.caption(f"Creada: {miembro.get('fecha_union', 'N/A')}")
+                else:
+                    st.info("No tienes facetas registradas aún. ¡Crea tu primera!")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("### ✨ Crear Faceta")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    nombre_miembro = st.text_input("Nombre de esta faceta:", key="input_nombre_miembro",
+                                                   placeholder="Ej: La Mística, La Analítica, La Soñadora...")
+                with col2:
+                    email_miembro = st.text_input("Intención de lectura (opcional):", key="input_email_miembro",
+                                                  placeholder="Ej: Busco inspiración, Necesito claridad...")
+                
+                if st.button("✨ Crear Faceta", use_container_width=True, key="btn_agregar_miembro"):
+                    if nombre_miembro:
+                        exito, mensaje = libros_handler.agregar_miembro(nombre_miembro, email_miembro)
+                        if exito:
+                            st.success(f"Faceta '{nombre_miembro}' creada")
+                            st.rerun()
+                        else:
+                            st.warning("Esta faceta ya existe")
+                    else:
+                        st.warning("⚠️ Dale un nombre a esta faceta")
+            
+            with tab3:
+                st.markdown("### 💭 Preguntas que me Transforman")
+                
+                discusiones = bookclub.get('discusiones', [])
+                if discusiones:
+                    # Agrupar por libro
+                    discusiones_por_libro = {}
+                    for disc in discusiones:
+                        libro = disc.get('libro', 'Sin libro')
+                        if libro not in discusiones_por_libro:
+                            discusiones_por_libro[libro] = []
+                        discusiones_por_libro[libro].append(disc)
+                    
+                    for libro, discs in discusiones_por_libro.items():
+                        st.markdown(f"**📖 {libro}** ({len(discs)} pregunta(s))")
+                        for disc in discs:
+                            with st.expander(f"❓ {disc.get('pregunta', 'N/A')[:80]}...", expanded=False):
+                                st.markdown(f"**Pregunta:** {disc['pregunta']}")
+                                if disc.get('respuesta'):
+                                    st.markdown(f"**Mi Reflexión:** {disc['respuesta']}")
+                                st.caption(f"Fecha: {disc.get('fecha', 'N/A')}")
+                        st.markdown("<br>", unsafe_allow_html=True)
+                else:
+                    st.info("No tienes preguntas registradas aún")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("### ✨ Registrar Pregunta")
+                
+                pregunta_disc = st.text_area("¿Qué me está preguntando este libro?", height=80, 
+                                             key="input_pregunta_disc",
+                                             placeholder="Ej: ¿Qué estoy posponiendo por miedo? ¿Qué parte de mí se resiste?")
+                respuesta_disc = st.text_area("Mi reflexión actual (opcional):", height=100,
+                                              key="input_respuesta_disc",
+                                              placeholder="Puede evolucionar con el tiempo...")
+                
+                if st.button("✨ Registrar Pregunta", use_container_width=True, key="btn_agregar_discusion"):
+                    if pregunta_disc:
+                        exito, mensaje = libros_handler.agregar_discusion(pregunta_disc, respuesta_disc)
+                        if exito:
+                            st.success("Pregunta registrada")
+                            st.rerun()
+                    else:
+                        st.warning("⚠️ Escribe una pregunta")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_bookclub"):
+                st.session_state.libros_subview = "menu"
+                st.rerun()
+        elif st.session_state.libros_subview == "reto":
+            st.markdown("### 🎯 Reto de Lectura Anual")
+            st.markdown("<p style='color:#d8c9ff;'>Establece tu meta y sigue tu progreso lector</p>", unsafe_allow_html=True)
+            
+            progreso_reto = libros_handler.ver_progreso_reto()
+            
+            if progreso_reto:
+                # Mostrar progreso
+                completados = progreso_reto['completados']
+                meta = progreso_reto['meta']
+                porcentaje = progreso_reto['progreso']
+                proyeccion = progreso_reto['proyeccion']
+                
+                # Barra de progreso
+                st.progress(min(porcentaje / 100, 1.0), text=f"{porcentaje:.0f}% completado")
+                
+                # Métricas
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("📚 Completados", completados)
+                col2.metric("🎯 Meta", meta)
+                
+                # Estadísticas
+                stats = libros_handler.estadisticas_reto()
+                if stats:
+                    col3.metric("📖 Páginas", stats['total_paginas'])
+                    col4.metric("📊 Proyección", f"{proyeccion:.0f}")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Mensaje motivacional
+                if porcentaje >= 100:
+                    st.success("🎉 ¡META COMPLETADA! ¡Eres increíble!")
+                elif porcentaje >= 75:
+                    st.success("💪 ¡Vas excelente! Ya casi llegas a tu meta")
+                elif porcentaje >= 50:
+                    st.info("📚 Vas por buen camino. ¡Sigue así!")
+                elif porcentaje >= 25:
+                    st.warning("💛 Buen inicio. ¡No te detengas!")
+                else:
+                    st.info("🌟 ¡Cada libro cuenta! Sigue adelante")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Lista de libros leídos
+                if progreso_reto['libros']:
+                    st.markdown("### 📚 Libros Completados")
+                    for libro in reversed(progreso_reto['libros']):
+                        with st.expander(f"📖 {libro['titulo']}", expanded=False):
+                            if libro.get('autor'):
+                                st.markdown(f"**Autor:** {libro['autor']}")
+                            if libro.get('paginas'):
+                                st.markdown(f"**Páginas:** {libro['paginas']}")
+                            st.caption(f"Completado: {libro['fecha_completado']}")
+                            
+                            if st.button("🗑️ Eliminar", key=f"btn_eliminar_libro_reto_{libro['id']}"):
+                                libros_handler.eliminar_libro_del_reto(libro['id'])
+                                st.success("Libro eliminado del reto")
+                                st.rerun()
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Agregar libro completado
+                st.markdown("### ➕ Agregar Libro Completado")
+                
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    titulo_libro = st.text_input("Título del libro:", key="input_titulo_reto")
+                    autor_libro = st.text_input("Autor (opcional):", key="input_autor_reto")
+                with col2:
+                    paginas_libro = st.number_input("Páginas (opcional):", min_value=0, step=1, key="input_paginas_reto")
+                
+                if st.button("📚 Agregar al Reto", use_container_width=True, key="btn_agregar_libro_reto"):
+                    if titulo_libro:
+                        exito, mensaje = libros_handler.agregar_libro_al_reto(titulo_libro, autor_libro, paginas_libro)
+                        if exito:
+                            st.success(mensaje)
+                            if completados + 1 >= meta:
+                                st.balloons()
+                                st.success("🎉 ¡FELICIDADES! ¡Completaste tu reto de lectura!")
+                            st.rerun()
+                        else:
+                            st.error(mensaje)
+                    else:
+                        st.warning("⚠️ Escribe el título del libro")
+                
+                # Configuración del reto
+                with st.expander("⚙️ Configuración del Reto", expanded=False):
+                    st.warning("⚠️ Esto reiniciará tu progreso actual")
+                    nueva_meta = st.number_input("Nueva meta de libros:", min_value=1, value=meta, step=1, key="input_nueva_meta_reto")
+                    if st.button("🔄 Resetear Reto", key="btn_reset_reto"):
+                        libros_handler.establecer_reto_anual(nueva_meta)
+                        st.success("Reto reseteado")
+                        st.rerun()
+            
+            else:
+                # No hay reto activo - Crear uno
+                st.info("No tienes un reto de lectura activo. ¡Crea uno!")
+                
+                st.markdown("### 🎯 Crear Reto de Lectura")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    meta_libros = st.number_input("¿Cuántos libros quieres leer este año?", min_value=1, value=12, step=1, key="input_meta_inicial")
+                with col2:
+                    anio_reto = st.number_input("Año:", min_value=2024, max_value=2030, value=datetime.datetime.now().year, step=1, key="input_anio_reto")
+                
+                st.markdown(f"<p style='color:#d8c9ff;'>📚 Meta: {meta_libros} libros en {anio_reto}</p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='color:#d8c9ff;'>📊 Eso es aproximadamente {meta_libros/12:.1f} libros por mes</p>", unsafe_allow_html=True)
+                
+                if st.button("🎯 Crear Reto", use_container_width=True, key="btn_crear_reto_inicial"):
+                    exito, mensaje = libros_handler.establecer_reto_anual(meta_libros, anio_reto)
+                    if exito:
+                        st.success(mensaje)
+                        st.balloons()
+                        st.rerun()
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_reto"):
+                st.session_state.libros_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.libros_subview == "estantes":
+            st.markdown("### 📚 Mis Estantes de Libros")
+            st.markdown("<p style='color:#d8c9ff;'>Organiza tu biblioteca personal</p>", unsafe_allow_html=True)
+            
+            # Tabs para las diferentes funciones
+            tab1, tab2, tab3, tab4 = st.tabs(["📖 Ver Estantes", "➕ Agregar Libro", "🔄 Mover Libro", "📊 Estadísticas"])
+            
+            # ==================== TAB 1: VER ESTANTES ====================
+            with tab1:
+                st.markdown("#### 📖 Tus Estantes")
+                
+                estantes = gestor_estantes.ver_estantes()
+                
+                # Estante: Por Leer
+                with st.expander("📚 **Por Leer** - " + str(len(estantes['por_leer'])) + " libros", expanded=True):
+                    if estantes['por_leer']:
+                        for libro in estantes['por_leer']:
+                            col1, col2, col3 = st.columns([3, 2, 1])
+                            with col1:
+                                st.markdown(f"**{libro['titulo']}**")
+                                if libro.get('autor'):
+                                    st.caption(f"✍️ {libro['autor']}")
+                            with col2:
+                                st.caption(f"📅 Agregado: {libro['fecha_agregado']}")
+                            with col3:
+                                if st.button("🗑️", key=f"del_porleer_{libro['id']}", help="Eliminar"):
+                                    exito, msg = gestor_estantes.eliminar_libro_de_estante(libro['titulo'])
+                                    if exito:
+                                        st.success(msg)
+                                        st.rerun()
+                            st.markdown("---")
+                    else:
+                        st.info("🔍 No hay libros en este estante")
+                
+                # Estante: Leyendo
+                with st.expander("📖 **Leyendo Ahora** - " + str(len(estantes['leyendo'])) + " libros", expanded=True):
+                    if estantes['leyendo']:
+                        for libro in estantes['leyendo']:
+                            col1, col2, col3 = st.columns([3, 2, 1])
+                            with col1:
+                                st.markdown(f"**{libro['titulo']}**")
+                                if libro.get('autor'):
+                                    st.caption(f"✍️ {libro['autor']}")
+                            with col2:
+                                if libro.get('fecha_inicio'):
+                                    st.caption(f"▶️ Inicio: {libro['fecha_inicio']}")
+                            with col3:
+                                if st.button("🗑️", key=f"del_leyendo_{libro['id']}", help="Eliminar"):
+                                    exito, msg = gestor_estantes.eliminar_libro_de_estante(libro['titulo'])
+                                    if exito:
+                                        st.success(msg)
+                                        st.rerun()
+                            st.markdown("---")
+                    else:
+                        st.info("🔍 No hay libros en este estante")
+                
+                # Estante: Leídos
+                with st.expander("✅ **Leídos** - " + str(len(estantes['leidos'])) + " libros", expanded=False):
+                    if estantes['leidos']:
+                        for libro in estantes['leidos']:
+                            col1, col2, col3 = st.columns([3, 2, 1])
+                            with col1:
+                                st.markdown(f"**{libro['titulo']}**")
+                                if libro.get('autor'):
+                                    st.caption(f"✍️ {libro['autor']}")
+                            with col2:
+                                if libro.get('fecha_finalizado'):
+                                    st.caption(f"✓ Finalizado: {libro['fecha_finalizado']}")
+                            with col3:
+                                if st.button("🗑️", key=f"del_leidos_{libro['id']}", help="Eliminar"):
+                                    exito, msg = gestor_estantes.eliminar_libro_de_estante(libro['titulo'])
+                                    if exito:
+                                        st.success(msg)
+                                        st.rerun()
+                            st.markdown("---")
+                    else:
+                        st.info("🔍 No hay libros en este estante")
+            
+            # ==================== TAB 2: AGREGAR LIBRO ====================
+            with tab2:
+                st.markdown("#### ➕ Agregar Nuevo Libro")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    nuevo_titulo = st.text_input("📖 Título del libro:", key="input_nuevo_titulo")
+                    nuevo_autor = st.text_input("✍️ Autor (opcional):", key="input_nuevo_autor")
+                
+                with col2:
+                    nuevo_estante = st.selectbox(
+                        "📚 ¿A qué estante agregar?",
+                        options=[
+                            ("por_leer", "📚 Por Leer"),
+                            ("leyendo", "📖 Leyendo Ahora"),
+                            ("leidos", "✅ Leídos")
+                        ],
+                        format_func=lambda x: x[1],
+                        key="select_nuevo_estante"
+                    )
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                if st.button("➕ Agregar Libro", use_container_width=True, key="btn_agregar_libro_estante"):
+                    if nuevo_titulo.strip():
+                        exito, msg = gestor_estantes.agregar_libro_a_estante(
+                            nuevo_estante[0],
+                            nuevo_titulo,
+                            nuevo_autor
+                        )
+                        
+                        if exito:
+                            st.success(f"✅ {msg}")
+                            st.balloons()
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {msg}")
+                    else:
+                        st.warning("⚠️ Por favor, ingresa el título del libro")
+            
+            # ==================== TAB 3: MOVER LIBRO ====================
+            with tab3:
+                st.markdown("#### 🔄 Mover Libro entre Estantes")
+                
+                estantes = gestor_estantes.ver_estantes()
+                
+                # Crear lista de todos los libros con su estante actual
+                todos_libros = []
+                for estante_nombre, libros in estantes.items():
+                    for libro in libros:
+                        estante_display = {
+                            'por_leer': '📚 Por Leer',
+                            'leyendo': '📖 Leyendo',
+                            'leidos': '✅ Leídos'
+                        }[estante_nombre]
+                        
+                        todos_libros.append({
+                            'titulo': libro['titulo'],
+                            'autor': libro.get('autor', ''),
+                            'estante_actual': estante_nombre,
+                            'estante_display': estante_display,
+                            'display': f"{libro['titulo']} ({estante_display})"
+                        })
+                
+                if todos_libros:
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        libro_seleccionado = st.selectbox(
+                            "📖 Selecciona el libro:",
+                            options=todos_libros,
+                            format_func=lambda x: x['display'],
+                            key="select_libro_mover"
+                        )
+                    
+                    with col2:
+                        # Opciones de destino (excluyendo el estante actual)
+                        opciones_destino = [
+                            ("por_leer", "📚 Por Leer"),
+                            ("leyendo", "📖 Leyendo Ahora"),
+                            ("leidos", "✅ Leídos")
+                        ]
+                        
+                        opciones_filtradas = [
+                            opt for opt in opciones_destino 
+                            if opt[0] != libro_seleccionado['estante_actual']
+                        ]
+                        
+                        estante_destino = st.selectbox(
+                            "📚 Mover a:",
+                            options=opciones_filtradas,
+                            format_func=lambda x: x[1],
+                            key="select_estante_destino"
+                        )
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    
+                    if st.button("🔄 Mover Libro", use_container_width=True, key="btn_mover_libro"):
+                        exito, msg = gestor_estantes.mover_libro_entre_estantes(
+                            libro_seleccionado['titulo'],
+                            estante_destino[0]
+                        )
+                        
+                        if exito:
+                            st.success(f"✅ {msg}")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {msg}")
+                else:
+                    st.info("📚 No hay libros en tus estantes todavía. ¡Agrega algunos primero!")
+            
+            # ==================== TAB 4: ESTADÍSTICAS ====================
+            with tab4:
+                st.markdown("#### 📊 Estadísticas de Lectura")
+                
+                stats = gestor_estantes.estadisticas_estantes()
+                
+                # Métricas principales
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("📚 Por Leer", stats['por_leer'])
+                
+                with col2:
+                    st.metric("📖 Leyendo", stats['leyendo'])
+                
+                with col3:
+                    st.metric("✅ Leídos", stats['leidos'])
+                
+                with col4:
+                    st.metric("📊 Total", stats['total'])
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Estadística del año
+                st.markdown("### 🎯 Lectura Este Año")
+                col1, col2 = st.columns([1, 2])
+                
+                with col1:
+                    st.metric(
+                        "Libros leídos en 2024",
+                        stats['leidos_este_anio'],
+                        delta=None
+                    )
+                
+                with col2:
+                    if stats['leidos_este_anio'] > 0:
+                        progreso_anual = min(100, (stats['leidos_este_anio'] / 12) * 100)
+                        st.progress(progreso_anual / 100)
+                        st.caption(f"📈 Meta sugerida: 12 libros/año ({progreso_anual:.1f}% completado)")
+                    else:
+                        st.info("Aún no has terminado ningún libro este año. ¡Empieza uno!")
+                
+                # Distribución visual
+                if stats['total'] > 0:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.markdown("### 📊 Distribución de Libros")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    porc_por_leer = (stats['por_leer'] / stats['total']) * 100
+                    porc_leyendo = (stats['leyendo'] / stats['total']) * 100
+                    porc_leidos = (stats['leidos'] / stats['total']) * 100
+                    
+                    with col1:
+                        st.markdown(f"**📚 Por Leer**")
+                        st.progress(porc_por_leer / 100)
+                        st.caption(f"{porc_por_leer:.1f}%")
+                    
+                    with col2:
+                        st.markdown(f"**📖 Leyendo**")
+                        st.progress(porc_leyendo / 100)
+                        st.caption(f"{porc_leyendo:.1f}%")
+                    
+                    with col3:
+                        st.markdown(f"**✅ Leídos**")
+                        st.progress(porc_leidos / 100)
+                        st.caption(f"{porc_leidos:.1f}%")
+            
+            # Botón volver (fuera de todos los tabs)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_estantes"):
+                st.session_state.libros_subview = "menu"
+                st.rerun()
+# --- MÓDULO FRASES ---
+    elif st.session_state.current_view == "frases":
+        st.markdown("<div class='title-glow'>💬 Frases</div>", unsafe_allow_html=True)
+        
+        if st.session_state.frases_subview == "menu":
+            st.markdown("<p class='subtitle-text'>Tu dosis diaria de inspiración y motivación.</p>", unsafe_allow_html=True)
+            
+            opciones_frases = [
+                ("🌅", "Frase del Día", "fdia", "frases-icon"),
+                ("🎯", "Por Categoría", "categoria", "finanzas-icon"),
+                ("✨", "Personalizada", "personalizada", "ideas-icon"),
+                ("🎯", "Afirmaciones", "afirmaciones", "tarot-icon"),
+                ("📖", "Journal Gratitud", "journal", "notas-icon"),
+                ("⭐", "Favoritas", "favoritas", "libros-icon")
+            ]
+            
+            rows_frases = [opciones_frases[i:i+3] for i in range(0, len(opciones_frases), 3)]
+            for row in rows_frases:
+                cols = st.columns(3, gap="small")
+                for idx, (icon, label, sub_key, css) in enumerate(row):
+                    with cols[idx]:
+                        st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
+                        if st.button(f"Ver {label}", key=f"btn_frases_{sub_key}", use_container_width=True):
+                            st.session_state.frases_subview = sub_key
+                            st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🏠 Menú Principal", key="btn_frases_home", use_container_width=True):
+                st.session_state.current_view = "menu"
+                st.rerun()
+        
+        elif st.session_state.frases_subview == "fdia":
+            st.markdown("### 🌅 Frase del Día")
+            res = frases_handler.frase_del_dia()
+            st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_fdia"):
+                st.session_state.frases_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.frases_subview == "categoria":
+            st.markdown("### 🎯 Frase por Categoría")
+            
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                cat_frase = st.selectbox("Elige una categoría:", list(frases_handler.CATEGORIAS_FRASES.keys()), key="select_cat_frase")
+            with col2:
+                if st.button("📚 Ver Categorías", key="btn_ver_cats_frases"):
+                    res = frases_handler.listar_categorias()
+                    st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            if st.button("✨ Generar Frase", use_container_width=True, key="btn_frase_categoria"):
+                if cat_frase:
+                    res = frases_handler.frase_por_categoria(cat_frase)
+                    st.markdown(f'<div class="result-card">_{res}_</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_categoria"):
+                st.session_state.frases_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.frases_subview == "personalizada":
+            st.markdown("### ✨ Frase Personalizada")
+            mood = st.text_input("¿Cómo te sientes?", placeholder="Ej: ansiosa, feliz, cansada...", key="input_mood")
+            situacion = st.text_area("¿Qué estás atravesando?", height=100, key="input_situacion")
+            
+            if st.button("💫 Generar Frase", use_container_width=True, key="btn_frase_personalizada"):
+                res = frases_handler.generar_frase_personalizada(mood, situacion, personalidades_handler)
+                st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_personalizada"):
+                st.session_state.frases_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.frases_subview == "afirmaciones":
+            st.markdown("### 🎯 Afirmaciones Personalizadas")
+            area_afirm = st.text_input("¿Para qué área?", placeholder="Ej: amor propio, abundancia, trabajo...", key="input_area_afirm")
+            cantidad = st.slider("¿Cuántas afirmaciones?", 3, 10, 5, key="slider_cantidad_afirm")
+            
+            if st.button("✨ Generar Afirmaciones", use_container_width=True, key="btn_generar_afirm"):
+                if area_afirm:
+                    res = frases_handler.generar_afirmaciones_personalizadas(area_afirm, cantidad, personalidades_handler)
+                    st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Escribe el área primero")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_afirmaciones"):
+                st.session_state.frases_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.frases_subview == "journal":
+            st.markdown("### 📖 Journal de Gratitud")
+            
+            tab1, tab2, tab3 = st.tabs(["➕ Nueva Entrada", "📘 Ver Journal", "📊 Estadísticas"])
+            
+            with tab1:
+                gratitud = st.text_area("¿Por qué estás agradecida hoy?", height=150, key="input_gratitud")
+                if st.button("💛 Guardar en Journal", use_container_width=True, key="btn_guardar_gratitud"):
+                    if gratitud:
+                        res = frases_handler.agregar_entrada_journal(gratitud, personalidades_handler)
+                        st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                    else:
+                        st.warning("⚠️ Escribe algo primero")
+            
+            with tab2:
+                filtro_journal = st.selectbox("Filtrar por:", ["Todos", "Hoy", "Esta semana", "Este mes"], key="select_filtro_journal")
+                if st.button("📖 Ver Entradas", use_container_width=True, key="btn_ver_journal"):
+                    filtro_map = {"Todos": "todos", "Hoy": "hoy", "Esta semana": "semana", "Este mes": "mes"}
+                    res = frases_handler.ver_journal(filtro_map[filtro_journal])
+                    st.markdown(f'<div class="result-card" style="text-align:left; max-height:400px; overflow-y:auto;">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            with tab3:
+                if st.button("📊 Ver Estadísticas", use_container_width=True, key="btn_stats_journal"):
+                    res = frases_handler.estadisticas_journal()
+                    st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_journal"):
+                st.session_state.frases_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.frases_subview == "favoritas":
+            st.markdown("### ⭐ Frases Favoritas")
+            
+            tab1, tab2, tab3 = st.tabs(["➕ Agregar", "👁️ Ver Todas", "🗑️ Borrar"])
+            
+            with tab1:
+                frase_nueva = st.text_area("Escribe la frase para guardar:", height=100, key="input_nueva_fav")
+                if st.button("⭐ Guardar en Favoritas", use_container_width=True, key="btn_guardar_fav"):
+                    if frase_nueva:
+                        res = frases_handler.agregar_favorita(frase_nueva)
+                        st.success(res)
+                    else:
+                        st.warning("⚠️ Escribe una frase primero")
+            
+            with tab2:
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("📋 Ver Todas", use_container_width=True, key="btn_ver_todas_fav"):
+                        res = frases_handler.ver_favoritas()
+                        st.markdown(f'<div class="result-card" style="text-align:left; max-height:400px; overflow-y:auto;">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                with col2:
+                    if st.button("🎲 Frase Aleatoria", use_container_width=True, key="btn_fav_random"):
+                        res = frases_handler.favorita_aleatoria()
+                        st.markdown(f'<div class="result-card">{res.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            with tab3:
+                id_fav = st.number_input("ID de la frase a borrar:", min_value=1, step=1, key="input_id_fav_borrar")
+                st.warning("⚠️ Esta acción no se puede deshacer")
+                if st.button("🗑️ Confirmar Borrado", use_container_width=True, key="btn_borrar_fav"):
+                    res = frases_handler.borrar_favorita(id_fav)
+                    st.markdown(f'<div class="result-card">{res}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_volver_favoritas"):
+                st.session_state.frases_subview = "menu"
+                st.rerun()
+
+    # --- MÓDULO PERSONALIDADES ---
+    elif st.session_state.current_view == "personalidades":
+        st.markdown("<div class='title-glow'>👤 Personalidades</div>", unsafe_allow_html=True)
+        
+        if st.session_state.personalidades_subview == "menu":
+            st.markdown("<p class='subtitle-text'>Elige cómo quieres que te hable la IA.</p>", unsafe_allow_html=True)
+            
+            actual = personalidades_handler.obtener_personalidad_actual()
+            st.markdown(f"""
+            <div class="result-card" style="text-align:center;">
+                <h3 style='color:#fbbf24;'>Personalidad Actual</h3>
+                <p style='font-size:1.5rem; text-transform:capitalize;'><strong>{actual}</strong></p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("### 😎 Selecciona una personalidad")
+            
+            personalidades_opciones = [
+                ("bestie", "💛", "Bestie", "Cálida y amorosa", "frases-icon"),
+                ("formal", "💼", "Formal", "Profesional", "profesional-icon"),
+                ("espiritual", "🌟", "Espiritual", "Guía intuitiva", "oculto-icon"),
+                ("psicologa", "🧠", "Psicóloga", "Empática y validante", "personalidades-icon"),
+                ("honesta", "💪", "Honesta", "Directa y clara", "ideas-icon"),
+                ("tecnico", "🔧", "Técnico", "Experta en tech", "finanzas-icon")
+            ]
+            
+            rows = [personalidades_opciones[i:i+3] for i in range(0, len(personalidades_opciones), 3)]
+            
+            for row in rows:
+                cols = st.columns(3, gap="small")
+                for idx, (key, icon, nombre, desc, css) in enumerate(row):
+                    with cols[idx]:
+                        st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{nombre}</div><p style="font-size:0.85rem; margin-top:5px;">{desc}</p></div>', unsafe_allow_html=True)
+                        if st.button(f"Activar {nombre}", key=f"btn_pers_{key}", use_container_width=True):
+                            res = personalidades_handler.cambiar_personalidad(key)
+                            st.success(res)
+                            st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+            
+            with st.expander("ℹ️ ¿Qué hace cada personalidad?"):
+                for key, icon, nombre, desc, css in personalidades_opciones:
+                    instruccion = personalidades_handler.obtener_descripcion_personalidad(key)
+                    st.markdown(f"**{icon} {nombre}**")
+                    st.markdown(f"_{instruccion}_")
+                    st.markdown("---")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🏠 Menú Principal", key="btn_pers_home", use_container_width=True):
+                st.session_state.current_view = "menu"
+                st.rerun()
+
+    # --- LO OCULTO, IDEAS, ETC ---
+    elif st.session_state.current_view == "lo_oculto":
+        st.markdown("<div class='title-glow'>🌙 Lo Oculto</div>", unsafe_allow_html=True)
+        if st.session_state.oculto_subview == "menu":
+            opciones_oculto = [("🔮", "Tarot", "tarot", "tarot-icon"), ("⭐", "Astrología", "astrologia", "libros-icon"), ("🔢", "Numerología", "numerologia", "finanzas-icon")]
+            cols = st.columns(3, gap="small")
+            for idx, (icon, label, modulo, css) in enumerate(opciones_oculto):
+                with cols[idx]:
+                    st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
+                    if st.button(f"Abrir {label}", key=f"btn_oculto_{modulo}", use_container_width=True):
+                        st.session_state.current_view = modulo
+                        st.session_state.oculto_subview = "menu"
+                        st.rerun()
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🏠 Menú Principal", key="btn_oculto_home"): 
+                st.session_state.current_view = "menu"
+                st.rerun()
+    
+    # --- MÓDULO TAROT ---
+    elif st.session_state.current_view == "tarot":
+        st.markdown("<div class='title-glow'>🔮 Tarot</div>", unsafe_allow_html=True)
+        
+        if st.session_state.tarot_subview == "menu":
+            st.markdown("<p class='subtitle-text'>Las cartas revelan lo que tu alma ya sabe.</p>", unsafe_allow_html=True)
+            
+            opciones_tarot = [
+                ("✨", "Energía del Día", "energia", "tarot-icon"),
+                ("📅", "Tirada de la Semana", "semana", "libros-icon"),
+                ("🃏", "Interpretar Tirada", "interpretar", "ideas-icon"),
+                ("🔮", "Tirada General", "tres_cartas", "libros-icon"),
+                ("💕", "Tirada de Amor", "amor", "frases-icon"),
+                ("💼", "Tirada de Trabajo", "trabajo", "finanzas-icon"),
+                ("❓", "Pregunta Sí/No", "si_no", "ideas-icon"),
+                ("📜", "Historial", "historial", "biblia-icon"),
+                ("🏠", "Volver", "volver", "notas-icon")
+            ]
+            
+            rows_tarot = [opciones_tarot[i:i+3] for i in range(0, len(opciones_tarot), 3)]
+            for row in rows_tarot:
+                cols = st.columns(3, gap="small")
+                for idx, (icon, label, sub_key, css) in enumerate(row):
+                    if idx < len(row):
+                        with cols[idx]:
+                            st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
+                            if st.button(f"Abrir {label}" if sub_key != "volver" else label, key=f"btn_tarot_{sub_key}", use_container_width=True):
+                                if sub_key == "volver":
+                                    st.session_state.current_view = "lo_oculto"
+                                    st.session_state.oculto_subview = "menu"
+                                else:
+                                    st.session_state.tarot_subview = sub_key
+                                st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+        
+        elif st.session_state.tarot_subview == "energia":
+            st.markdown("### ✨ Energía del Día")
+            st.markdown("<p style='color:#d8c9ff;'>Una carta para guiar tu jornada</p>", unsafe_allow_html=True)
+            resultado = tarot.energia_del_dia()
+            st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_tarot_volver_energia", use_container_width=True):
+                st.session_state.tarot_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.tarot_subview == "tres_cartas":
+            st.markdown("### 🔮 Tirada General")
+            st.markdown("<p style='color:#d8c9ff;'>Pasado, Presente y Futuro con interpretación de IA</p>", unsafe_allow_html=True)
+            
+            pregunta = st.text_area("¿Qué pregunta le haces a las cartas?", height=100, 
+                                   placeholder="Ej: ¿Qué necesito saber sobre mi situación actual?", 
+                                   key="input_pregunta_tarot")
+            
+            if st.button("🔮 Consultar las Cartas", use_container_width=True, key="btn_tirada_tres"):
+                if pregunta:
+                    with st.spinner("🌙 Las cartas están revelando su mensaje..."):
+                        resultado = tarot.tirada_tres_cartas_ia(pregunta)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Escribe tu pregunta primero")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_tarot_volver_tres", use_container_width=True):
+                st.session_state.tarot_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.tarot_subview == "amor":
+            st.markdown("### 💕 Tirada de Amor")
+            st.markdown("<p style='color:#d8c9ff;'>Tu energía, su energía, la conexión y el consejo</p>", unsafe_allow_html=True)
+            
+            pregunta_amor = st.text_area("¿Qué quieres saber sobre el amor?", height=100,
+                                        placeholder="Ej: ¿Cómo fluye mi relación con esta persona?",
+                                        key="input_pregunta_amor")
+            
+            if st.button("💕 Consultar sobre Amor", use_container_width=True, key="btn_tirada_amor"):
+                if pregunta_amor:
+                    with st.spinner("💖 Las cartas están hablando del amor..."):
+                        resultado = tarot.tirada_amor_ia(pregunta_amor)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Escribe tu pregunta primero")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_tarot_volver_amor", use_container_width=True):
+                st.session_state.tarot_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.tarot_subview == "trabajo":
+            st.markdown("### 💼 Tirada Profesional")
+            st.markdown("<p style='color:#d8c9ff;'>Situación, fortalezas, desafíos y resultado</p>", unsafe_allow_html=True)
+            
+            pregunta_trabajo = st.text_area("¿Qué quieres saber sobre tu trabajo?", height=100,
+                                           placeholder="Ej: ¿Debo aceptar esta oferta laboral?",
+                                           key="input_pregunta_trabajo")
+            
+            if st.button("💼 Consultar sobre Trabajo", use_container_width=True, key="btn_tirada_trabajo"):
+                if pregunta_trabajo:
+                    with st.spinner("🌟 Las cartas están iluminando tu camino profesional..."):
+                        resultado = tarot.tirada_trabajo_ia(pregunta_trabajo)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Escribe tu pregunta primero")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_tarot_volver_trabajo", use_container_width=True):
+                st.session_state.tarot_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.tarot_subview == "si_no":
+            st.markdown("### ❓ Pregunta Sí/No")
+            st.markdown("<p style='color:#d8c9ff;'>Una carta, una respuesta clara</p>", unsafe_allow_html=True)
+            
+            pregunta_sino = st.text_input("Haz tu pregunta de sí o no:", 
+                                         placeholder="Ej: ¿Debo tomar esta decisión?",
+                                         key="input_pregunta_sino")
+            
+            if st.button("❓ Consultar Sí/No", use_container_width=True, key="btn_tirada_sino"):
+                if pregunta_sino:
+                    with st.spinner("✨ Las cartas están decidiendo..."):
+                        resultado = tarot.tirada_si_no_ia(pregunta_sino)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Escribe tu pregunta primero")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_tarot_volver_sino", use_container_width=True):
+                st.session_state.tarot_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.tarot_subview == "historial":
+            st.markdown("### 📜 Historial de Tiradas")
+            st.markdown("<p style='color:#d8c9ff;'>Tus lecturas pasadas</p>", unsafe_allow_html=True)
+            
+            historial = tarot.ver_historial()
+            
+            if historial:
+                st.success(f"✅ {len(historial)} tirada(s) guardada(s)")
+                
+                for tirada in historial[:10]:  # Mostrar últimas 10
+                    tipo_emoji = {
+                        "energia": "✨",
+                        "tres_cartas": "🔮",
+                        "amor": "💕",
+                        "trabajo": "💼",
+                        "si_no": "❓"
+                    }
+                    emoji = tipo_emoji.get(tirada.get('tipo', ''), "🔮")
+                    
+                    with st.expander(f"{emoji} {tirada.get('tipo', 'Tirada').title()} - {tirada.get('fecha', 'N/A')}", expanded=False):
+                        # Mostrar cartas
+                        cartas = tirada.get('cartas', [])
+                        if isinstance(cartas, list):
+                            st.markdown("**Cartas:**")
+                            for carta in cartas:
+                                if isinstance(carta, dict):
+                                    st.caption(f"🃏 {carta.get('nombre', 'N/A')} {' (Invertida)' if carta.get('invertida') else ''}")
+                                else:
+                                    st.caption(f"🃏 {carta}")
+                        
+                        # Mostrar interpretación resumida
+                        interp = tirada.get('interpretacion', '')
+                        if interp:
+                            st.markdown("**Lectura:**")
+                            st.markdown(interp[:300] + "..." if len(interp) > 300 else interp)
+            else:
+                st.info("No tienes tiradas guardadas aún. ¡Haz tu primera lectura! 🔮")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_tarot_volver_historial", use_container_width=True):
+                st.session_state.tarot_subview = "menu"
+                st.rerun()
+        elif st.session_state.tarot_subview == "semana":
+            st.markdown("### 📅 Tirada de la Semana")
+            st.markdown("<p style='color:#d8c9ff;'>Tu panorama para los próximos 7 días</p>", unsafe_allow_html=True)
+            
+            if st.button("🔮 Generar Tirada Semanal", use_container_width=True, key="btn_tirada_semana"):
+                with st.spinner("🌟 Las cartas están revelando tu semana..."):
+                    resultado = tarot.tirada_de_la_semana()
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_tarot_volver_semana", use_container_width=True):
+                st.session_state.tarot_subview = "menu"
+                st.rerun()
+        elif st.session_state.tarot_subview == "interpretar":
+            st.markdown("### 🃏 Interpretar Mi Tirada")
+            st.markdown("<p style='color:#d8c9ff;'>Ingresa las cartas de tu tirada física y recibe interpretación de IA</p>", unsafe_allow_html=True)
+            
+            # Pregunta opcional
+            pregunta_tirada = st.text_area(
+                "Tu pregunta (opcional):",
+                height=80,
+                placeholder="Ej: ¿Qué debo saber sobre mi situación actual?",
+                key="input_pregunta_tirada_personal"
+            )
+            
+            st.markdown("### 🎴 Selecciona tus cartas")
+            
+            # Inicializar lista de cartas seleccionadas en session state
+            if 'cartas_personales' not in st.session_state:
+                st.session_state.cartas_personales = []
+            
+            # Agregar carta
+            col1, col2, col3 = st.columns([3, 1, 1])
+            
+            with col1:
+                carta_elegida = st.selectbox(
+                    "Elige una carta:",
+                    list(tarot.MAZO_TAROT.keys()),
+                    key="select_carta_personal"
+                )
+            
+            with col2:
+                invertida = st.checkbox("Invertida", key="check_invertida_personal")
+            
+            with col3:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("➕ Agregar", key="btn_agregar_carta_personal", use_container_width=True):
+                    carta_info = tarot.MAZO_TAROT[carta_elegida]
+                    significado = carta_info["invertida"] if invertida else carta_info["derecha"]
+                    
+                    st.session_state.cartas_personales.append({
+                        'nombre': carta_elegida,
+                        'invertida': invertida,
+                        'significado': significado
+                    })
+                    st.rerun()
+            
+            # Mostrar cartas seleccionadas
+            if st.session_state.cartas_personales:
+                st.markdown("### 📋 Tus Cartas:")
+                
+                for i, carta in enumerate(st.session_state.cartas_personales):
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        inv_text = " (Invertida)" if carta['invertida'] else ""
+                        st.markdown(f"**{i+1}.** 🃏 {carta['nombre']}{inv_text}")
+                    with col2:
+                        if st.button("🗑️", key=f"btn_eliminar_carta_{i}"):
+                            st.session_state.cartas_personales.pop(i)
+                            st.rerun()
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Botones de acción
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if st.button("🔮 Interpretar Tirada", use_container_width=True, key="btn_interpretar_personal"):
+                        with st.spinner("✨ La IA está interpretando tu tirada... (10-15 seg)"):
+                            resultado = tarot.interpretar_tirada_personal(
+                                st.session_state.cartas_personales,
+                                pregunta_tirada
+                            )
+                        st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                
+                with col2:
+                    if st.button("🔄 Limpiar Todo", use_container_width=True, key="btn_limpiar_cartas"):
+                        st.session_state.cartas_personales = []
+                        st.rerun()
+            else:
+                st.info("👆 Agrega al menos una carta para interpretar")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_tarot_volver_interpretar", use_container_width=True):
+                st.session_state.tarot_subview = "menu"
+                st.session_state.cartas_personales = []
+                st.rerun()        
+    # --- MÓDULO ASTROLOGÍA ---
+    elif st.session_state.current_view == "astrologia":
+        st.markdown("<div class='title-glow'>⭐ Astrología</div>", unsafe_allow_html=True)
+        
+        if st.session_state.astro_subview == "menu":
+            st.markdown("<p class='subtitle-text'>Las estrellas cuentan tu historia.</p>", unsafe_allow_html=True)
+            
+            opciones_astro = [
+                ("🌟", "Horóscopo Diario", "horoscopo", "libros-icon"),
+                ("🌙", "Fase Lunar", "luna", "tarot-icon"),
+                ("💫", "Compatibilidad", "compatibilidad", "frases-icon"),
+                ("🔄", "Retrogradaciones", "retrogradaciones", "ideas-icon"),
+                ("🎂", "Revolución Solar", "revolucion", "libros-icon"),
+                ("🔮", "Carta Natal", "carta_natal", "oculto-icon"), 
+                ("🏠", "Volver", "volver", "ideas-icon")
+            ]
+           
+            rows_astro = [opciones_astro[i:i+3] for i in range(0, len(opciones_astro), 3)]
+            for row in rows_astro:
+                cols = st.columns(3, gap="small")
+                for idx, (icon, label, sub_key, css) in enumerate(row):
+                    with cols[idx]:
+                        st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
+                        if st.button(f"Abrir {label}" if sub_key != "volver" else label, key=f"btn_astro_{sub_key}", use_container_width=True):
+                            if sub_key == "volver":
+                                st.session_state.current_view = "lo_oculto"
+                                st.session_state.oculto_subview = "menu"
+                            else:
+                                st.session_state.astro_subview = sub_key
+                            st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+        
+        elif st.session_state.astro_subview == "horoscopo":
+            st.markdown("### 🌟 Horóscopo del Día")
+            
+            signos = ["Aries", "Tauro", "Géminis", "Cáncer", "Leo", "Virgo", "Libra", "Escorpio", "Sagitario", "Capricornio", "Acuario", "Piscis"]
+            signo = st.selectbox("Tu signo zodiacal:", signos, key="select_signo_astro")
+            
+            if st.button("✨ Ver Horóscopo", use_container_width=True, key="btn_horoscopo"):
+                resultado = astrologia.horoscopo_del_dia(signo)
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_astro_volver_horo"):
+                st.session_state.astro_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.astro_subview == "luna":
+            st.markdown("### 🌙 Fase Lunar Actual")
+            resultado = astrologia.fase_lunar_actual()
+            st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_astro_volver_luna"):
+                st.session_state.astro_subview = "menu"
+                st.rerun()
+        elif st.session_state.astro_subview == "compatibilidad":
+            st.markdown("### 💫 Compatibilidad de Signos")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre la compatibilidad astrológica entre dos signos</p>", unsafe_allow_html=True)
+            
+            signos = ["Aries", "Tauro", "Géminis", "Cáncer", "Leo", "Virgo", "Libra", "Escorpio", "Sagitario", "Capricornio", "Acuario", "Piscis"]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                signo1 = st.selectbox("Primer signo:", signos, key="select_signo1_comp")
+            
+            with col2:
+                signo2 = st.selectbox("Segundo signo:", signos, index=1, key="select_signo2_comp")
+            
+            if st.button("💫 Analizar Compatibilidad", use_container_width=True, key="btn_compatibilidad_signos"):
+                resultado = astrologia.compatibilidad_signos(signo1, signo2)
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_astro_volver_comp"):
+                st.session_state.astro_subview = "menu"
+                st.rerun()
+        elif st.session_state.astro_subview == "retrogradaciones":
+            st.markdown("### 🔄 Retrogradaciones Planetarias")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre qué planetas están retrógrados ahora y cómo te afectan</p>", unsafe_allow_html=True)
+            
+            if st.button("🔮 Ver Retrogradaciones Actuales", use_container_width=True, key="btn_retrogradaciones"):
+                with st.spinner("🌟 Consultando las estrellas..."):
+                    resultado = astrologia.retrogradaciones_actuales()
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_astro_volver_retro"):
+                st.session_state.astro_subview = "menu"
+                st.rerun()
+        elif st.session_state.astro_subview == "revolucion":
+            st.markdown("### 🎂 Revolución Solar")
+            st.markdown("<p style='color:#d8c9ff;'>Tu nuevo año astrológico - energías y predicciones para tu ciclo personal</p>", unsafe_allow_html=True)
+            
+            signos = ["Aries", "Tauro", "Géminis", "Cáncer", "Leo", "Virgo", "Libra", "Escorpio", "Sagitario", "Capricornio", "Acuario", "Piscis"]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fecha_nac = st.date_input(
+                    "Tu fecha de nacimiento:",
+                    value=datetime.date(1990, 1, 1),
+                    min_value=datetime.date(1900, 1, 1),
+                    max_value=datetime.date.today(),
+                    key="input_fecha_revolucion"
+                )
+            
+            with col2:
+                signo_rev = st.selectbox("Tu signo:", signos, key="select_signo_revolucion")
+            
+            if st.button("🌟 Ver Mi Revolución Solar", use_container_width=True, key="btn_revolucion_solar"):
+                fecha_str = fecha_nac.strftime("%Y-%m-%d")
+                resultado = astrologia.revolucion_solar(fecha_str, signo_rev)
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_astro_volver_rev"):
+                st.session_state.astro_subview = "menu"
+                st.rerun()
+
+        elif st.session_state.astro_subview == "carta_natal":
+            st.markdown("### 🔮 Tu Carta Natal Básica")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre tu Sol, Luna y Ascendente</p>", unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fecha_natal = st.date_input(
+                    "Tu fecha de nacimiento:",
+                    value=datetime.date(1990, 1, 1),
+                    min_value=datetime.date(1900, 1, 1),
+                    max_value=datetime.date.today(),
+                    key="input_fecha_natal"
+                )
+            
+            with col2:
+                hora_natal = st.time_input(
+                    "Hora de nacimiento (aproximada):",
+                    value=datetime.time(12, 0),
+                    key="input_hora_natal",
+                    help="Si no sabes tu hora exacta, usa 12:00"
+                )
+            
+            st.caption("💡 Esta es una carta natal simplificada. Para una lectura completa, se necesitaría tu lugar exacto de nacimiento.")
+            
+            if st.button("🔮 Generar Mi Carta Natal", use_container_width=True, key="btn_carta_natal"):
+                fecha_str = fecha_natal.strftime("%d/%m/%Y")
+                hora_str = hora_natal.strftime("%H:%M")
+                
+                with st.spinner("✨ Calculando las posiciones astrales..."):
+                    resultado = astrologia.carta_natal_basica(fecha_str, hora_str)
+                
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_astro_volver_natal"):
+                st.session_state.astro_subview = "menu"
+                st.rerun()                     
+    # --- MÓDULO NUMEROLOGÍA ---
+    elif st.session_state.current_view == "numerologia":
+        st.markdown("<div class='title-glow'>🔢 Numerología</div>", unsafe_allow_html=True)
+        
+        if st.session_state.nume_subview == "menu":
+            st.markdown("<p class='subtitle-text'>Los números revelan tu propósito.</p>", unsafe_allow_html=True)
+            
+            opciones_nume = [
+                ("🔢", "Número del Día", "dia", "finanzas-icon"),
+                ("✨", "Camino de Vida", "camino", "ideas-icon"),
+                ("⭐", "Año Personal", "ano", "ideas-icon"),
+                ("👼", "Significado", "significado", "tarot-icon"),
+                ("💕", "Compatibilidad", "compatibilidad", "frases-icon"),
+                ("🗺️", "Mapa de Vida", "mapa_vida", "oculto-icon"),
+                ("🔄", "Ciclos de Vida", "ciclos_vida", "profesional-icon"),
+                ("🏠", "Volver", "volver", "libros-icon")
+            ]
+            
+            rows_nume = [opciones_nume[i:i+3] for i in range(0, len(opciones_nume), 3)]
+            for row in rows_nume:
+                cols = st.columns(3, gap="small")
+                for idx, (icon, label, sub_key, css) in enumerate(row):
+                    with cols[idx]:
+                        st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
+                        if st.button(f"Ver {label}" if sub_key != "volver" else label, key=f"btn_nume_{sub_key}", use_container_width=True):
+                            if sub_key == "volver":
+                                st.session_state.current_view = "lo_oculto"
+                                st.session_state.oculto_subview = "menu"
+                            else:
+                                st.session_state.nume_subview = sub_key
+                            st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+        
+        elif st.session_state.nume_subview == "dia":
+            st.markdown("### 🔢 Número del Día")
+            resultado = numerologia.numerologia_del_dia()
+            st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_nume_volver_dia"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.nume_subview == "camino":
+            st.markdown("### ✨ Tu Camino de Vida")
+            st.markdown("<p style='color:#d8c9ff;'>Ingresa tu fecha de nacimiento</p>", unsafe_allow_html=True)
+            
+            fecha = st.text_input("Fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha_nume")
+            
+            if st.button("🔢 Calcular", use_container_width=True, key="btn_calcular_camino"):
+                if fecha:
+                    resultado = numerologia.calcular_camino_de_vida(fecha)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Ingresa tu fecha de nacimiento")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_nume_volver_camino"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.nume_subview == "significado":
+            st.markdown("### 👼 Significado de un Número")
+            st.markdown("<p style='color:#d8c9ff;'>Números angelicales, números base, etc.</p>", unsafe_allow_html=True)
+            
+            numero = st.text_input("Número a consultar:", placeholder="Ej: 111, 7, 1234", key="input_numero_signif")
+            
+            if st.button("✨ Ver Significado", use_container_width=True, key="btn_significado"):
+                if numero:
+                    resultado = numerologia.significado_numero(numero)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Ingresa un número")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_nume_volver_signif"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()
+        elif st.session_state.nume_subview == "ano":
+            st.markdown("### ⭐ Tu Año Personal")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre la energía numerológica de tu año actual</p>", unsafe_allow_html=True)
+            
+            fecha_ano = st.text_input("Tu fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha_ano")
+            
+            if st.button("🔢 Calcular Mi Año Personal", use_container_width=True, key="btn_calcular_ano"):
+                if fecha_ano:
+                    resultado = numerologia.ano_personal(fecha_ano)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Ingresa tu fecha de nacimiento")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_nume_volver_ano"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.nume_subview == "compatibilidad":
+            st.markdown("### 💕 Compatibilidad Numerológica")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre la compatibilidad entre dos personas según su numerología</p>", unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Persona 1:**")
+                fecha1 = st.text_input("Fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha1_comp")
+            
+            with col2:
+                st.markdown("**Persona 2:**")
+                fecha2 = st.text_input("Fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha2_comp")
+            
+            if st.button("💕 Analizar Compatibilidad", use_container_width=True, key="btn_comp_numerologia"):
+                if fecha1 and fecha2:
+                    with st.spinner("🔢 Calculando compatibilidad numerológica..."):
+                        resultado = numerologia.compatibilidad_numerologica(fecha1, fecha2)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Ingresa ambas fechas de nacimiento")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_nume_volver_comp"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()
+        elif st.session_state.nume_subview == "mapa_vida":
+            st.markdown("### 🗺️ Mapa de Vida Numerológico")
+            st.markdown("<p style='color:#d8c9ff;'>Un análisis profundo de tu vida a través de los números</p>", unsafe_allow_html=True)
+            
+            fecha_mapa = st.text_input("Tu fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha_mapa")
+            
+            if st.button("🗺️ Generar Mapa de Vida", use_container_width=True, key="btn_mapa_vida"):
+                if fecha_mapa:
+                    resultado = numerologia.mapa_de_vida(fecha_mapa)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Ingresa tu fecha de nacimiento")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_nume_volver_mapa"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()
+        elif st.session_state.nume_subview == "ciclos_vida":
+            st.markdown("### 🔄 Ciclos de Vida Numerológicos")
+            st.markdown("<p style='color:#d8c9ff;'>Descubre los ciclos importantes en tu vida según la numerología</p>", unsafe_allow_html=True)
+            
+            fecha_ciclos = st.text_input("Tu fecha de nacimiento:", placeholder="DD/MM/AAAA", key="input_fecha_ciclos")
+            
+            if st.button("🔄 Calcular Ciclos de Vida", use_container_width=True, key="btn_ciclos_vida"):
+                if fecha_ciclos:
+                    resultado = numerologia.ciclos_de_vida(fecha_ciclos)
+                    st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Ingresa tu fecha de nacimiento")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver", key="btn_nume_volver_ciclos"):
+                st.session_state.nume_subview = "menu"
+                st.rerun()
+        
+    # --- MÓDULO IDEAS ---
+    elif st.session_state.current_view == "ideas":
+        mostrar_breadcrumbs()
+        st.markdown("<div class='title-glow'>💡 Ideas</div>", unsafe_allow_html=True)
+        
+        if st.session_state.ideas_subview == "menu":
+            st.markdown("<p class='subtitle-text'>Tu espacio creativo para proyectos personales.</p>", unsafe_allow_html=True)
+            
+            # Mostrar proyectos existentes
+            proyectos = ideas_handler.listar_proyectos()
+            
+            if proyectos:
+                st.markdown("### 📂 Tus Proyectos")
+                
+                cols_proyectos = st.columns(2)
+                for idx, proyecto in enumerate(proyectos):
+                    with cols_proyectos[idx % 2]:
+                        total_items = len(proyecto.get('items', []))
+                        conseguidos = proyecto.get('conseguidos', 0)
+                        progreso = (conseguidos / total_items * 100) if total_items > 0 else 0
+                        
+                        st.markdown(f"""
+                        <div class="result-card" style="text-align:left; min-height:120px;">
+                            <h3 style="color:#ffda89 !important; margin-bottom:10px;">{proyecto['nombre']}</h3>
+                            <p style="font-size:0.9rem; margin:5px 0;">{proyecto.get('descripcion', 'Sin descripción')[:80]}...</p>
+                            <p style="font-size:0.85rem; color:#d8c9ff !important;">
+                                📊 {total_items} items • ✅ {conseguidos} conseguidos • 🎯 {progreso:.0f}%
+                            </p>
+                            <p style="font-size:0.85rem; color:#86efac !important;">
+                                💰 Total gastado: ${proyecto.get('total_gastado', 0):.2f}
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        if st.button(f"Abrir {proyecto['nombre']}", key=f"btn_abrir_proyecto_{proyecto['id']}", use_container_width=True):
+                            st.session_state.selected_project_id = proyecto['id']
+                            st.session_state.ideas_subview = "ver_proyecto"
+                            st.rerun()
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+            else:
+                st.info("📭 No tienes proyectos aún. ¡Crea el primero!")
+            
+            # Crear nuevo proyecto
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("### ➕ Crear Nuevo Proyecto")
+            
+            nombre_proyecto = st.text_input("Nombre del proyecto:", key="input_nombre_proyecto")
+            desc_proyecto = st.text_area("Descripción (opcional):", height=80, key="input_desc_proyecto")
+            
+            if st.button("✨ Crear Proyecto", use_container_width=True, key="btn_crear_proyecto"):
+                if nombre_proyecto:
+                    proyecto = ideas_handler.crear_proyecto(nombre_proyecto, desc_proyecto)
+                    st.success(f"✅ Proyecto '{nombre_proyecto}' creado")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Escribe un nombre para el proyecto")
+            
+            # Chat con IA
+            if ideas_handler.openai_enabled:
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("### 💬 Habla con IA sobre tus ideas")
+                
+                if st.button("🤖 Abrir Chat de Ideas", use_container_width=True, key="btn_chat_ideas"):
+                    st.session_state.ideas_subview = "chat"
+                    st.rerun()
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🏠 Menú Principal", key="btn_ideas_home", use_container_width=True):
+                st.session_state.current_view = "menu"
+                st.rerun()
+        
+        elif st.session_state.ideas_subview == "ver_proyecto":
+            proyecto = ideas_handler.obtener_proyecto(st.session_state.selected_project_id)
+            
+            if not proyecto:
+                st.error("❌ Proyecto no encontrado")
+                if st.button("🔙 Volver", key="btn_volver_proyecto_error"):
+                    st.session_state.ideas_subview = "menu"
+                    st.session_state.selected_project_id = None
+                    st.rerun()
+            else:
+                st.markdown(f"### 📂 {proyecto['nombre']}")
+                
+                if proyecto.get('descripcion'):
+                    st.caption(proyecto['descripcion'])
+                
+                # Estadísticas del proyecto
+                total_items = len(proyecto.get('items', []))
+                conseguidos = proyecto.get('conseguidos', 0)
+                total_gastado = proyecto.get('total_gastado', 0)
+                progreso = (conseguidos / total_items * 100) if total_items > 0 else 0
+                
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("📊 Total Items", total_items)
+                col2.metric("✅ Conseguidos", conseguidos)
+                col3.metric("🎯 Progreso", f"{progreso:.0f}%")
+                col4.metric("💰 Gastado", f"${total_gastado:.2f}")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Agregar nuevo item
+                with st.expander("➕ **Agregar Nuevo Item**", expanded=False):
+                    tipo_item = st.selectbox(
+                        "Tipo de item:",
+                        ["🎨 Inspiración", "🛒 Compra"],
+                        key="select_tipo_item"
+                    )
+                    
+                    descripcion_item = st.text_area(
+                        "Descripción del item:",
+                        height=80,
+                        key="input_desc_item"
+                    )
+                    
+                    # Campo de precio
+                    precio_item = st.number_input(
+                        "💰 Precio (opcional):",
+                        min_value=0.0,
+                        step=0.01,
+                        format="%.2f",
+                        key="input_precio_item"
+                    )
+                    
+                    # Upload de imagen
+                    imagen_item = st.file_uploader(
+                        "📸 Subir foto (opcional):",
+                        type=['png', 'jpg', 'jpeg'],
+                        key="upload_imagen_item"
+                    )
+                    
+                    # Mostrar preview si hay imagen
+                    if imagen_item:
+                        st.image(imagen_item, caption="Preview", width=200)
+                    
+                    if st.button("✅ Agregar Item", use_container_width=True, key="btn_agregar_item"):
+                        if descripcion_item:
+                            tipo = "inspiracion" if "Inspiración" in tipo_item else "compra"
+                            
+                            item = ideas_handler.agregar_item(
+                                proyecto_id=st.session_state.selected_project_id,
+                                tipo=tipo,
+                                descripcion=descripcion_item,
+                                precio=precio_item,
+                                imagen_file=imagen_item
+                            )
+                            
+                            if item:
+                                st.success(f"✅ Item agregado: {descripcion_item}")
+                                st.rerun()
+                            else:
+                                st.error("❌ Error al agregar item")
+                        else:
+                            st.warning("⚠️ Escribe una descripción")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Ver items del proyecto
+                if proyecto['items']:
+                    st.markdown("### 📋 Items del Proyecto")
+                    filtro_tipo = st.radio(
+                        "Filtrar por:",
+                        ["Todos", "🎨 Inspiración", "🛒 Compras", "✅ Conseguidos", "⏳ Pendientes"],
+                        horizontal=True,
+                        key="radio_filtro_items"
+                    )
+                    
+                    items_filtrados = proyecto['items']
+                    if filtro_tipo == "🎨 Inspiración":
+                        items_filtrados = [i for i in items_filtrados if i['tipo'] == 'inspiracion']
+                    elif filtro_tipo == "🛒 Compras":
+                        items_filtrados = [i for i in items_filtrados if i['tipo'] == 'compra']
+                    elif filtro_tipo == "✅ Conseguidos":
+                        items_filtrados = [i for i in items_filtrados if i.get('conseguido')]
+                    elif filtro_tipo == "⏳ Pendientes":
+                        items_filtrados = [i for i in items_filtrados if not i.get('conseguido')]
+                    
+                    if items_filtrados:
+                        for item in items_filtrados:
+                            emoji = "✅" if item.get('conseguido') else ("🎨" if item['tipo'] == 'inspiracion' else "🛒")
+                            titulo = item['descripcion'][:60] + ("..." if len(item['descripcion']) > 60 else "")
+                            
+                            with st.expander(f"{emoji} {titulo}", expanded=False):
+                                if item.get('imagen'):
+                                    st.image(item['imagen'], width=300)
+                                st.write(item['descripcion'])
+                                st.caption(f"📅 Agregado: {item['fecha']}")
+                                if item.get('precio'):
+                                    st.markdown(f"**💰 Precio:** ${item['precio']:.2f}")
+                                if item.get('conseguido') and item.get('fecha_conseguido'):
+                                    st.success(f"✅ Conseguido el: {item['fecha_conseguido']}")
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    if not item.get('conseguido'):
+                                        if st.button("✅ Marcar conseguido", key=f"btn_check_{item['id']}", use_container_width=True):
+                                            if ideas_handler.marcar_conseguido(proyecto['id'], item['id']):
+                                                st.rerun()
+                                with col2:
+                                    if st.button("🗑️ Eliminar", key=f"btn_del_item_{item['id']}", use_container_width=True):
+                                        if ideas_handler.eliminar_item(proyecto['id'], item['id']):
+                                            st.rerun()
+                                
+                                # Botón de editar item
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                if st.button("✏️ Editar Item", key=f"btn_edit_item_{item['id']}", use_container_width=True):
+                                    st.session_state.editando_item_id = item['id']
+                                    st.rerun()
+                                
+                                # Si está en modo edición para este item
+                                if st.session_state.get("editando_item_id") == item['id']:
+                                    st.markdown("---")
+                                    st.markdown("**✏️ Editando item:**")
+                                    
+                                    nueva_descripcion = st.text_area(
+                                        "Descripción:",
+                                        value=item['descripcion'],
+                                        height=80,
+                                        key=f"edit_desc_{item['id']}"
+                                    )
+                                    
+                                    nuevo_precio = st.number_input(
+                                        "💰 Precio:",
+                                        value=float(item.get('precio', 0)),
+                                        min_value=0.0,
+                                        step=0.01,
+                                        format="%.2f",
+                                        key=f"edit_precio_{item['id']}"
+                                    )
+                                    
+                                    col_edit1, col_edit2 = st.columns(2)
+                                    with col_edit1:
+                                        if st.button("💾 Guardar Cambios", key=f"btn_save_edit_{item['id']}", use_container_width=True):
+                                            exito = ideas_handler.editar_item(
+                                                proyecto['id'],
+                                                item['id'],
+                                                descripcion=nueva_descripcion,
+                                                precio=nuevo_precio
+                                            )
+                                            if exito:
+                                                st.success("✅ Item actualizado")
+                                                st.session_state.editando_item_id = None
+                                                st.rerun()
+                                            else:
+                                                st.error("❌ Error al actualizar")
+                                    
+                                    with col_edit2:
+                                        if st.button("❌ Cancelar Edición", key=f"btn_cancel_edit_{item['id']}", use_container_width=True):
+                                            st.session_state.editando_item_id = None
+                                            st.rerun()
+                    else:
+                        st.info(f"No hay items que mostrar con el filtro '{filtro_tipo}'")
+                else:
+                    st.info("📭 Este proyecto aún no tiene items. ¡Agrega el primero!")
+                
+                # Opciones del proyecto
+                st.markdown("<br>", unsafe_allow_html=True)
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if st.button("🔙 Volver a Proyectos", key="btn_volver_proyectos", use_container_width=True):
+                        st.session_state["confirmar_eliminar_proyecto"] = False
+                        st.session_state.ideas_subview = "menu"
+                        st.session_state.selected_project_id = None
+                        st.rerun()
+                
+                with col2:
+                    # Inicializar variable de confirmación
+                    if "confirmar_eliminar_proyecto" not in st.session_state:
+                        st.session_state["confirmar_eliminar_proyecto"] = False
+
+                    if not st.session_state["confirmar_eliminar_proyecto"]:
+                        if st.button("🗑️ Eliminar Proyecto", key="btn_eliminar_proyecto", use_container_width=True):
+                            st.session_state["confirmar_eliminar_proyecto"] = True
+                            st.rerun()
+                    else:
+                        st.error("⚠️ ¿Confirmas la eliminación?")
+                        c_si, c_no = st.columns(2)
+                        with c_si:
+                            if st.button("✅ Sí", key="btn_conf_si_final", use_container_width=True):
+                                # Usar workaround directo hasta que el método se actualice
+                                try:
+                                    proyectos = ideas_handler._cargar_proyectos()
+                                    proyectos_filtrados = [p for p in proyectos if p["id"] != proyecto['id']]
+                                    ideas_handler._guardar_proyectos(proyectos_filtrados)
+                                    st.session_state["confirmar_eliminar_proyecto"] = False
+                                    st.session_state.ideas_subview = "menu"
+                                    st.session_state.selected_project_id = None
+                                    st.success("✅ Proyecto eliminado")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Error: {e}")
+                        with c_no:
+                            if st.button("❌ No", key="btn_conf_no_final", use_container_width=True):
+                                st.session_state["confirmar_eliminar_proyecto"] = False
+                                st.rerun()
+        
+        elif st.session_state.ideas_subview == "chat":
+            st.markdown("### 💬 Chat de Ideas con IA")
+            st.markdown("<p style='color:#d8c9ff;'>Conversa sobre tus proyectos y recibe sugerencias</p>", unsafe_allow_html=True)
+            
+            # Mostrar historial
+            if st.session_state.ideas_history:
+                st.markdown("**Conversación:**")
+                for msg in st.session_state.ideas_history[-5:]:
+                    if msg['role'] == 'user':
+                        st.markdown(f"**Tú:** {msg['content']}")
+                    else:
+                        st.markdown(f'<div class="result-card">**IA:** {msg["content"]}</div>', unsafe_allow_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
+            
+            mensaje = st.text_area("¿Qué idea tienes en mente?", height=100, 
+                                  placeholder="Ej: Quiero empezar un proyecto de decoración para mi cuarto...",
+                                  key="input_chat_ideas")
+            
+            if st.button("💬 Enviar", use_container_width=True, key="btn_chat_ideas_send"):
+                if mensaje:
+                    st.session_state.ideas_history.append({'role': 'user', 'content': mensaje})
+                    contexto = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.ideas_history[-3:]])
+                    
+                    with st.spinner("💭 Conversando con IA..."):
+                        respuesta = ideas_handler.conversar_con_ia(mensaje, contexto)
+                    
+                    st.session_state.ideas_history.append({'role': 'assistant', 'content': respuesta})
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Escribe algo primero")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_ideas_volver_chat", use_container_width=True):
+                st.session_state.ideas_subview = "menu"
+                st.rerun()
+
+    # --- MÓDULO PROFESIONAL ---
+    elif st.session_state.current_view == "profesional":
+        mostrar_breadcrumbs()
+        st.markdown("<div class='title-glow'>💼 Profesional</div>", unsafe_allow_html=True)
+        
+        if st.session_state.profesional_subview == "menu":
+            st.markdown("<p class='subtitle-text'>Herramientas para tu carrera profesional</p>", unsafe_allow_html=True)
+            
+            opciones_prof = [
+                ("📧", "Generar Correos", "correos", "frases-icon"),
+                ("💬", "Preparar Entrevistas", "entrevistas", "ideas-icon"),
+                ("📊", "Seguir Vacantes", "vacantes", "finanzas-icon"),
+                ("📈", "Estadísticas", "estadisticas", "tarot-icon"),
+                ("🏠", "Volver", "volver", "notas-icon")
+            ]
+            
+            rows_prof = [opciones_prof[i:i+3] for i in range(0, len(opciones_prof), 3)]
+            for row in rows_prof:
+                cols = st.columns(3, gap="small")
+                for idx, (icon, label, sub_key, css) in enumerate(row):
+                    if idx < len(row):
+                        with cols[idx]:
+                            st.markdown(f'<div class="magic-card"><div class="card-icon {css}">{icon}</div><div class="card-label">{label}</div></div>', unsafe_allow_html=True)
+                            if st.button(f"Abrir {label}" if sub_key != "volver" else label, key=f"btn_prof_{sub_key}", use_container_width=True):
+                                if sub_key == "volver":
+                                    st.session_state.current_view = "menu"
+                                else:
+                                    st.session_state.profesional_subview = sub_key
+                                st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+        
+        elif st.session_state.profesional_subview == "correos":
+            st.markdown("### 📧 Generar Correos Profesionales")
+            st.markdown("<p style='color:#d8c9ff;'>IA creará correos profesionales para distintas situaciones</p>", unsafe_allow_html=True)
+            
+            tipo_correo = st.selectbox(
+                "Tipo de correo:",
+                ["agradecimiento", "seguimiento", "networking", "feedback", "negociacion"],
+                format_func=lambda x: {
+                    "agradecimiento": "📧 Agradecimiento post-entrevista",
+                    "seguimiento": "📤 Seguimiento de aplicación",
+                    "networking": "🤝 Networking / LinkedIn",
+                    "feedback": "💬 Solicitar feedback",
+                    "negociacion": "💰 Negociar oferta/salario"
+                }[x],
+                key="select_tipo_correo"
+            )
+            
+            contexto_correo = st.text_area(
+                "Contexto adicional (opcional):",
+                height=100,
+                placeholder="Ej: Entrevista con Google para puesto de PM, hablamos sobre...",
+                key="input_contexto_correo"
+            )
+            
+            if st.button("📧 Generar Correo", use_container_width=True, key="btn_generar_correo"):
+                with st.spinner("✍️ Generando correo profesional con IA... (5-10 seg)"):
+                    resultado = profesional_handler.generar_correo_profesional(tipo_correo, contexto_correo)
+                st.markdown(f'<div class="result-card">{resultado.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_prof_volver_correos", use_container_width=True):
+                st.session_state.profesional_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.profesional_subview == "entrevistas":
+            st.markdown("### 💬 Preparar Entrevistas")
+            st.markdown("<p style='color:#d8c9ff;'>Practica con preguntas comunes y recibe feedback de IA</p>", unsafe_allow_html=True)
+            
+            if st.button("🎲 Nueva Pregunta Aleatoria", use_container_width=True, key="btn_nueva_pregunta"):
+                pregunta = profesional_handler.obtener_pregunta_entrevista()
+                st.session_state.profesional_pregunta = pregunta
+                st.session_state.profesional_respuesta = None
+                st.rerun()
+            
+            if st.session_state.profesional_pregunta:
+                st.markdown(f'<div class="result-card">{st.session_state.profesional_pregunta.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+                
+                respuesta_usuario = st.text_area(
+                    "Tu respuesta:",
+                    height=150,
+                    placeholder="Escribe tu respuesta usando el método STAR...",
+                    key="input_respuesta_entrevista"
+                )
+                
+                if st.button("📋 Recibir Feedback", use_container_width=True, key="btn_feedback_respuesta"):
+                    if respuesta_usuario:
+                        # Extraer solo la pregunta del texto completo
+                        pregunta_limpia = st.session_state.profesional_pregunta.split("\n")[2].strip("_")
+                        
+                        with st.spinner("🤔 Analizando tu respuesta con IA... (10-15 seg)"):
+                            feedback = profesional_handler.analizar_respuesta_entrevista(pregunta_limpia, respuesta_usuario)
+                        st.session_state.profesional_respuesta = feedback
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ Escribe tu respuesta primero")
+                
+                if st.session_state.profesional_respuesta:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.markdown(f'<div class="result-card">{st.session_state.profesional_respuesta.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_prof_volver_entrevistas", use_container_width=True):
+                st.session_state.profesional_subview = "menu"
+                st.session_state.profesional_pregunta = None
+                st.session_state.profesional_respuesta = None
+                st.rerun()
+        
+        elif st.session_state.profesional_subview == "vacantes":
+            st.markdown("### 📊 Seguimiento de Vacantes")
+            
+            # Verificar vacantes pendientes de seguimiento
+            pendientes = profesional_handler.verificar_vacantes_pendientes_seguimiento()
+            if pendientes:
+                st.warning(f"⏰ **Recordatorio de Seguimiento:** Tienes {len(pendientes)} vacante(s) con 7+ días sin respuesta")
+                for p in pendientes[:3]:  # Mostrar máximo 3
+                    st.caption(f"• #{p['id']} {p['empresa']} - {p['cargo']} ({p['dias']} días)")
+                st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Mostrar vacantes existentes
+            vacantes = profesional_handler.listar_vacantes()
+            
+            if vacantes:
+                st.markdown(f"**Tienes {len(vacantes)} vacante(s) en seguimiento:**")
+                
+                # Agrupar por estado
+                estados = {}
+                for v in vacantes:
+                    estado = v.get('estado', 'aplicado')
+                    if estado not in estados:
+                        estados[estado] = []
+                    estados[estado].append(v)
+                
+                emojis_estado = {
+                    "aplicado": "📤",
+                    "entrevista": "💬",
+                    "oferta": "🎉",
+                    "rechazado": "❌",
+                    "retirado": "🔙"
+                }
+                
+                for estado, lista in estados.items():
+                    if lista:
+                        st.markdown(f"**{emojis_estado.get(estado, '📋')} {estado.upper()}** ({len(lista)})")
+                        for v in lista:
+                            with st.expander(f"#{v['id']} - {v['empresa']} - {v['cargo']}", expanded=False):
+                                st.markdown(f"**Aplicado:** {v['fecha_aplicacion']}")
+                                st.markdown(f"**Estado:** {v['estado']}")
+                                if v.get('contacto'):
+                                    st.markdown(f"**Contacto:** {v['contacto']}")
+                                if v.get('notas'):
+                                    st.markdown(f"**Notas:** {v['notas']}")
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    nuevo_estado = st.selectbox(
+                                        "Cambiar estado:",
+                                        ["aplicado", "entrevista", "oferta", "rechazado", "retirado"],
+                                        index=["aplicado", "entrevista", "oferta", "rechazado", "retirado"].index(v['estado']),
+                                        key=f"estado_{v['id']}"
+                                    )
+                                    if st.button("💾 Actualizar", key=f"btn_actualizar_{v['id']}"):
+                                        profesional_handler.actualizar_estado_vacante(v['id'], nuevo_estado)
+                                        st.success("✅ Actualizado")
+                                        st.rerun()
+                                with col2:
+                                    if st.button("🗑️ Eliminar", key=f"btn_eliminar_{v['id']}"):
+                                        profesional_handler.borrar_vacante(v['id'])
+                                        st.success("✅ Eliminado")
+                                        st.rerun()
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+            else:
+                st.info("No tienes vacantes en seguimiento aún.")
+            
+            # Formulario para agregar nueva vacante
+            st.markdown("### ✨ Agregar Nueva Vacante")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                empresa = st.text_input("Empresa:", placeholder="Google", key="input_empresa")
+                fecha_app = st.date_input("Fecha de aplicación:", key="input_fecha_app")
+            with col2:
+                cargo = st.text_input("Cargo:", placeholder="Product Manager", key="input_cargo")
+                contacto = st.text_input("Contacto (opcional):", placeholder="Juan Pérez - Recruiter", key="input_contacto")
+            
+            notas = st.text_area("Notas (opcional):", height=80, placeholder="Detalles de la aplicación...", key="input_notas_vac")
+            
+            if st.button("✨ Agregar Vacante", use_container_width=True, key="btn_agregar_vacante"):
+                if empresa and cargo:
+                    fecha_str = fecha_app.strftime("%Y-%m-%d")
+                    profesional_handler.agregar_vacante(empresa, cargo, fecha_str, contacto, notas)
+                    st.success(f"✅ Vacante agregada: {empresa} - {cargo}")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Completa al menos Empresa y Cargo")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_prof_volver_vacantes", use_container_width=True):
+                st.session_state.profesional_subview = "menu"
+                st.rerun()
+        
+        elif st.session_state.profesional_subview == "estadisticas":
+            st.markdown("### 📈 Estadísticas de Búsqueda Laboral")
+            
+            stats = profesional_handler.generar_estadisticas_vacantes()
+            
+            if stats:
+                # Resumen general
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Aplicaciones", stats['total'])
+                with col2:
+                    st.metric("Activas", stats['activas'])
+                with col3:
+                    st.metric("Tasa de Respuesta", f"{stats['tasa_respuesta']:.1f}%")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Distribución por estado
+                st.markdown("**📊 Distribución por Estado:**")
+                estados = stats['estados']
+                for estado, cantidad in estados.items():
+                    if cantidad > 0:
+                        porcentaje = (cantidad / stats['total'] * 100)
+                        emoji = {"aplicado": "📤", "entrevista": "💬", "oferta": "🎉", "rechazado": "❌", "retirado": "🔙"}
+                        st.progress(porcentaje / 100, text=f"{emoji.get(estado, '📋')} {estado.capitalize()}: {cantidad} ({porcentaje:.0f}%)")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Métricas adicionales
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Tasa de Éxito", f"{stats['tasa_exito']:.1f}%", 
+                             help="Porcentaje de ofertas recibidas")
+                with col2:
+                    st.metric("Días Promedio", f"{stats['dias_promedio']:.0f}", 
+                             help="Tiempo promedio por proceso")
+                
+                # Top empresas contactadas
+                if stats['top_empresas']:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.markdown("**🏢 Empresas Más Contactadas:**")
+                    for i, (empresa, cantidad) in enumerate(stats['top_empresas'], 1):
+                        st.caption(f"{i}. {empresa}: {cantidad} aplicación(es)")
+                
+                # Mensajes motivacionales
+                st.markdown("<br>", unsafe_allow_html=True)
+                if stats['tasa_respuesta'] >= 20:
+                    st.success("✨ ¡Excelente tasa de respuesta! Sigue así 💪")
+                elif stats['tasa_respuesta'] >= 10:
+                    st.info("💡 Buena tasa de respuesta. Considera optimizar tu CV o aplicaciones")
+                else:
+                    st.warning("💪 Sigue aplicando. Cada 'no' te acerca al 'sí' perfecto")
+            else:
+                st.info("No tienes vacantes registradas aún. ¡Agrega algunas para ver estadísticas!")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔙 Volver al Menú", key="btn_prof_volver_estadisticas", use_container_width=True):
+                st.session_state.profesional_subview = "menu"
+                st.rerun()
+
+    # DEFAULT
+    else:
+        st.markdown(f"<div class='title-glow'>{st.session_state.current_view.capitalize()}</div>", unsafe_allow_html=True)
+        st.info("✨ Sección en construcción energética")
+        if st.button("🔙 Menú Principal", key="btn_default_home"): 
+            st.session_state.current_view = "menu"
+            st.rerun()
+    
+    # =====================================================
+    # SPOTIFY: Renderizado al final cuando usuario está loggeado
+    # =====================================================
+      
+st.markdown('<div class="bottom-footer">🌙 Que la luz de tu intuición te guíe en este viaje sagrado 🌙</div>', unsafe_allow_html=True)
