@@ -206,22 +206,29 @@ class LocalFinanzasHandler:
             data = cargar_json_mongo("finanzas")
             if not data:
                 return {"gastos": [], "ingresos": [], "presupuestos": {}}
-            # Si es una lista antigua, convertir al nuevo formato
+            
+            # Si ya es un dict con la estructura correcta, devolverlo
+            if isinstance(data, dict) and "gastos" in data:
+                # Asegurar que todas las claves existan
+                if "ingresos" not in data:
+                    data["ingresos"] = []
+                if "presupuestos" not in data:
+                    data["presupuestos"] = {}
+                return data
+            
+            # Si es una lista antigua de gastos, convertir
             if isinstance(data, list):
                 return {"gastos": data, "ingresos": [], "presupuestos": {}}
-            # Si es un solo dict, devolverlo
-            if isinstance(data, dict):
-                return data
-            # Si es una lista de dicts, tomar el primero
-            if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
-                return data[0]
+            
+            # Por defecto, estructura vacía
             return {"gastos": [], "ingresos": [], "presupuestos": {}}
-        except:
+        except Exception as e:
+            print(f"Error cargando finanzas: {e}")
             return {"gastos": [], "ingresos": [], "presupuestos": {}}
 
     def _guardar_finanzas(self, data):
-        guardar_json_mongo("finanzas", [data])
-
+        guardar_json_mongo("finanzas", data)
+        
     def _detectar_categoria(self, descripcion):
         desc_lower = descripcion.lower()
         for categoria, palabras in self.CATEGORIAS.items():
