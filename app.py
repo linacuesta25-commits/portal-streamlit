@@ -226,177 +226,298 @@ class LocalFinanzasHandler:
         desc_lower = descripcion.lower()
         for categoria, palabras in self.CATEGORIAS.items():
             for palabra in palabras:
-                if palabra in desc_lower: return categoria
+                if palabra in desc_lower: 
+                    return categoria
         return "📄 otros"
 
     def _verificar_presupuesto(self, data, categoria, monto_nuevo):
-        if categoria not in data["presupuestos"]: return ""
+        if categoria not in data.get("presupuestos", {}): 
+            return ""
         mes_actual = datetime.datetime.now().strftime("%Y-%m")
-        gasto_mes = sum(g["monto"] for g in data["gastos"] if g["categoria"] == categoria and g["fecha"].startswith(mes_actual))
+        gasto_mes = sum(
+            g.get("monto", 0) for g in data.get("gastos", []) 
+            if g.get("categoria") == categoria and g.get("fecha", "").startswith(mes_actual)
+        )
         presupuesto = data["presupuestos"][categoria]
-        porcentaje = (gasto_mes / presupuesto) * 100
-        if porcentaje >= 100: return f"\n⚠️ *ALERTA:* Ya gastaste ${gasto_mes} de ${presupuesto} ({porcentaje:.0f}%) en {categoria}"
-        elif porcentaje >= 80: return f"\n⚠️ Llevas ${gasto_mes} de ${presupuesto} ({porcentaje:.0f}%) en {categoria}"
+        porcentaje = (gasto_mes / presupuesto) * 100 if presupuesto > 0 else 0
+        
+        if porcentaje >= 100: 
+            return f"\n⚠️ *ALERTA:* Ya gastaste ${gasto_mes:.2f} de ${presupuesto:.2f} ({porcentaje:.0f}%) en {categoria}"
+        elif porcentaje >= 80: 
+            return f"\n⚠️ Llevas ${gasto_mes:.2f} de ${presupuesto:.2f} ({porcentaje:.0f}%) en {categoria}"
         return ""
 
     def agregar_gasto(self, monto, categoria, descripcion):
         data = self._cargar_finanzas()
         if not categoria or categoria.lower() in ["auto", "automático", ""]:
             categoria = self._detectar_categoria(descripcion)
+        
         nuevo = {
-            "id": len(data["gastos"]) + 1,
+            "id": len(data.get("gastos", [])) + 1,
             "monto": float(monto),
             "categoria": categoria.lower().strip(),
             "descripcion": descripcion,
             "fecha": datetime.datetime.now().strftime("%Y-%m-%d"),
             "hora": datetime.datetime.now().strftime("%H:%M")
         }
+        
+        if "gastos" not in data:
+            data["gastos"] = []
         data["gastos"].append(nuevo)
         self._guardar_finanzas(data)
+        
         alerta = self._verificar_presupuesto(data, categoria, float(monto))
-        return f"✨ *Gasto agregado exitosamente*\n\n💰 Monto: ${monto}\n🏷️ Categoría: {categoria}\n📝 Descripción: {descripcion}\n📅 Fecha: {nuevo['fecha']}\n{alerta}"
+        return f"✨ *Gasto agregado exitosamente*\n\n💰 Monto: ${monto}\n🏷️ Categoría: {categoria}\n📝 Descripción: {descripcion}\n📅 Fecha: {nuevo['fecha']}{alerta}"
 
     def listar_gastos(self):
         data = self._cargar_finanzas()
-        gastos = data["gastos"]
-        if not gastos: return "Aún no tienes gastos registrados, amor 🥺"
+        gastos = data.get("gastos", [])
+        if not gastos: 
+            return "Aún no tienes gastos registrados, amor 🥺"
+        
         texto = "📘 *Todos tus gastos registrados:* \n\n"
         total = 0
+        
         for g in reversed(gastos[-15:]):
-            texto += f"**#{g['id']}** ${g['monto']} — {g['categoria']} — {g['descripcion']} ({g['fecha']})\n"
-            total += g["monto"]
-        texto += f"\n💰 *Total gastado:* ${total}"
+            gasto_id = g.get('id', '?')
+            monto = g.get('monto', 0)
+            categoria = g.get('categoria', '📄 otros')
+            descripcion = g.get('descripcion', 'Sin descripción')
+            fecha = g.get('fecha', 'Sin fecha')
+            
+            texto += f"**#{gasto_id}** ${monto:.2f} — {categoria} — {descripcion} ({fecha})\n"
+            total += monto
+        
+        texto += f"\n💰 *Total gastado:* ${total:.2f}"
         return texto
 
     def gastos_de_hoy(self):
         hoy = datetime.datetime.now().strftime("%Y-%m-%d")
         data = self._cargar_finanzas()
-        filtrados = [g for g in data["gastos"] if g["fecha"] == hoy]
-        if not filtrados: return "Hoy no tienes gastos registrados ✨"
+        filtrados = [g for g in data.get("gastos", []) if g.get("fecha") == hoy]
+        
+        if not filtrados: 
+            return "Hoy no tienes gastos registrados ✨"
+        
         texto = "📅 *Gastos de hoy:* \n\n"
         total = 0
+        
         for g in filtrados:
-            texto += f"• ${g['monto']} — {g['categoria']} — {g['descripcion']}\n"
-            total += g["monto"]
-        texto += f"\n💰 *Total gastado hoy:* ${total}"
+            monto = g.get("monto", 0)
+            categoria = g.get("categoria", "📄 otros")
+            descripcion = g.get("descripcion", "Sin descripción")
+            
+            texto += f"• ${monto:.2f} — {categoria} — {descripcion}\n"
+            total += monto
+        
+        texto += f"\n💰 *Total gastado hoy:* ${total:.2f}"
         return texto
 
     def buscar_gastos(self, palabra):
         data = self._cargar_finanzas()
         palabra_lower = palabra.lower()
-        resultados = [g for g in data["gastos"] if palabra_lower in g["descripcion"].lower() or palabra_lower in g["categoria"].lower()]
-        if not resultados: return f"No encontré gastos con '{palabra}', amor 💛"
+        resultados = [
+            g for g in data.get("gastos", []) 
+            if palabra_lower in g.get("descripcion", "").lower() or 
+               palabra_lower in g.get("categoria", "").lower()
+        ]
+        
+        if not resultados: 
+            return f"No encontré gastos con '{palabra}', amor 💛"
+        
         texto = f"🔍 *RESULTADOS PARA: {palabra}* 🔍\n\n"
         total = 0
+        
         for g in reversed(resultados[-10:]):
-            texto += f"**#{g['id']}** ${g['monto']} — {g['categoria']} — {g['descripcion']} ({g['fecha']})\n"
-            total += g["monto"]
-        texto += f"\n📊 *Total encontrado:* ${total}\n🔢 *{len(resultados)} resultados*"
+            gasto_id = g.get('id', '?')
+            monto = g.get('monto', 0)
+            categoria = g.get('categoria', '📄 otros')
+            descripcion = g.get('descripcion', 'Sin descripción')
+            fecha = g.get('fecha', 'Sin fecha')
+            
+            texto += f"**#{gasto_id}** ${monto:.2f} — {categoria} — {descripcion} ({fecha})\n"
+            total += monto
+        
+        texto += f"\n📊 *Total encontrado:* ${total:.2f}\n🔢 *{len(resultados)} resultados*"
         return texto
     
     def gastos_por_categoria(self, categoria):
         data = self._cargar_finanzas()
-        filtrados = [g for g in data["gastos"] if categoria.lower() in g["categoria"].lower()]
-        if not filtrados: return f"No tienes gastos en la categoría '{categoria}', amor 💛"
+        filtrados = [
+            g for g in data.get("gastos", []) 
+            if categoria.lower() in g.get("categoria", "").lower()
+        ]
+        
+        if not filtrados: 
+            return f"No tienes gastos en la categoría '{categoria}', amor 💛"
+        
         texto = f"🏷️ *Gastos en categoría '{categoria}':*\n\n"
         total = 0
+        
         for g in reversed(filtrados[-10:]):
-            texto += f"**#{g['id']}** ${g['monto']} — {g['descripcion']} ({g['fecha']})\n"
-            total += g["monto"]
-        texto += f"\n💰 *Total en {categoria}:* ${total}"
+            gasto_id = g.get('id', '?')
+            monto = g.get('monto', 0)
+            descripcion = g.get('descripcion', 'Sin descripción')
+            fecha = g.get('fecha', 'Sin fecha')
+            
+            texto += f"**#{gasto_id}** ${monto:.2f} — {descripcion} ({fecha})\n"
+            total += monto
+        
+        texto += f"\n💰 *Total en {categoria}:* ${total:.2f}"
         return texto
 
     def borrar_gasto(self, gasto_id):
         try:
             data = self._cargar_finanzas()
-            gasto = next((g for g in data["gastos"] if g["id"] == int(gasto_id)), None)
-            if not gasto: return "El ID no es válido 🥺"
-            data["gastos"] = [g for g in data["gastos"] if g["id"] != int(gasto_id)]
+            gasto = next((g for g in data.get("gastos", []) if g.get("id") == int(gasto_id)), None)
+            
+            if not gasto: 
+                return "El ID no es válido 🥺"
+            
+            data["gastos"] = [g for g in data.get("gastos", []) if g.get("id") != int(gasto_id)]
             self._guardar_finanzas(data)
-            return f"🗑️ Gasto eliminado:\n${gasto['monto']} — {gasto['categoria']} — {gasto['descripcion']}"
-        except: return "Error eliminando gasto."
+            
+            monto = gasto.get('monto', 0)
+            categoria = gasto.get('categoria', '📄 otros')
+            descripcion = gasto.get('descripcion', 'Sin descripción')
+            
+            return f"🗑️ Gasto eliminado:\n${monto:.2f} — {categoria} — {descripcion}"
+        except Exception as e:
+            return f"Error eliminando gasto: {str(e)}"
 
     def agregar_ingreso(self, monto, descripcion):
         data = self._cargar_finanzas()
         nuevo = {
-            "id": len(data["ingresos"]) + 1,
+            "id": len(data.get("ingresos", [])) + 1,
             "monto": float(monto),
             "descripcion": descripcion,
             "fecha": datetime.datetime.now().strftime("%Y-%m-%d"),
             "hora": datetime.datetime.now().strftime("%H:%M")
         }
+        
+        if "ingresos" not in data:
+            data["ingresos"] = []
         data["ingresos"].append(nuevo)
         self._guardar_finanzas(data)
+        
         return f"✨ *Ingreso agregado exitosamente*\n\n💵 Monto: ${monto}\n📝 Descripción: {descripcion}\n📅 Fecha: {nuevo['fecha']}"
 
     def listar_ingresos(self):
         data = self._cargar_finanzas()
-        ingresos = data["ingresos"]
-        if not ingresos: return "Aún no tienes ingresos registrados, amor 🥺"
+        ingresos = data.get("ingresos", [])
+        
+        if not ingresos: 
+            return "Aún no tienes ingresos registrados, amor 🥺"
+        
         texto = "💵 *Todos tus ingresos registrados:* \n\n"
         total = 0
+        
         for ing in reversed(ingresos[-15:]):
-            texto += f"**#{ing['id']}** ${ing['monto']} — {ing['descripcion']} ({ing['fecha']})\n"
-            total += ing["monto"]
-        texto += f"\n💰 *Total de ingresos:* ${total}"
+            ing_id = ing.get('id', '?')
+            monto = ing.get('monto', 0)
+            descripcion = ing.get('descripcion', 'Sin descripción')
+            fecha = ing.get('fecha', 'Sin fecha')
+            
+            texto += f"**#{ing_id}** ${monto:.2f} — {descripcion} ({fecha})\n"
+            total += monto
+        
+        texto += f"\n💰 *Total de ingresos:* ${total:.2f}"
         return texto
 
     def borrar_ingreso(self, indice):
         try:
             data = self._cargar_finanzas()
-            ing = next((i for i in data["ingresos"] if i["id"] == int(indice)), None)
-            if not ing: return "El ID no es válido 🥺"
-            data["ingresos"] = [i for i in data["ingresos"] if i["id"] != int(indice)]
+            ing = next((i for i in data.get("ingresos", []) if i.get("id") == int(indice)), None)
+            
+            if not ing: 
+                return "El ID no es válido 🥺"
+            
+            data["ingresos"] = [i for i in data.get("ingresos", []) if i.get("id") != int(indice)]
             self._guardar_finanzas(data)
-            return f"🗑️ Ingreso eliminado:\n${ing['monto']} — {ing['descripcion']}"
-        except: return "Error eliminando ingreso."
+            
+            monto = ing.get('monto', 0)
+            descripcion = ing.get('descripcion', 'Sin descripción')
+            
+            return f"🗑️ Ingreso eliminado:\n${monto:.2f} — {descripcion}"
+        except Exception as e:
+            return f"Error eliminando ingreso: {str(e)}"
 
     def establecer_presupuesto(self, categoria, monto):
         data = self._cargar_finanzas()
+        if "presupuestos" not in data:
+            data["presupuestos"] = {}
+        
         data["presupuestos"][categoria.lower().strip()] = float(monto)
         self._guardar_finanzas(data)
+        
         return f"✅ *Presupuesto establecido*\n\n🏷️ {categoria}\n💰 ${monto}/mes"
 
     def ver_presupuestos(self):
         data = self._cargar_finanzas()
-        if not data["presupuestos"]: return "No tienes presupuestos establecidos aún, amor 💛"
+        presupuestos = data.get("presupuestos", {})
+        
+        if not presupuestos: 
+            return "No tienes presupuestos establecidos aún, amor 💛"
+        
         mes_actual = datetime.datetime.now().strftime("%Y-%m")
         texto = "📊 *PRESUPUESTOS DEL MES* 📊\n\n"
-        for categoria, presupuesto in data["presupuestos"].items():
-            gasto_mes = sum(g["monto"] for g in data["gastos"] if g["categoria"] == categoria and g["fecha"].startswith(mes_actual))
-            porcentaje = (gasto_mes / presupuesto) * 100
+        
+        for categoria, presupuesto in presupuestos.items():
+            gasto_mes = sum(
+                g.get("monto", 0) for g in data.get("gastos", []) 
+                if g.get("categoria") == categoria and g.get("fecha", "").startswith(mes_actual)
+            )
+            porcentaje = (gasto_mes / presupuesto) * 100 if presupuesto > 0 else 0
             restante = presupuesto - gasto_mes
             emoji = "🔴" if porcentaje >= 100 else "🟡" if porcentaje >= 80 else "🟢"
-            texto += f"{emoji} *{categoria}*\n💰 ${gasto_mes} / ${presupuesto}\n📊 {porcentaje:.0f}% usado\n"
-            if restante > 0: texto += f"✅ Quedan ${restante}\n\n"
-            else: texto += f"❌ Excedido por ${abs(restante)}\n\n"
+            
+            texto += f"{emoji} *{categoria}*\n💰 ${gasto_mes:.2f} / ${presupuesto:.2f}\n📊 {porcentaje:.0f}% usado\n"
+            if restante > 0: 
+                texto += f"✅ Quedan ${restante:.2f}\n\n"
+            else: 
+                texto += f"❌ Excedido por ${abs(restante):.2f}\n\n"
+        
         return texto
 
     def resumen_mensual(self):
         data = self._cargar_finanzas()
         mes_actual = datetime.datetime.now().strftime("%Y-%m")
         mes_nombre = datetime.datetime.now().strftime("%B %Y")
-        gastos_mes = [g for g in data["gastos"] if g["fecha"].startswith(mes_actual)]
-        ingresos_mes = [i for i in data["ingresos"] if i["fecha"].startswith(mes_actual)]
-        if not gastos_mes and not ingresos_mes: return f"No hay movimientos en {mes_nombre}, amor 💛"
+        
+        gastos_mes = [g for g in data.get("gastos", []) if g.get("fecha", "").startswith(mes_actual)]
+        ingresos_mes = [i for i in data.get("ingresos", []) if i.get("fecha", "").startswith(mes_actual)]
+        
+        if not gastos_mes and not ingresos_mes: 
+            return f"No hay movimientos en {mes_nombre}, amor 💛"
+        
         texto = f"📊 *RESUMEN DE {mes_nombre.upper()}* 📊\n\n"
-        total_ingresos = sum(i["monto"] for i in ingresos_mes)
-        texto += f"💵 *Ingresos:* ${total_ingresos}\n"
-        total_gastos = sum(g["monto"] for g in gastos_mes)
-        texto += f"💸 *Gastos:* ${total_gastos}\n"
+        
+        total_ingresos = sum(i.get("monto", 0) for i in ingresos_mes)
+        texto += f"💵 *Ingresos:* ${total_ingresos:.2f}\n"
+        
+        total_gastos = sum(g.get("monto", 0) for g in gastos_mes)
+        texto += f"💸 *Gastos:* ${total_gastos:.2f}\n"
+        
         balance = total_ingresos - total_gastos
-        if balance >= 0: texto += f"✅ *Balance:* +${balance}\n\n"
-        else: texto += f"❌ *Balance:* -${abs(balance)}\n\n"
+        if balance >= 0: 
+            texto += f"✅ *Balance:* +${balance:.2f}\n\n"
+        else: 
+            texto += f"❌ *Balance:* -${abs(balance):.2f}\n\n"
+        
         gastos_por_cat = defaultdict(float)
-        for gasto in gastos_mes: gastos_por_cat[gasto["categoria"]] += gasto["monto"]
+        for gasto in gastos_mes: 
+            gastos_por_cat[gasto.get("categoria", "📄 otros")] += gasto.get("monto", 0)
+        
         if gastos_por_cat:
             texto += "📋 *Top Categorías:*\n"
             for cat, total in sorted(gastos_por_cat.items(), key=lambda x: x[1], reverse=True)[:5]:
                 porcentaje = (total / total_gastos * 100) if total_gastos > 0 else 0
-                texto += f"{cat}: ${total} ({porcentaje:.0f}%)\n"
+                texto += f"{cat}: ${total:.2f} ({porcentaje:.0f}%)\n"
+        
         if total_ingresos > 0:
             tasa_ahorro = (balance / total_ingresos) * 100
             texto += f"\n💰 *Tasa de ahorro:* {tasa_ahorro:.0f}%"
+        
         return texto
 
     def comparar_meses(self):
@@ -406,20 +527,34 @@ class LocalFinanzasHandler:
         primer_dia = datetime.datetime.now().replace(day=1)
         mes_anterior = (primer_dia - timedelta(days=1)).strftime("%Y-%m")
         mes_nombre_anterior = (primer_dia - timedelta(days=1)).strftime("%B")
-        gastos_actual = sum(g["monto"] for g in data["gastos"] if g["fecha"].startswith(mes_actual))
-        gastos_anterior = sum(g["monto"] for g in data["gastos"] if g["fecha"].startswith(mes_anterior))
-        texto = f"📊 *COMPARATIVA MENSUAL* 📊\n\n📅 {mes_nombre_anterior}: ${gastos_anterior}\n📅 {mes_nombre_actual}: ${gastos_actual}\n\n"
+        
+        gastos_actual = sum(
+            g.get("monto", 0) for g in data.get("gastos", []) 
+            if g.get("fecha", "").startswith(mes_actual)
+        )
+        gastos_anterior = sum(
+            g.get("monto", 0) for g in data.get("gastos", []) 
+            if g.get("fecha", "").startswith(mes_anterior)
+        )
+        
+        texto = f"📊 *COMPARATIVA MENSUAL* 📊\n\n📅 {mes_nombre_anterior}: ${gastos_anterior:.2f}\n📅 {mes_nombre_actual}: ${gastos_actual:.2f}\n\n"
+        
         if gastos_anterior > 0:
             diferencia = gastos_actual - gastos_anterior
             porcentaje = (diferencia / gastos_anterior) * 100
-            if diferencia > 0: texto += f"📈 Gastaste ${abs(diferencia)} MÁS ({porcentaje:.0f}%)"
-            elif diferencia < 0: texto += f"📉 Gastaste ${abs(diferencia)} MENOS ({abs(porcentaje):.0f}%)"
-            else: texto += "➡️ Gasto similar"
+            if diferencia > 0: 
+                texto += f"📈 Gastaste ${abs(diferencia):.2f} MÁS ({porcentaje:.0f}%)"
+            elif diferencia < 0: 
+                texto += f"📉 Gastaste ${abs(diferencia):.2f} MENOS ({abs(porcentaje):.0f}%)"
+            else: 
+                texto += "➡️ Gasto similar"
+        
         return texto
 
     def ver_categorias(self):
         texto = "🏷 *CATEGORÍAS DISPONIBLES* 🏷\n\n"
-        for categoria in self.CATEGORIAS.keys(): texto += f"{categoria}\n"
+        for categoria in self.CATEGORIAS.keys(): 
+            texto += f"{categoria}\n"
         return texto
     
     def exportar_a_csv(self):
@@ -428,12 +563,10 @@ class LocalFinanzasHandler:
         from io import StringIO
         
         data = self._cargar_finanzas()
-        
-        # Crear CSV en memoria
         output = StringIO()
+        writer = csv.writer(output)
         
         # Exportar gastos
-        writer = csv.writer(output)
         writer.writerow(['GASTOS'])
         writer.writerow(['ID', 'Monto', 'Categoría', 'Descripción', 'Fecha', 'Hora'])
         
@@ -447,21 +580,22 @@ class LocalFinanzasHandler:
                 gasto.get('hora', '')
             ])
         
-        writer.writerow([])  # Línea en blanco
+        writer.writerow([])
         
         # Exportar ingresos
         writer.writerow(['INGRESOS'])
-        writer.writerow(['ID', 'Monto', 'Fuente', 'Fecha'])
+        writer.writerow(['ID', 'Monto', 'Descripción', 'Fecha', 'Hora'])
         
         for ingreso in data.get('ingresos', []):
             writer.writerow([
                 ingreso.get('id', ''),
                 ingreso.get('monto', ''),
-                ingreso.get('fuente', ''),
-                ingreso.get('fecha', '')
+                ingreso.get('descripcion', ''),
+                ingreso.get('fecha', ''),
+                ingreso.get('hora', '')
             ])
         
-        writer.writerow([])  # Línea en blanco
+        writer.writerow([])
         
         # Exportar presupuestos
         writer.writerow(['PRESUPUESTOS'])
@@ -482,50 +616,40 @@ class LocalFinanzasHandler:
         if not data.get('gastos'):
             return None
         
-        # Fecha actual
         hoy = datetime.datetime.now()
         mes_actual = hoy.strftime("%Y-%m")
         dia_actual = hoy.day
         
-        # Gastos del mes actual
-        gastos_mes = [g for g in data['gastos'] if g['fecha'].startswith(mes_actual)]
+        gastos_mes = [g for g in data.get('gastos', []) if g.get('fecha', '').startswith(mes_actual)]
         
         if not gastos_mes:
             return None
         
-        # Total gastado este mes
-        total_mes = sum(g['monto'] for g in gastos_mes)
-        
-        # Promedio diario (basado en días transcurridos)
+        total_mes = sum(g.get('monto', 0) for g in gastos_mes)
         promedio_diario = total_mes / dia_actual if dia_actual > 0 else 0
-        
-        # Proyección del mes (promedio diario × días del mes)
-        dias_mes = 30  # Aproximado
+        dias_mes = 30
         proyeccion_mes = promedio_diario * dias_mes
         
-        # Gastos por categoría este mes
         gastos_por_cat = {}
         for g in gastos_mes:
             cat = g.get('categoria', '📄 otros')
-            gastos_por_cat[cat] = gastos_por_cat.get(cat, 0) + g['monto']
+            gastos_por_cat[cat] = gastos_por_cat.get(cat, 0) + g.get('monto', 0)
         
-        # Top 3 categorías
         top_categorias = sorted(gastos_por_cat.items(), key=lambda x: x[1], reverse=True)[:3]
         
-        # Comparación con mes anterior
         primer_dia = hoy.replace(day=1)
         mes_anterior = (primer_dia - timedelta(days=1)).strftime("%Y-%m")
-        gastos_mes_ant = [g for g in data['gastos'] if g['fecha'].startswith(mes_anterior)]
-        total_mes_anterior = sum(g['monto'] for g in gastos_mes_ant)
+        gastos_mes_ant = [g for g in data.get('gastos', []) if g.get('fecha', '').startswith(mes_anterior)]
+        total_mes_anterior = sum(g.get('monto', 0) for g in gastos_mes_ant)
         
-        # Calcular diferencia y porcentaje
         diferencia = total_mes - total_mes_anterior
         porcentaje_cambio = (diferencia / total_mes_anterior * 100) if total_mes_anterior > 0 else 0
         
-        # Ingresos del mes
-        ingresos_mes = sum(i['monto'] for i in data.get('ingresos', []) if i['fecha'].startswith(mes_actual))
+        ingresos_mes = sum(
+            i.get('monto', 0) for i in data.get('ingresos', []) 
+            if i.get('fecha', '').startswith(mes_actual)
+        )
         
-        # Balance (ingresos - gastos)
         balance = ingresos_mes - total_mes
         
         return {
@@ -542,6 +666,7 @@ class LocalFinanzasHandler:
             'gasto_promedio': total_mes / len(gastos_mes) if gastos_mes else 0,
             'dia_actual': dia_actual
         }
+
 
 class MetasAhorroHandler:
     def __init__(self):
@@ -576,14 +701,14 @@ class MetasAhorroHandler:
     
     def aportar_a_meta(self, meta_id, monto):
         metas = self._cargar_metas()
-        meta = next((m for m in metas if m["id"] == int(meta_id)), None)
+        meta = next((m for m in metas if m.get("id") == int(meta_id)), None)
         if not meta:
             return None
         
-        meta["monto_actual"] += float(monto)
+        meta["monto_actual"] = meta.get("monto_actual", 0) + float(monto)
         
         # Verificar si se completó
-        if meta["monto_actual"] >= meta["monto_objetivo"] and not meta["completada"]:
+        if meta["monto_actual"] >= meta.get("monto_objetivo", 0) and not meta.get("completada", False):
             meta["completada"] = True
             meta["fecha_completada"] = datetime.datetime.now().strftime("%Y-%m-%d")
         
@@ -595,10 +720,10 @@ class MetasAhorroHandler:
     
     def borrar_meta(self, meta_id):
         metas = self._cargar_metas()
-        meta = next((m for m in metas if m["id"] == int(meta_id)), None)
+        meta = next((m for m in metas if m.get("id") == int(meta_id)), None)
         if not meta:
             return None
-        metas = [m for m in metas if m["id"] != int(meta_id)]
+        metas = [m for m in metas if m.get("id") != int(meta_id)]
         self._guardar_metas(metas)
         return meta
 
@@ -5614,19 +5739,22 @@ profesional_handler = profesional
 # =====================================================
 
 def cargar_json_mongo(nombre_coleccion):
-    """Carga datos desde MongoDB (reemplaza json.load())"""
-    try:
-        datos = st.session_state.db.cargar_datos(nombre_coleccion)
-        return datos if datos else []
-    except:
-        return []
+    """Carga datos de un archivo JSON local"""
+    archivo = f"data/{nombre_coleccion}.json"
+    if os.path.exists(archivo):
+        try:
+            with open(archivo, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return None
+    return None
 
 def guardar_json_mongo(nombre_coleccion, datos):
-    """Guarda datos en MongoDB (reemplaza json.dump())"""
-    try:
-        return st.session_state.db.guardar_datos(nombre_coleccion, datos)
-    except:
-        return False
+    """Guarda datos en un archivo JSON local"""
+    os.makedirs("data", exist_ok=True)
+    archivo = f"data/{nombre_coleccion}.json"
+    with open(archivo, 'w', encoding='utf-8') as f:
+        json.dump(datos, f, ensure_ascii=False, indent=2)
 
 # =====================================================
 # FUNCIONES DE AUTENTICACIÓN CON MONGODB
